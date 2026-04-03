@@ -4,32 +4,103 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
+import POSLayout from "./components/POSLayout";
+import Dashboard from "./pages/Dashboard";
+import SalesTransaction from "./pages/SalesTransaction";
+import SalesOrders from "./pages/SalesOrders";
+import Inventory from "./pages/Inventory";
+import Customers from "./pages/Customers";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      <Route path="/" component={() => (
+        <POSLayout>
+          <Dashboard />
+        </POSLayout>
+      )} />
+      <Route path="/dashboard" component={() => (
+        <POSLayout>
+          <Dashboard />
+        </POSLayout>
+      )} />
+      <Route path="/sales/pos" component={() => (
+        <POSLayout>
+          <SalesTransaction />
+        </POSLayout>
+      )} />
+      <Route path="/sales/orders" component={() => (
+        <POSLayout>
+          <SalesOrders />
+        </POSLayout>
+      )} />
+      <Route path="/inventory/products" component={() => (
+        <POSLayout>
+          <Inventory tab="products" />
+        </POSLayout>
+      )} />
+      <Route path="/inventory" component={() => (
+        <POSLayout>
+          <Inventory />
+        </POSLayout>
+      )} />
+      <Route path="/inventory/alerts" component={() => (
+        <POSLayout>
+          <Inventory tab="alerts" />
+        </POSLayout>
+      )} />
+      <Route path="/inventory/categories" component={() => (
+        <POSLayout>
+          <Inventory tab="categories" />
+        </POSLayout>
+      )} />
+      <Route path="/sales/customers" component={() => (
+        <POSLayout>
+          <Customers />
+        </POSLayout>
+      )} />
+      <Route path="/sales/invoices" component={() => (
+        <POSLayout>
+          <SalesOrders />
+        </POSLayout>
+      )} />
+      <Route path="/customers" component={() => (
+        <POSLayout>
+          <Customers />
+        </POSLayout>
+      )} />
+      <Route path="/reports/sales" component={() => (
+        <POSLayout>
+          <Reports />
+        </POSLayout>
+      )} />
+      <Route path="/reports/inventory" component={() => (
+        <POSLayout>
+          <Reports />
+        </POSLayout>
+      )} />
+      <Route path="/reports" component={() => (
+        <POSLayout>
+          <Reports />
+        </POSLayout>
+      )} />
+      <Route path="/settings" component={() => (
+        <POSLayout>
+          <Settings />
+        </POSLayout>
+      )} />
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />

@@ -1,28 +1,532 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
+import { TRPCError } from "@trpc/server";
+import Stripe from "stripe";
+import { z } from "zod";
+import { notifyOwner } from "./_core/notification";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import {
+  adjustStock,
+  createCategory,
+  createCustomer,
+  createOrder,
+  deleteCategory,
+  deleteCustomer,
+  deleteProduct,
+  generateOrderNumber,
+  getAllSettings,
+  getCategories,
+  getCustomerById,
+  getCustomers,
+  getDashboardStats,
+  getInventoryLogs,
+  getLowStockProducts,
+  getOrderById,
+  getOrders,
+  getProductById,
+  getProducts,
+  getSalesReport,
+  getSetting,
+  setSetting,
+  updateCategory,
+  updateCustomer,
+  updateOrderStatus,
+  updateProduct,
+  createProduct,
+} from "./db";
+import { initiateStkPush, queryStkStatus } from "./mpesa";
+import { storagePut } from "./storage";
+import { getSessionCookieOptions } from "./_core/cookies";
+import { COOKIE_NAME } from "../shared/const";
 
+// ─── Categories Router ─────────────────────────────────────────────────────
+const categoriesRouter = router({
+  list: publicProcedure.query(() => getCategories()),
+
+  create: protectedProcedure
+    .input(z.object({ name: z.string().min(1), description: z.string().optional(), color: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      await createCategory(input);
+      return { success: true };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().optional(), description: z.string().optional(), color: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateCategory(id, data);
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteCategory(input.id);
+      return { success: true };
+    }),
+});
+
+// ─── Products Router ───────────────────────────────────────────────────────
+const productsRouter = router({
+  list: publicProcedure
+    .input(z.object({
+      categoryId: z.number().optional(),
+      search: z.string().optional(),
+      isActive: z.boolean().optional(),
+      page: z.number().optional(),
+      limit: z.number().optional(),
+    }).optional())
+    .query(({ input }) => getProducts(input ?? {})),
+
+  get: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .query(({ input }) => getProductById(input.id)),
+
+  create: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      description: z.string().optional(),
+      sku: z.string().optional(),
+      price: z.string(),
+      originalPrice: z.string().optional(),
+      categoryId: z.number().optional(),
+      imageUrl: z.string().optional(),
+      stockQuantity: z.number().default(0),
+      lowStockThreshold: z.number().default(10),
+      barcode: z.string().optional(),
+      unit: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await createProduct({ ...input, isActive: true });
+      return { success: true };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      sku: z.string().optional(),
+      price: z.string().optional(),
+      originalPrice: z.string().optional().nullable(),
+      categoryId: z.number().optional().nullable(),
+      imageUrl: z.string().optional().nullable(),
+      stockQuantity: z.number().optional(),
+      lowStockThreshold: z.number().optional(),
+      barcode: z.string().optional(),
+      unit: z.string().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateProduct(id, data as any);
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteProduct(input.id);
+      return { success: true };
+    }),
+
+  lowStock: protectedProcedure.query(() => getLowStockProducts()),
+
+  adjustStock: protectedProcedure
+    .input(z.object({
+      productId: z.number(),
+      changeType: z.enum(["restock", "adjustment", "return", "damage"]),
+      quantityChange: z.number(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const newQty = await adjustStock(
+        input.productId,
+        input.changeType,
+        input.quantityChange,
+        undefined,
+        input.notes,
+        ctx.user?.id
+      );
+      return { success: true, newQuantity: newQty };
+    }),
+
+  uploadImage: protectedProcedure
+    .input(z.object({ base64: z.string(), filename: z.string(), mimeType: z.string() }))
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.base64, "base64");
+      const key = `products/${Date.now()}-${input.filename}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      return { url };
+    }),
+});
+
+// ─── Customers Router ──────────────────────────────────────────────────────
+const customersRouter = router({
+  list: protectedProcedure
+    .input(z.object({ search: z.string().optional(), page: z.number().optional(), limit: z.number().optional() }).optional())
+    .query(({ input }) => getCustomers(input ?? {})),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(({ input }) => getCustomerById(input.id)),
+
+  create: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      phone: z.string().optional(),
+      email: z.string().email().optional().or(z.literal("")),
+      address: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      await createCustomer(input);
+      return { success: true };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      phone: z.string().optional(),
+      email: z.string().optional(),
+      address: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateCustomer(id, data);
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteCustomer(input.id);
+      return { success: true };
+    }),
+
+  purchaseHistory: protectedProcedure
+    .input(z.object({ customerId: z.number(), page: z.number().optional() }))
+    .query(({ input }) => getOrders({ customerId: input.customerId, page: input.page })),
+});
+
+// ─── Orders Router ─────────────────────────────────────────────────────────
+const ordersRouter = router({
+  list: protectedProcedure
+    .input(z.object({
+      status: z.string().optional(),
+      paymentStatus: z.string().optional(),
+      customerId: z.number().optional(),
+      fromDate: z.date().optional(),
+      toDate: z.date().optional(),
+      page: z.number().optional(),
+      limit: z.number().optional(),
+      search: z.string().optional(),
+    }).optional())
+    .query(({ input }) => getOrders(input ?? {})),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(({ input }) => getOrderById(input.id)),
+
+  create: protectedProcedure
+    .input(z.object({
+      customerId: z.number().optional(),
+      customerName: z.string().optional(),
+      items: z.array(z.object({
+        productId: z.number().optional(),
+        productName: z.string(),
+        productSku: z.string().optional(),
+        quantity: z.number().min(1),
+        unitPrice: z.string(),
+        originalPrice: z.string().optional(),
+        discountAmount: z.string().optional(),
+        totalPrice: z.string(),
+      })),
+      subtotal: z.string(),
+      taxAmount: z.string(),
+      discountAmount: z.string().optional(),
+      totalAmount: z.string(),
+      paymentMethod: z.enum(["cash", "mpesa", "stripe", "mixed"]),
+      cashReceived: z.string().optional(),
+      cashChange: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const orderNumber = await generateOrderNumber();
+      const orderId = await createOrder(
+        {
+          orderNumber,
+          customerId: input.customerId,
+          customerName: input.customerName,
+          subtotal: input.subtotal,
+          taxAmount: input.taxAmount,
+          discountAmount: input.discountAmount ?? "0",
+          totalAmount: input.totalAmount,
+          paymentMethod: input.paymentMethod,
+          paymentStatus: input.paymentMethod === "cash" ? "paid" : "pending",
+          orderStatus: input.paymentMethod === "cash" ? "completed" : "pending",
+          cashReceived: input.cashReceived,
+          cashChange: input.cashChange,
+          notes: input.notes,
+          servedBy: ctx.user?.id,
+        },
+        input.items.map((item) => ({
+          ...item,
+          orderId: 0,
+          discountAmount: item.discountAmount ?? "0",
+        }))
+      );
+
+      // Update customer total spent
+      if (input.customerId && input.paymentMethod === "cash") {
+        const customer = await getCustomerById(input.customerId);
+        if (customer) {
+          const newTotal = Number(customer.totalSpent) + Number(input.totalAmount);
+          await updateCustomer(input.customerId, { totalSpent: String(newTotal) });
+        }
+      }
+
+      // Notify owner for large transactions
+      const amount = Number(input.totalAmount);
+      if (amount >= 10000) {
+        await notifyOwner({
+          title: "Large Transaction Alert",
+          content: `Order ${orderNumber} for KES ${amount.toLocaleString()} via ${input.paymentMethod.toUpperCase()}`,
+        }).catch(console.error);
+      }
+
+      // Check low stock and notify
+      const lowStock = await getLowStockProducts();
+      if (lowStock.length > 0) {
+        const names = lowStock.slice(0, 3).map((p) => `${p.name} (${p.stockQuantity} left)`).join(", ");
+        await notifyOwner({
+          title: "Low Stock Alert",
+          content: `${lowStock.length} product(s) running low: ${names}`,
+        }).catch(console.error);
+      }
+
+      return { success: true, orderId, orderNumber };
+    }),
+
+  updateStatus: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      orderStatus: z.string().optional(),
+      paymentStatus: z.string().optional(),
+      mpesaTransactionId: z.string().optional(),
+      receiptUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateOrderStatus(id, data);
+      // Update customer total spent when order paid
+      if (data.paymentStatus === "paid") {
+        const order = await getOrderById(id);
+        if (order?.customerId) {
+          const customer = await getCustomerById(order.customerId);
+          if (customer) {
+            const newTotal = Number(customer.totalSpent) + Number(order.totalAmount);
+            await updateCustomer(order.customerId, { totalSpent: String(newTotal) });
+          }
+        }
+      }
+      return { success: true };
+    }),
+});
+
+// ─── Payments Router ───────────────────────────────────────────────────────
+const paymentsRouter = router({
+  initiateMpesa: protectedProcedure
+    .input(z.object({
+      phone: z.string(),
+      amount: z.number(),
+      orderId: z.number(),
+      orderNumber: z.string(),
+      callbackUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const callbackUrl = input.callbackUrl ?? `${process.env.APP_URL ?? "https://example.com"}/api/mpesa/callback`;
+      try {
+        const result = await initiateStkPush({
+          phone: input.phone,
+          amount: input.amount,
+          orderId: input.orderNumber,
+          description: `KenPOS Order ${input.orderNumber}`,
+          callbackUrl,
+        });
+        return {
+          success: true,
+          checkoutRequestId: result.CheckoutRequestID,
+          merchantRequestId: result.MerchantRequestID,
+          message: result.CustomerMessage,
+        };
+      } catch (error: any) {
+        // In sandbox/dev mode without real credentials, simulate success
+        if (process.env.MPESA_CONSUMER_KEY === "sandbox" || !process.env.MPESA_CONSUMER_KEY) {
+          return {
+            success: true,
+            checkoutRequestId: `sim_${Date.now()}`,
+            merchantRequestId: `sim_merchant_${Date.now()}`,
+            message: "STK Push sent (simulation mode)",
+            simulated: true,
+          };
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+      }
+    }),
+
+  queryMpesaStatus: protectedProcedure
+    .input(z.object({ checkoutRequestId: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        const result = await queryStkStatus(input.checkoutRequestId);
+        return result;
+      } catch (error: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+      }
+    }),
+
+  createStripeIntent: protectedProcedure
+    .input(z.object({ amount: z.number(), orderId: z.number(), orderNumber: z.string() }))
+    .mutation(async ({ input }) => {
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeKey) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Stripe not configured" });
+      }
+      const stripe = new Stripe(stripeKey);
+      const intent = await stripe.paymentIntents.create({
+        amount: Math.round(input.amount * 100), // cents
+        currency: "kes",
+        metadata: { orderId: String(input.orderId), orderNumber: input.orderNumber },
+      });
+      return { clientSecret: intent.client_secret, paymentIntentId: intent.id };
+    }),
+
+  confirmStripe: protectedProcedure
+    .input(z.object({ orderId: z.number(), paymentIntentId: z.string() }))
+    .mutation(async ({ input }) => {
+      await updateOrderStatus(input.orderId, {
+        paymentStatus: "paid",
+        orderStatus: "completed",
+        stripePaymentIntentId: input.paymentIntentId,
+      } as any);
+      return { success: true };
+    }),
+});
+
+// ─── Reports Router ────────────────────────────────────────────────────────
+const reportsRouter = router({
+  dashboard: protectedProcedure.query(() => getDashboardStats()),
+
+  sales: protectedProcedure
+    .input(z.object({
+      fromDate: z.date(),
+      toDate: z.date(),
+    }))
+    .query(({ input }) => getSalesReport(input.fromDate, input.toDate)),
+
+  salesReport: protectedProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+      groupBy: z.enum(["day", "week", "month"]).default("day"),
+    }))
+    .query(async ({ input }) => {
+      const from = new Date(input.startDate + "T00:00:00");
+      const to = new Date(input.endDate + "T23:59:59");
+      const data = await getSalesReport(from, to);
+      if (!data) return null;
+      const timeline = (data.dailySales ?? []).map((d: any) => ({
+        date: d.date,
+        revenue: d.totalRevenue,
+        orderCount: d.totalOrders,
+        tax: Number(d.totalRevenue) * 0.16 / 1.16,
+      }));
+      return {
+        totalRevenue: data.summary?.totalRevenue ?? 0,
+        totalOrders: Number(data.summary?.totalOrders ?? 0),
+        totalTax: data.summary?.totalTax ?? 0,
+        avgOrderValue: data.summary?.avgOrderValue ?? 0,
+        timeline,
+      };
+    }),
+
+  paymentBreakdown: protectedProcedure
+    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      const from = new Date(input.startDate + "T00:00:00");
+      const to = new Date(input.endDate + "T23:59:59");
+      const data = await getSalesReport(from, to);
+      if (!data) return [];
+      return (data.paymentBreakdown ?? []).map((p: any) => ({
+        method: p.paymentMethod,
+        revenue: p.total,
+        count: p.count,
+      }));
+    }),
+
+  topProducts: protectedProcedure
+    .input(z.object({ startDate: z.string(), endDate: z.string(), limit: z.number().optional() }))
+    .query(async ({ input }) => {
+      const from = new Date(input.startDate + "T00:00:00");
+      const to = new Date(input.endDate + "T23:59:59");
+      const data = await getSalesReport(from, to);
+      if (!data) return [];
+      return (data.topProducts ?? []).slice(0, input.limit ?? 10).map((p: any) => ({
+        productId: 0,
+        productName: p.productName,
+        totalQuantity: p.totalQty,
+        totalRevenue: p.totalRevenue,
+      }));
+    }),
+
+  inventoryLogs: protectedProcedure
+    .input(z.object({ productId: z.number().optional(), limit: z.number().optional() }))
+    .query(({ input }) => getInventoryLogs(input.productId, input.limit)),
+});
+
+// ─── Settings Router ───────────────────────────────────────────────────────
+const settingsRouter = router({
+  getAll: protectedProcedure.query(() => getAllSettings()),
+
+  get: protectedProcedure
+    .input(z.object({ key: z.string() }))
+    .query(({ input }) => getSetting(input.key)),
+
+  set: protectedProcedure
+    .input(z.object({ key: z.string(), value: z.string() }))
+    .mutation(async ({ input }) => {
+      await setSetting(input.key, input.value);
+      return { success: true };
+    }),
+
+  setMany: protectedProcedure
+    .input(z.array(z.object({ key: z.string(), value: z.string() })))
+    .mutation(async ({ input }) => {
+      await Promise.all(input.map((s) => setSetting(s.key, s.value)));
+      return { success: true };
+    }),
+});
+
+// ─── App Router ────────────────────────────────────────────────────────────
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
-
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  categories: categoriesRouter,
+  products: productsRouter,
+  customers: customersRouter,
+  orders: ordersRouter,
+  payments: paymentsRouter,
+  reports: reportsRouter,
+  settings: settingsRouter,
 });
 
 export type AppRouter = typeof appRouter;

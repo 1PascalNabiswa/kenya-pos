@@ -1,11 +1,29 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, like, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import {
+  Category,
+  Customer,
+  InsertCategory,
+  InsertCustomer,
+  InsertOrder,
+  InsertOrderItem,
+  InsertProduct,
+  InsertUser,
+  Order,
+  Product,
+  categories,
+  customers,
+  inventoryLogs,
+  orderItems,
+  orders,
+  products,
+  settings,
+  users,
+} from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -18,36 +36,22 @@ export async function getDb() {
   return _db;
 }
 
+// ─── Users ─────────────────────────────────────────────────────────────────
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
+  if (!db) return;
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
+    const values: InsertUser = { openId: user.openId };
     const updateSet: Record<string, unknown> = {};
-
     const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
+    textFields.forEach((field) => {
       const value = user[field];
       if (value === undefined) return;
       const normalized = value ?? null;
       values[field] = normalized;
       updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
+    });
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;
       updateSet.lastSignedIn = user.lastSignedIn;
@@ -56,21 +60,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    if (!values.lastSignedIn) values.lastSignedIn = new Date();
+    if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -79,14 +74,458 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Categories ────────────────────────────────────────────────────────────
+export async function getCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(categories).orderBy(categories.name);
+}
+
+export async function createCategory(data: InsertCategory) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const result = await db.insert(categories).values(data);
+  return result;
+}
+
+export async function updateCategory(id: number, data: Partial<InsertCategory>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(categories).set(data).where(eq(categories.id, id));
+}
+
+export async function deleteCategory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(categories).where(eq(categories.id, id));
+}
+
+// ─── Products ──────────────────────────────────────────────────────────────
+export async function getProducts(opts?: {
+  categoryId?: number;
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0 };
+  const page = opts?.page ?? 1;
+  const limit = opts?.limit ?? 50;
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+  if (opts?.categoryId) conditions.push(eq(products.categoryId, opts.categoryId));
+  if (opts?.isActive !== undefined) conditions.push(eq(products.isActive, opts.isActive));
+  if (opts?.search) {
+    conditions.push(
+      or(
+        like(products.name, `%${opts.search}%`),
+        like(products.sku, `%${opts.search}%`),
+        like(products.barcode, `%${opts.search}%`)
+      )
+    );
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [items, countResult] = await Promise.all([
+    db
+      .select()
+      .from(products)
+      .where(whereClause)
+      .orderBy(products.name)
+      .limit(limit)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(products).where(whereClause),
+  ]);
+
+  return { items, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getProductById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createProduct(data: InsertProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const result = await db.insert(products).values(data);
+  return result;
+}
+
+export async function updateProduct(id: number, data: Partial<InsertProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(products).set(data).where(eq(products.id, id));
+}
+
+export async function deleteProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(products).set({ isActive: false }).where(eq(products.id, id));
+}
+
+export async function getLowStockProducts(threshold?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(products)
+    .where(
+      and(
+        eq(products.isActive, true),
+        sql`${products.stockQuantity} <= ${products.lowStockThreshold}`
+      )
+    )
+    .orderBy(products.stockQuantity);
+}
+
+export async function adjustStock(
+  productId: number,
+  changeType: "sale" | "restock" | "adjustment" | "return" | "damage",
+  quantityChange: number,
+  orderId?: number,
+  notes?: string,
+  createdBy?: number
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const product = await getProductById(productId);
+  if (!product) throw new Error("Product not found");
+  const quantityBefore = product.stockQuantity;
+  const quantityAfter = quantityBefore + quantityChange;
+  await db
+    .update(products)
+    .set({ stockQuantity: quantityAfter })
+    .where(eq(products.id, productId));
+  await db.insert(inventoryLogs).values({
+    productId,
+    changeType,
+    quantityBefore,
+    quantityChange,
+    quantityAfter,
+    orderId,
+    notes,
+    createdBy,
+  });
+  return quantityAfter;
+}
+
+// ─── Customers ─────────────────────────────────────────────────────────────
+export async function getCustomers(opts?: { search?: string; page?: number; limit?: number }) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0 };
+  const page = opts?.page ?? 1;
+  const limit = opts?.limit ?? 50;
+  const offset = (page - 1) * limit;
+  const conditions = [];
+  if (opts?.search) {
+    conditions.push(
+      or(
+        like(customers.name, `%${opts.search}%`),
+        like(customers.phone, `%${opts.search}%`),
+        like(customers.email, `%${opts.search}%`)
+      )
+    );
+  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const [items, countResult] = await Promise.all([
+    db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause),
+  ]);
+  return { items, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getCustomerById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createCustomer(data: InsertCustomer) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const result = await db.insert(customers).values(data);
+  return result;
+}
+
+export async function updateCustomer(id: number, data: Partial<InsertCustomer>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(customers).set(data).where(eq(customers.id, id));
+}
+
+export async function deleteCustomer(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(customers).where(eq(customers.id, id));
+}
+
+// ─── Orders ────────────────────────────────────────────────────────────────
+export async function generateOrderNumber() {
+  const now = new Date();
+  const prefix = `KEN${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const db = await getDb();
+  if (!db) return `${prefix}0001`;
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(orders)
+    .where(like(orders.orderNumber, `${prefix}%`));
+  const count = Number(result[0]?.count ?? 0) + 1;
+  return `${prefix}${String(count).padStart(4, "0")}`;
+}
+
+export async function createOrder(
+  orderData: InsertOrder,
+  items: InsertOrderItem[]
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const result = await db.insert(orders).values(orderData);
+  const orderId = (result as any)[0]?.insertId as number;
+  if (items.length > 0) {
+    await db.insert(orderItems).values(items.map((item) => ({ ...item, orderId })));
+  }
+  // Deduct stock for each item
+  for (const item of items) {
+    if (item.productId) {
+      await adjustStock(item.productId, "sale", -item.quantity, orderId, "POS sale");
+    }
+  }
+  return orderId;
+}
+
+export async function getOrders(opts?: {
+  status?: string;
+  paymentStatus?: string;
+  customerId?: number;
+  fromDate?: Date;
+  toDate?: Date;
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0 };
+  const page = opts?.page ?? 1;
+  const limit = opts?.limit ?? 20;
+  const offset = (page - 1) * limit;
+  const conditions = [];
+  if (opts?.status) conditions.push(eq(orders.orderStatus, opts.status as any));
+  if (opts?.paymentStatus) conditions.push(eq(orders.paymentStatus, opts.paymentStatus as any));
+  if (opts?.customerId) conditions.push(eq(orders.customerId, opts.customerId));
+  if (opts?.fromDate) conditions.push(gte(orders.createdAt, opts.fromDate));
+  if (opts?.toDate) conditions.push(lte(orders.createdAt, opts.toDate));
+  if (opts?.search) conditions.push(like(orders.orderNumber, `%${opts.search}%`));
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const [items, countResult] = await Promise.all([
+    db.select().from(orders).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(orders).where(whereClause),
+  ]);
+  return { items, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getOrderById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  if (!order) return undefined;
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+  return { ...order, items };
+}
+
+export async function updateOrderStatus(
+  id: number,
+  data: { orderStatus?: string; paymentStatus?: string; mpesaTransactionId?: string; receiptUrl?: string }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(orders).set(data as any).where(eq(orders.id, id));
+}
+
+// ─── Reports ───────────────────────────────────────────────────────────────
+export async function getSalesReport(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  if (!db) return null;
+  const [summary] = await db
+    .select({
+      totalOrders: sql<number>`count(*)`,
+      totalRevenue: sql<number>`sum(${orders.totalAmount})`,
+      totalTax: sql<number>`sum(${orders.taxAmount})`,
+      avgOrderValue: sql<number>`avg(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
+        eq(orders.paymentStatus, "paid")
+      )
+    );
+
+  const paymentBreakdown = await db
+    .select({
+      paymentMethod: orders.paymentMethod,
+      count: sql<number>`count(*)`,
+      total: sql<number>`sum(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
+        eq(orders.paymentStatus, "paid")
+      )
+    )
+    .groupBy(orders.paymentMethod);
+
+  const topProducts = await db
+    .select({
+      productName: orderItems.productName,
+      totalQty: sql<number>`sum(${orderItems.quantity})`,
+      totalRevenue: sql<number>`sum(${orderItems.totalPrice})`,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .where(
+      and(
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
+        eq(orders.paymentStatus, "paid")
+      )
+    )
+    .groupBy(orderItems.productName)
+    .orderBy(desc(sql`sum(${orderItems.totalPrice})`))
+    .limit(10);
+
+  const dailySales = await db
+    .select({
+      date: sql<string>`DATE(orders.createdAt)`,
+      totalOrders: sql<number>`count(*)`,
+      totalRevenue: sql<number>`sum(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
+        eq(orders.paymentStatus, "paid")
+      )
+    )
+    .groupBy(sql`DATE(orders.createdAt)`)
+    .orderBy(sql`DATE(orders.createdAt)`);
+
+  return { summary, paymentBreakdown, topProducts, dailySales };
+}
+
+export async function getDashboardStats() {
+  const db = await getDb();
+  if (!db) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  const [todayStats] = await db
+    .select({
+      orders: sql<number>`count(*)`,
+      revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(and(gte(orders.createdAt, today), lte(orders.createdAt, tomorrow), eq(orders.paymentStatus, "paid")));
+
+  const [monthStats] = await db
+    .select({
+      orders: sql<number>`count(*)`,
+      revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(and(gte(orders.createdAt, monthStart), eq(orders.paymentStatus, "paid")));
+
+  const [productCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(products)
+    .where(eq(products.isActive, true));
+
+  const [customerCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(customers);
+
+  const lowStock = await getLowStockProducts();
+
+  const weeklyRevenue = await db
+    .select({
+      date: sql<string>`DATE(orders.createdAt)`,
+      revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
+      orderCount: sql<number>`count(*)`,
+    })
+    .from(orders)
+    .where(and(gte(orders.createdAt, weekAgo), eq(orders.paymentStatus, "paid")))
+    .groupBy(sql`DATE(orders.createdAt)`)
+    .orderBy(sql`DATE(orders.createdAt)`);
+
+  const recentOrders = await db
+    .select()
+    .from(orders)
+    .orderBy(desc(orders.createdAt))
+    .limit(5);
+
+  return {
+    todayOrders: Number(todayStats?.orders ?? 0),
+    todayRevenue: Number(todayStats?.revenue ?? 0),
+    monthOrders: Number(monthStats?.orders ?? 0),
+    monthRevenue: Number(monthStats?.revenue ?? 0),
+    productCount: Number(productCount?.count ?? 0),
+    customerCount: Number(customerCount?.count ?? 0),
+    lowStockCount: lowStock.length,
+    weeklyRevenue,
+    recentOrders,
+    lowStockProducts: lowStock.slice(0, 5),
+  };
+}
+
+// ─── Settings ──────────────────────────────────────────────────────────────
+export async function getSetting(key: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+  return result[0]?.value ?? null;
+}
+
+export async function setSetting(key: string, value: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(settings).values({ key, value }).onDuplicateKeyUpdate({ set: { value } });
+}
+
+export async function getAllSettings() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(settings);
+}
+
+// ─── Inventory Logs ────────────────────────────────────────────────────────
+export async function getInventoryLogs(productId?: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = productId ? [eq(inventoryLogs.productId, productId)] : [];
+  return db
+    .select()
+    .from(inventoryLogs)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(inventoryLogs.createdAt))
+    .limit(limit);
+}
