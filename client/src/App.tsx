@@ -12,6 +12,8 @@ import Inventory from "./pages/Inventory";
 import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Transactions from "./pages/Transactions";
+import Wallet from "./pages/Wallet";
 
 function Router() {
   return (
@@ -89,6 +91,26 @@ function Router() {
       <Route path="/settings" component={() => (
         <POSLayout>
           <Settings />
+        </POSLayout>
+      )} />
+      <Route path="/transactions" component={() => (
+        <POSLayout>
+          <Transactions />
+        </POSLayout>
+      )} />
+      <Route path="/sales/transactions" component={() => (
+        <POSLayout>
+          <Transactions />
+        </POSLayout>
+      )} />
+      <Route path="/wallet" component={() => (
+        <POSLayout>
+          <Wallet />
+        </POSLayout>
+      )} />
+      <Route path="/customers/wallet" component={() => (
+        <POSLayout>
+          <Wallet />
         </POSLayout>
       )} />
       <Route path="/404" component={NotFound} />

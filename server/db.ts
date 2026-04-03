@@ -11,6 +11,11 @@ import {
   InsertUser,
   Order,
   Product,
+  CustomerWallet,
+  InsertCustomerWallet,
+  InsertWalletTransaction,
+  InsertPaymentMethod,
+  InsertTransactionReconciliation,
   categories,
   customers,
   inventoryLogs,
@@ -19,6 +24,10 @@ import {
   products,
   settings,
   users,
+  customerWallets,
+  walletTransactions,
+  paymentMethods,
+  transactionReconciliation,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -528,4 +537,225 @@ export async function getInventoryLogs(productId?: number, limit = 50) {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(inventoryLogs.createdAt))
     .limit(limit);
+}
+
+
+// ─── Customer Wallets ──────────────────────────────────────────────────────
+export async function getOrCreateWallet(customerId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const existing = await db
+    .select()
+    .from(customerWallets)
+    .where(eq(customerWallets.customerId, customerId))
+    .limit(1);
+  
+  if (existing.length > 0) return existing[0];
+  
+  const result = await db.insert(customerWallets).values({
+    customerId,
+    balance: "0",
+    totalLoaded: "0",
+    totalSpent: "0",
+  });
+  
+  return db
+    .select()
+    .from(customerWallets)
+    .where(eq(customerWallets.customerId, customerId))
+    .limit(1)
+    .then((rows) => rows[0]);
+}
+
+export async function getWallet(customerId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(customerWallets)
+    .where(eq(customerWallets.customerId, customerId))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function loadWalletBalance(customerId: number, amount: number, description: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const wallet = await getOrCreateWallet(customerId);
+  const newBalance = Number(wallet.balance) + amount;
+  
+  await db
+    .update(customerWallets)
+    .set({
+      balance: newBalance.toString(),
+      totalLoaded: (Number(wallet.totalLoaded) + amount).toString(),
+    })
+    .where(eq(customerWallets.id, wallet.id));
+  
+  await db.insert(walletTransactions).values({
+    walletId: wallet.id,
+    customerId,
+    type: "load",
+    amount: amount.toString(),
+    description,
+  });
+  
+  return newBalance;
+}
+
+export async function spendFromWallet(customerId: number, amount: number, orderId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const wallet = await getWallet(customerId);
+  if (!wallet) throw new Error("Wallet not found");
+  if (Number(wallet.balance) < amount) throw new Error("Insufficient wallet balance");
+  
+  const newBalance = Number(wallet.balance) - amount;
+  
+  await db
+    .update(customerWallets)
+    .set({
+      balance: newBalance.toString(),
+      totalSpent: (Number(wallet.totalSpent) + amount).toString(),
+    })
+    .where(eq(customerWallets.id, wallet.id));
+  
+  await db.insert(walletTransactions).values({
+    walletId: wallet.id,
+    customerId,
+    type: "spend",
+    amount: amount.toString(),
+    orderId,
+  });
+  
+  return newBalance;
+}
+
+export async function getWalletTransactions(customerId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(walletTransactions)
+    .where(eq(walletTransactions.customerId, customerId))
+    .orderBy(desc(walletTransactions.createdAt))
+    .limit(limit);
+}
+
+// ─── Payment Methods (Combined Payments) ────────────────────────────────────
+export async function addPaymentMethod(orderId: number, data: Omit<InsertPaymentMethod, 'orderId'>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(paymentMethods).values({ orderId, ...data });
+}
+
+export async function getPaymentMethods(orderId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(paymentMethods).where(eq(paymentMethods.orderId, orderId));
+}
+
+export async function updatePaymentMethodStatus(id: number, status: "pending" | "completed" | "failed") {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(paymentMethods).set({ status }).where(eq(paymentMethods.id, id));
+}
+
+// ─── Transaction Reconciliation ────────────────────────────────────────────
+export async function recordTransaction(data: InsertTransactionReconciliation) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const result = await db.insert(transactionReconciliation).values(data);
+  return result;
+}
+
+export async function getUnusedTransactions(search?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions: any[] = [eq(transactionReconciliation.status, "unused")];
+  if (search) {
+    conditions.push(
+      or(
+        ilike(transactionReconciliation.customerName, `%${search}%`),
+        like(transactionReconciliation.transactionId, `%${search}%`)
+      )
+    );
+  }
+  
+  return db
+    .select()
+    .from(transactionReconciliation)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(transactionReconciliation.createdAt))
+}
+
+export async function getTransactionsByAmount(amount: number, method?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [
+    eq(transactionReconciliation.amount, amount.toString()),
+    eq(transactionReconciliation.status, "unused"),
+  ];
+  
+  if (method) {
+    conditions.push(eq(transactionReconciliation.method, method as any));
+  }
+  
+  return db
+    .select()
+    .from(transactionReconciliation)
+    .where(and(...conditions))
+    .orderBy(desc(transactionReconciliation.createdAt));
+}
+
+export async function matchTransaction(transactionId: string, customerId: number, orderId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db
+    .update(transactionReconciliation)
+    .set({
+      status: "used",
+      customerId,
+      orderId,
+      matchedAt: new Date(),
+    })
+    .where(eq(transactionReconciliation.transactionId, transactionId));
+}
+
+export async function getTransactionHistory(customerId?: number, method?: string, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (customerId) conditions.push(eq(transactionReconciliation.customerId, customerId));
+  if (method) conditions.push(eq(transactionReconciliation.method, method as any));
+  
+  return db
+    .select()
+    .from(transactionReconciliation)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(transactionReconciliation.createdAt))
+    .limit(limit);
+}
+
+export async function searchTransactionsByCustomer(customerName: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select()
+    .from(transactionReconciliation)
+    .where(
+      and(
+        ilike(transactionReconciliation.customerName, `%${customerName}%`),
+        eq(transactionReconciliation.status, "unused")
+      )
+    )
+    .orderBy(desc(transactionReconciliation.createdAt));
 }

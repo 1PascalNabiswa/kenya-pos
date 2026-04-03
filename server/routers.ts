@@ -32,6 +32,20 @@ import {
   updateOrderStatus,
   updateProduct,
   createProduct,
+  getOrCreateWallet,
+  getWallet,
+  loadWalletBalance,
+  spendFromWallet,
+  getWalletTransactions,
+  addPaymentMethod,
+  getPaymentMethods,
+  updatePaymentMethodStatus,
+  recordTransaction,
+  getUnusedTransactions,
+  getTransactionsByAmount,
+  matchTransaction,
+  getTransactionHistory,
+  searchTransactionsByCustomer,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -403,6 +417,22 @@ const paymentsRouter = router({
       return { clientSecret: intent.client_secret, paymentIntentId: intent.id };
     }),
 
+  addMethod: protectedProcedure
+    .input(z.object({
+      orderId: z.number(),
+      method: z.enum(["cash", "mpesa", "stripe", "wallet"]),
+      amount: z.number().positive(),
+      transactionId: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      await addPaymentMethod(input.orderId, {
+        method: input.method,
+        amount: String(input.amount),
+        transactionId: input.transactionId,
+      });
+      return { success: true };
+    }),
+
   confirmStripe: protectedProcedure
     .input(z.object({ orderId: z.number(), paymentIntentId: z.string() }))
     .mutation(async ({ input }) => {
@@ -509,6 +539,87 @@ const settingsRouter = router({
     }),
 });
 
+// ─── Wallet Router ────────────────────────────────────────────────────────
+const walletRouter = router({
+  get: protectedProcedure
+    .input(z.object({ customerId: z.number() }))
+    .query(async ({ input }) => {
+      const wallet = await getWallet(input.customerId);
+      return wallet;
+    }),
+
+  load: protectedProcedure
+    .input(z.object({ customerId: z.number(), amount: z.number().positive(), description: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const newBalance = await loadWalletBalance(input.customerId, input.amount, input.description || "Wallet load");
+      await notifyOwner({
+        title: "Wallet Loaded",
+        content: `Customer wallet loaded with KES ${input.amount}. New balance: KES ${newBalance}`,
+      });
+      return { success: true, newBalance };
+    }),
+
+  transactions: protectedProcedure
+    .input(z.object({ customerId: z.number(), limit: z.number().optional() }))
+    .query(async ({ input }) => {
+      return getWalletTransactions(input.customerId, input.limit);
+    }),
+});
+
+// ─── Transactions Router ───────────────────────────────────────────────────
+const transactionsRouter = router({
+  record: protectedProcedure
+    .input(
+      z.object({
+        transactionId: z.string(),
+        method: z.enum(["mpesa", "stripe", "bank"]),
+        amount: z.number().positive(),
+        customerName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await recordTransaction({
+        transactionId: input.transactionId,
+        method: input.method,
+        amount: input.amount.toString(),
+        customerName: input.customerName,
+        status: "unused",
+      });
+      return { success: true };
+    }),
+
+  unused: protectedProcedure
+    .input(z.object({ search: z.string().optional() }))
+    .query(async ({ input }) => {
+      return getUnusedTransactions(input.search);
+    }),
+
+  byAmount: protectedProcedure
+    .input(z.object({ amount: z.number().positive(), method: z.string().optional() }))
+    .query(async ({ input }) => {
+      return getTransactionsByAmount(input.amount, input.method);
+    }),
+
+  match: protectedProcedure
+    .input(z.object({ transactionId: z.string(), customerId: z.number(), orderId: z.number() }))
+    .mutation(async ({ input }) => {
+      await matchTransaction(input.transactionId, input.customerId, input.orderId);
+      return { success: true };
+    }),
+
+  history: protectedProcedure
+    .input(z.object({ customerId: z.number().optional(), method: z.string().optional(), limit: z.number().optional() }))
+    .query(async ({ input }) => {
+      return getTransactionHistory(input.customerId, input.method, input.limit);
+    }),
+
+  search: protectedProcedure
+    .input(z.object({ customerName: z.string() }))
+    .query(async ({ input }) => {
+      return searchTransactionsByCustomer(input.customerName);
+    }),
+});
+
 // ─── App Router ────────────────────────────────────────────────────────────
 export const appRouter = router({
   system: systemRouter,
@@ -527,6 +638,8 @@ export const appRouter = router({
   payments: paymentsRouter,
   reports: reportsRouter,
   settings: settingsRouter,
+  wallet: walletRouter,
+  transactions: transactionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

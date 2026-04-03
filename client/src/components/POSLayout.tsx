@@ -14,6 +14,7 @@ import {
   Users,
   Wallet,
   AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
       { label: "Sales Orders", href: "/sales/orders", icon: <FileText size={14} /> },
       { label: "Invoices", href: "/sales/invoices", icon: <FileText size={14} /> },
       { label: "Customers", href: "/sales/customers", icon: <Users size={14} /> },
+      { label: "Transactions", href: "/sales/transactions", icon: <CreditCard size={14} /> },
     ],
   },
   {
@@ -58,6 +60,7 @@ const navItems: NavItem[] = [
       { label: "Inventory Report", href: "/reports/inventory" },
     ],
   },
+  { label: "Customer Wallet", icon: <Wallet size={18} />, href: "/wallet" },
   { label: "Settings", icon: <Settings size={18} />, href: "/settings" },
 ];
 

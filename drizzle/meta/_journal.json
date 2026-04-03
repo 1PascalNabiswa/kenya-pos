@@ -15,6 +15,13 @@
       "when": 1775240060424,
       "tag": "0001_keen_victor_mancha",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1775245462200,
+      "tag": "0002_jazzy_black_bird",
+      "breakpoints": true
     }
   ]
 }

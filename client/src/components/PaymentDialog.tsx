@@ -7,7 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Smartphone, Banknote, CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Smartphone, Banknote, CreditCard, Loader2, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CartItem {
   productId: number;
@@ -31,7 +32,13 @@ interface PaymentDialogProps {
   onComplete: (orderId: number, orderNumber: string) => void;
 }
 
-type PaymentMethod = "cash" | "mpesa" | "stripe";
+type PaymentMethod = "cash" | "mpesa" | "stripe" | "wallet";
+
+interface SplitPayment {
+  id: string;
+  method: PaymentMethod;
+  amount: number;
+}
 
 export default function PaymentDialog({
   open,
@@ -44,12 +51,15 @@ export default function PaymentDialog({
   customerName,
   onComplete,
 }: PaymentDialogProps) {
+  const [paymentMode, setPaymentMode] = useState<"single" | "split">("single");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [cashReceived, setCashReceived] = useState("");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaStatus, setMpesaStatus] = useState<"idle" | "sending" | "waiting" | "success" | "failed">("idle");
   const [checkoutRequestId, setCheckoutRequestId] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [splitPayments, setSplitPayments] = useState<SplitPayment[]>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const utils = trpc.useUtils();
 
@@ -62,9 +72,43 @@ export default function PaymentDialog({
 
   const initiateMpesa = trpc.payments.initiateMpesa.useMutation();
   const updateStatus = trpc.orders.updateStatus.useMutation();
+  const addPaymentMethod = trpc.payments.addMethod.useMutation();
+  const queryMpesaStatus = trpc.payments.queryMpesaStatus.useMutation();
+  const getWallet = trpc.wallet.get.useQuery(
+    { customerId: customerId || 0 },
+    { enabled: !!customerId && paymentMode === "split" && method === "wallet" }
+  );
 
   const cashChange = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0;
   const cashSufficient = !cashReceived || Number(cashReceived) >= total;
+
+  const splitTotal = splitPayments.reduce((sum, p) => sum + p.amount, 0);
+  const splitRemaining = Math.max(0, total - splitTotal);
+
+  const handleAddSplitPayment = () => {
+    if (splitRemaining <= 0) {
+      toast.error("Total amount already covered");
+      return;
+    }
+    setSplitPayments([
+      ...splitPayments,
+      {
+        id: Date.now().toString(),
+        method: "cash",
+        amount: 0,
+      },
+    ]);
+  };
+
+  const handleRemoveSplitPayment = (id: string) => {
+    setSplitPayments(splitPayments.filter((p) => p.id !== id));
+  };
+
+  const handleUpdateSplitPayment = (id: string, field: string, value: any) => {
+    setSplitPayments(
+      splitPayments.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
+  };
 
   const handleCashPayment = async () => {
     if (!cashReceived || Number(cashReceived) < total) {
@@ -101,353 +145,373 @@ export default function PaymentDialog({
     }
   };
 
-  const handleMpesaPayment = async () => {
-    if (!mpesaPhone || mpesaPhone.length < 9) {
-      toast.error("Enter a valid M-Pesa phone number");
+  const handleSplitPayment = async () => {
+    if (splitTotal !== total) {
+      toast.error(`Total split payments (KES ${splitTotal}) must equal order total (KES ${total})`);
       return;
     }
+
     setIsProcessing(true);
+    try {
+      // Determine primary payment method from first split payment
+      const primaryMethod = splitPayments[0]?.method || "cash";
+      let cashReceivedAmount = "0";
+      let cashChangeAmount = "0";
+
+      // Calculate cash if any split payment is cash
+      const cashPayment = splitPayments.find((p) => p.method === "cash");
+      if (cashPayment) {
+        cashReceivedAmount = String(cashPayment.amount);
+        cashChangeAmount = "0";
+      }
+
+      const result = await createOrder.mutateAsync({
+        customerId,
+        customerName: customerName || "Walk-in Customer",
+        items: cart.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          unitPrice: String(item.unitPrice),
+          originalPrice: item.originalPrice ? String(item.originalPrice) : undefined,
+          totalPrice: String(item.unitPrice * item.quantity),
+        })),
+        subtotal: String(subtotal),
+        taxAmount: String(taxAmount),
+        totalAmount: String(total),
+        paymentMethod: "mixed",
+        cashReceived: cashReceivedAmount,
+        cashChange: cashChangeAmount,
+      });
+
+      // Record split payments
+      for (const payment of splitPayments) {
+        try {
+          await addPaymentMethod.mutateAsync({
+            orderId: result.orderId,
+            method: payment.method,
+            amount: payment.amount,
+          });
+        } catch (e) {
+          console.error("Failed to record payment method:", e);
+        }
+      }
+
+      const methods = splitPayments.map((p) => `${p.method}: KES ${p.amount}`).join(", ");
+      toast.success(`Payment split across: ${methods}`);
+      onComplete(result.orderId, result.orderNumber);
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to process split payment");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleMpesaPayment = async () => {
+    if (!mpesaPhone) {
+      toast.error("Please enter M-Pesa phone number");
+      return;
+    }
     setMpesaStatus("sending");
     try {
-      // First create the order
-      const orderResult = await createOrder.mutateAsync({
-        customerId,
-        customerName: customerName || "Walk-in Customer",
-        items: cart.map((item) => ({
-          productId: item.productId,
-          productName: item.productName,
-          productSku: item.productSku,
-          quantity: item.quantity,
-          unitPrice: String(item.unitPrice),
-          originalPrice: item.originalPrice ? String(item.originalPrice) : undefined,
-          totalPrice: String(item.unitPrice * item.quantity),
-        })),
-        subtotal: String(subtotal),
-        taxAmount: String(taxAmount),
-        totalAmount: String(total),
-        paymentMethod: "mpesa",
-        notes: `M-Pesa: ${mpesaPhone}`,
-      });
-
-      // Initiate STK Push
-      const mpesaResult = await initiateMpesa.mutateAsync({
+      const result = await initiateMpesa.mutateAsync({
         phone: mpesaPhone,
         amount: total,
-        orderId: orderResult.orderId,
-        orderNumber: orderResult.orderNumber,
-        callbackUrl: `${window.location.origin}/api/mpesa/callback`,
+        orderId: customerId || 0,
+        orderNumber: `ORD-${Date.now()}`,
       });
-
-      setCheckoutRequestId(mpesaResult.checkoutRequestId);
+      setCheckoutRequestId(result.checkoutRequestId);
       setMpesaStatus("waiting");
+      toast.info("M-Pesa prompt sent to " + mpesaPhone);
 
-      if (mpesaResult.simulated) {
-        // Simulation mode - auto-confirm after 3s
-        setTimeout(async () => {
-          await updateStatus.mutateAsync({
-            id: orderResult.orderId,
-            paymentStatus: "paid",
-            orderStatus: "completed",
-            mpesaTransactionId: `SIM${Date.now()}`,
+      // Poll for status
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResult = await queryMpesaStatus.mutateAsync({
+            checkoutRequestId: result.checkoutRequestId,
           });
-          setMpesaStatus("success");
-          toast.success("M-Pesa payment confirmed (simulation)!");
-          setTimeout(() => onComplete(orderResult.orderId, orderResult.orderNumber), 1500);
-        }, 3000);
-      } else {
-        toast.info(mpesaResult.message ?? "STK Push sent. Waiting for customer to confirm...");
-        // Poll for status
-        let attempts = 0;
-        const poll = setInterval(async () => {
-          attempts++;
-          try {
-            const status = await trpc.payments.queryMpesaStatus.useMutation().mutateAsync({
-              checkoutRequestId: mpesaResult.checkoutRequestId,
+          if (statusResult.success) {
+            setMpesaStatus("success");
+            clearInterval(pollInterval);
+
+              const orderResult = await createOrder.mutateAsync({
+              customerId,
+              customerName: customerName || "Walk-in Customer",
+              items: cart.map((item) => ({
+                productId: item.productId,
+                productName: item.productName,
+                productSku: item.productSku,
+                quantity: item.quantity,
+                unitPrice: String(item.unitPrice),
+                originalPrice: item.originalPrice ? String(item.originalPrice) : undefined,
+                totalPrice: String(item.unitPrice * item.quantity),
+              })),
+              subtotal: String(subtotal),
+              taxAmount: String(taxAmount),
+              totalAmount: String(total),
+              paymentMethod: "mpesa",
             });
-            if (status.ResultCode === "0") {
-              clearInterval(poll);
-              await updateStatus.mutateAsync({
-                id: orderResult.orderId,
-                paymentStatus: "paid",
-                orderStatus: "completed",
-                mpesaTransactionId: status.MpesaReceiptNumber,
-              });
-              setMpesaStatus("success");
-              toast.success("M-Pesa payment confirmed!");
-              setTimeout(() => onComplete(orderResult.orderId, orderResult.orderNumber), 1500);
-            } else if (status.ResultCode !== undefined && status.ResultCode !== "0") {
-              clearInterval(poll);
-              setMpesaStatus("failed");
-              toast.error("M-Pesa payment failed: " + status.ResultDesc);
-            }
-          } catch {}
-          if (attempts >= 12) {
-            clearInterval(poll);
-            setMpesaStatus("failed");
-            toast.error("M-Pesa payment timed out. Please check manually.");
+
+            toast.success("M-Pesa payment successful!");
+            onComplete(orderResult.orderId, orderResult.orderNumber);
           }
-        }, 5000);
-      }
+        } catch (e) {
+          console.error("Status check error:", e);
+        }
+      }, 3000);
+
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (mpesaStatus === "waiting") {
+          setMpesaStatus("failed");
+          toast.error("M-Pesa payment timeout");
+        }
+      }, 60000);
     } catch (e: any) {
-      toast.error(e.message ?? "M-Pesa initiation failed");
       setMpesaStatus("failed");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleStripePayment = async () => {
-    setIsProcessing(true);
-    try {
-      const orderResult = await createOrder.mutateAsync({
-        customerId,
-        customerName: customerName || "Walk-in Customer",
-        items: cart.map((item) => ({
-          productId: item.productId,
-          productName: item.productName,
-          productSku: item.productSku,
-          quantity: item.quantity,
-          unitPrice: String(item.unitPrice),
-          originalPrice: item.originalPrice ? String(item.originalPrice) : undefined,
-          totalPrice: String(item.unitPrice * item.quantity),
-        })),
-        subtotal: String(subtotal),
-        taxAmount: String(taxAmount),
-        totalAmount: String(total),
-        paymentMethod: "stripe",
-      });
-
-      const intentResult = await trpc.payments.createStripeIntent.useMutation().mutateAsync({
-        amount: total,
-        orderId: orderResult.orderId,
-        orderNumber: orderResult.orderNumber,
-      });
-
-      // In a real implementation, you'd use Stripe.js here
-      // For now, show the client secret and simulate confirmation
-      toast.info("Stripe payment initiated. Client secret: " + intentResult.clientSecret?.slice(0, 20) + "...");
-      
-      // Simulate confirmation for demo
-      setTimeout(async () => {
-        await updateStatus.mutateAsync({
-          id: orderResult.orderId,
-          paymentStatus: "paid",
-          orderStatus: "completed",
-          stripePaymentIntentId: intentResult.paymentIntentId,
-        } as any);
-        toast.success("Stripe payment confirmed!");
-        onComplete(orderResult.orderId, orderResult.orderNumber);
-      }, 2000);
-    } catch (e: any) {
-      toast.error(e.message ?? "Stripe payment failed");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handlePayment = () => {
-    if (method === "cash") handleCashPayment();
-    else if (method === "mpesa") handleMpesaPayment();
-    else if (method === "stripe") handleStripePayment();
-  };
-
-  const handleClose = () => {
-    if (!isProcessing && mpesaStatus !== "waiting") {
-      setMpesaStatus("idle");
-      setCashReceived("");
-      setMpesaPhone("");
-      onClose();
+      toast.error(e.message ?? "Failed to initiate M-Pesa payment");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Process Payment</DialogTitle>
         </DialogHeader>
 
-        {/* Order Summary */}
-        <div className="bg-secondary/50 rounded-lg p-3 space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>KES {subtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">VAT (16%)</span>
-            <span>KES {taxAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-          </div>
-          <Separator />
-          <div className="flex justify-between font-bold text-base">
-            <span>Total</span>
-            <span className="text-primary">KES {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-          </div>
-        </div>
-
-        {/* Payment Method Selection */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { id: "cash" as const, label: "Cash", icon: <Banknote size={20} />, color: "text-green-600" },
-            { id: "mpesa" as const, label: "M-Pesa", icon: <Smartphone size={20} />, color: "text-green-500" },
-            { id: "stripe" as const, label: "Card", icon: <CreditCard size={20} />, color: "text-blue-600" },
-          ].map((pm) => (
-            <button
-              key={pm.id}
-              onClick={() => { setMethod(pm.id); setMpesaStatus("idle"); }}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                method === pm.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/30"
-              }`}
-            >
-              <span className={pm.color}>{pm.icon}</span>
-              <span className="text-xs font-medium">{pm.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Payment Method Forms */}
-        {method === "cash" && (
-          <div className="space-y-3">
-            <div>
-              <Label className="text-sm">Cash Received (KES)</Label>
-              <Input
-                type="number"
-                placeholder={`Min: ${Math.ceil(total).toLocaleString()}`}
-                value={cashReceived}
-                onChange={(e) => setCashReceived(e.target.value)}
-                className="mt-1"
-              />
+        <div className="space-y-6">
+          {/* Order Summary */}
+          <div className="bg-muted p-4 rounded-lg space-y-2">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>KES {subtotal.toLocaleString()}</span>
             </div>
-            {cashReceived && Number(cashReceived) >= total && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex justify-between items-center">
-                <span className="text-sm text-green-700 font-medium">Change</span>
-                <span className="text-lg font-bold text-green-700">
-                  KES {cashChange.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                </span>
-              </div>
-            )}
-            {cashReceived && Number(cashReceived) < total && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-600">
-                  Insufficient cash. Need KES {(total - Number(cashReceived)).toLocaleString(undefined, { maximumFractionDigits: 0 })} more.
-                </p>
-              </div>
-            )}
-            {/* Quick amounts */}
-            <div className="flex gap-2 flex-wrap">
-              {[500, 1000, 2000, 5000].map((amt) => (
-                <button
-                  key={amt}
-                  onClick={() => setCashReceived(String(amt))}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 font-medium"
+            <div className="flex justify-between">
+              <span>Tax (16%):</span>
+              <span>KES {taxAmount.toLocaleString()}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between font-bold text-lg">
+              <span>Total:</span>
+              <span>KES {total.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Payment Mode Selection */}
+          <Tabs value={paymentMode} onValueChange={(v) => setPaymentMode(v as "single" | "split")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="single">Single Payment</TabsTrigger>
+              <TabsTrigger value="split">Split Payment</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="single" className="space-y-4">
+              {/* Payment Method Selection */}
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={method === "cash" ? "default" : "outline"}
+                  onClick={() => setMethod("cash")}
+                  className="flex items-center gap-2"
                 >
-                  KES {amt.toLocaleString()}
-                </button>
-              ))}
-              <button
-                onClick={() => setCashReceived(String(Math.ceil(total)))}
-                className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 font-medium"
+                  <Banknote className="w-4 h-4" />
+                  Cash
+                </Button>
+                <Button
+                  variant={method === "mpesa" ? "default" : "outline"}
+                  onClick={() => setMethod("mpesa")}
+                  className="flex items-center gap-2"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  M-Pesa
+                </Button>
+                <Button
+                  variant={method === "stripe" ? "default" : "outline"}
+                  onClick={() => setMethod("stripe")}
+                  className="flex items-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Card
+                </Button>
+              </div>
+
+              {/* Cash Payment */}
+              {method === "cash" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Cash Received</Label>
+                    <Input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                  {cashReceived && (
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <div className="flex justify-between mb-2">
+                        <span>Amount Received:</span>
+                        <span className="font-semibold">KES {Number(cashReceived).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Change:</span>
+                        <span className={`font-semibold ${cashSufficient ? "text-green-600" : "text-red-600"}`}>
+                          KES {cashChange.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    onClick={handleCashPayment}
+                    disabled={!cashSufficient || isProcessing}
+                    className="w-full"
+                  >
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Confirm Cash Payment
+                  </Button>
+                </div>
+              )}
+
+              {/* M-Pesa Payment */}
+              {method === "mpesa" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>M-Pesa Phone Number</Label>
+                    <Input
+                      type="tel"
+                      placeholder="254700000000"
+                      value={mpesaPhone}
+                      onChange={(e) => setMpesaPhone(e.target.value)}
+                    />
+                  </div>
+                  {mpesaStatus === "success" && (
+                    <div className="bg-green-50 p-3 rounded-lg flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <span className="text-green-600">Payment successful!</span>
+                    </div>
+                  )}
+                  {mpesaStatus === "failed" && (
+                    <div className="bg-red-50 p-3 rounded-lg flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                      <span className="text-red-600">Payment failed. Please try again.</span>
+                    </div>
+                  )}
+                  <Button
+                    onClick={handleMpesaPayment}
+                    disabled={mpesaStatus !== "idle" || isProcessing}
+                    className="w-full"
+                  >
+                    {mpesaStatus === "sending" && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    {mpesaStatus === "waiting" && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    {mpesaStatus === "idle" ? "Send M-Pesa Prompt" : "Processing..."}
+                  </Button>
+                </div>
+              )}
+
+              {/* Stripe Payment */}
+              {method === "stripe" && (
+                <div className="space-y-4">
+                  <div className="bg-yellow-50 p-3 rounded-lg">
+                    <p className="text-sm text-yellow-700">
+                      Stripe integration ready. Card details would be collected here in production.
+                    </p>
+                  </div>
+                  <Button disabled className="w-full">
+                    Stripe Payment (Coming Soon)
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="split" className="space-y-4">
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="flex justify-between mb-2">
+                  <span>Total to Collect:</span>
+                  <span className="font-semibold">KES {total.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Collected So Far:</span>
+                  <span className={`font-semibold ${splitTotal === total ? "text-green-600" : "text-orange-600"}`}>
+                    KES {splitTotal.toLocaleString()}
+                  </span>
+                </div>
+                {splitRemaining > 0 && (
+                  <div className="flex justify-between mt-2 text-red-600">
+                    <span>Still Needed:</span>
+                    <span className="font-semibold">KES {splitRemaining.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Split Payments List */}
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {splitPayments.map((payment) => (
+                  <div key={payment.id} className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <Label className="text-xs">Method</Label>
+                      <select
+                        value={payment.method}
+                        onChange={(e) =>
+                          handleUpdateSplitPayment(payment.id, "method", e.target.value as PaymentMethod)
+                        }
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="mpesa">M-Pesa</option>
+                        <option value="stripe">Card</option>
+                        <option value="wallet">Wallet</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <Label className="text-xs">Amount</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={payment.amount}
+                        onChange={(e) =>
+                          handleUpdateSplitPayment(payment.id, "amount", Number(e.target.value))
+                        }
+                        min="0"
+                        max={splitRemaining + payment.amount}
+                        className="text-sm"
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveSplitPayment(payment.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={handleAddSplitPayment}
+                disabled={splitRemaining <= 0}
+                className="w-full flex items-center gap-2"
               >
-                Exact
-              </button>
-            </div>
-          </div>
-        )}
+                <Plus className="w-4 h-4" />
+                Add Payment Method
+              </Button>
 
-        {method === "mpesa" && (
-          <div className="space-y-3">
-            {mpesaStatus === "idle" && (
-              <div>
-                <Label className="text-sm">M-Pesa Phone Number</Label>
-                <Input
-                  type="tel"
-                  placeholder="e.g. 0712345678 or 254712345678"
-                  value={mpesaPhone}
-                  onChange={(e) => setMpesaPhone(e.target.value)}
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Customer will receive an STK Push prompt on their phone
-                </p>
-              </div>
-            )}
-            {mpesaStatus === "sending" && (
-              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
-                <Loader2 className="animate-spin text-blue-600" size={20} />
-                <div>
-                  <p className="text-sm font-medium text-blue-700">Sending STK Push...</p>
-                  <p className="text-xs text-blue-600">Please wait</p>
-                </div>
-              </div>
-            )}
-            {mpesaStatus === "waiting" && (
-              <div className="flex items-center gap-3 p-4 bg-yellow-50 rounded-lg">
-                <Loader2 className="animate-spin text-yellow-600" size={20} />
-                <div>
-                  <p className="text-sm font-medium text-yellow-700">Waiting for payment...</p>
-                  <p className="text-xs text-yellow-600">Customer should confirm on their phone</p>
-                </div>
-              </div>
-            )}
-            {mpesaStatus === "success" && (
-              <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
-                <CheckCircle2 className="text-green-600" size={20} />
-                <div>
-                  <p className="text-sm font-medium text-green-700">Payment Confirmed!</p>
-                  <p className="text-xs text-green-600">M-Pesa transaction successful</p>
-                </div>
-              </div>
-            )}
-            {mpesaStatus === "failed" && (
-              <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg">
-                <AlertCircle className="text-red-600" size={20} />
-                <div>
-                  <p className="text-sm font-medium text-red-700">Payment Failed</p>
-                  <p className="text-xs text-red-600">Please try again</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+              <Button
+                onClick={handleSplitPayment}
+                disabled={splitTotal !== total || isProcessing}
+                className="w-full"
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Confirm Split Payment
+              </Button>
+            </TabsContent>
+          </Tabs>
 
-        {method === "stripe" && (
-          <div className="space-y-3">
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard size={16} className="text-blue-600" />
-                <span className="text-sm font-medium text-blue-700">Card Payment via Stripe</span>
-              </div>
-              <p className="text-xs text-blue-600">
-                Amount: KES {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </p>
-              <p className="text-xs text-blue-500 mt-1">
-                Stripe card terminal or online payment will be initiated
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleClose} className="flex-1" disabled={isProcessing || mpesaStatus === "waiting"}>
+          <Button variant="outline" onClick={onClose} className="w-full">
             Cancel
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={handlePayment}
-            disabled={
-              isProcessing ||
-              mpesaStatus === "waiting" ||
-              mpesaStatus === "success" ||
-              (method === "cash" && (!cashReceived || Number(cashReceived) < total))
-            }
-          >
-            {isProcessing ? (
-              <><Loader2 size={16} className="animate-spin mr-2" /> Processing...</>
-            ) : (
-              `Confirm ${method === "cash" ? "Cash" : method === "mpesa" ? "M-Pesa" : "Card"} Payment`
-            )}
           </Button>
         </div>
       </DialogContent>

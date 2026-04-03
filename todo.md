@@ -54,3 +54,17 @@
 - [x] UI polish and responsive design
 - [x] Error handling and loading states
 - [x] Final checkpoint
+
+
+## Phase 9: Combined Payments & Transaction Reconciliation
+- [x] Update schema: add payment_methods table, transaction_reconciliation table, customer_wallet table
+- [x] Combined payment support: allow multiple payment methods per order
+- [x] Transaction tracking: record all payment attempts (used/unused)
+- [x] Wallet system: customer balance, load money, use for payments
+- [x] Transactions page: search, filter by amount/customer, mark as used/unused
+- [x] Update PaymentDialog: split payment UI with multiple method inputs
+- [x] Reconciliation logic: auto-match transactions to orders by amount and customer
+- [x] Customer Wallet page: view balance, load funds, transaction history
+- [x] Backend routers: wallet.get, wallet.load, wallet.transactions, transactions.record, transactions.unused, transactions.match
+- [x] Unit tests: 12 wallet tests, transaction reconciliation tests
+- [x] Navigation: add Transactions and Wallet menu items

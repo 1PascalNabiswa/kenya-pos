@@ -148,3 +148,65 @@ export const settings = mysqlTable("settings", {
 });
 
 export type Setting = typeof settings.$inferSelect;
+
+// ─── Customer Wallet ───────────────────────────────────────────────────────
+export const customerWallets = mysqlTable("customer_wallets", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customerId").notNull().references(() => customers.id),
+  balance: decimal("balance", { precision: 14, scale: 2 }).default("0").notNull(),
+  totalLoaded: decimal("totalLoaded", { precision: 14, scale: 2 }).default("0").notNull(),
+  totalSpent: decimal("totalSpent", { precision: 14, scale: 2 }).default("0").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomerWallet = typeof customerWallets.$inferSelect;
+export type InsertCustomerWallet = typeof customerWallets.$inferInsert;
+
+// ─── Wallet Transactions ───────────────────────────────────────────────────
+export const walletTransactions = mysqlTable("wallet_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  walletId: int("walletId").notNull().references(() => customerWallets.id),
+  customerId: int("customerId").notNull().references(() => customers.id),
+  type: mysqlEnum("type", ["load", "spend", "refund"]).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  orderId: int("orderId").references(() => orders.id),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type InsertWalletTransaction = typeof walletTransactions.$inferInsert;
+
+// ─── Payment Methods (for combined payments) ────────────────────────────────
+export const paymentMethods = mysqlTable("payment_methods", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull().references(() => orders.id),
+  method: mysqlEnum("method", ["cash", "mpesa", "stripe", "wallet"]).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  transactionId: varchar("transactionId", { length: 100 }),
+  reference: varchar("reference", { length: 100 }),
+  status: mysqlEnum("status", ["pending", "completed", "failed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+export type InsertPaymentMethod = typeof paymentMethods.$inferInsert;
+
+// ─── Transaction Reconciliation ────────────────────────────────────────────
+export const transactionReconciliation = mysqlTable("transaction_reconciliation", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: varchar("transactionId", { length: 100 }).notNull().unique(),
+  method: mysqlEnum("method", ["mpesa", "stripe", "bank"]).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  customerName: varchar("customerName", { length: 200 }),
+  customerId: int("customerId").references(() => customers.id),
+  orderId: int("orderId").references(() => orders.id),
+  status: mysqlEnum("status", ["unused", "used", "disputed"]).default("unused").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  matchedAt: timestamp("matchedAt"),
+});
+
+export type TransactionReconciliation = typeof transactionReconciliation.$inferSelect;
+export type InsertTransactionReconciliation = typeof transactionReconciliation.$inferInsert;
