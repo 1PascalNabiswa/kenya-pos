@@ -160,8 +160,10 @@ export async function getProducts(opts?: {
   if (opts?.categoryId) conditions.push(eq(products.categoryId, opts.categoryId));
   if (opts?.isActive !== undefined) conditions.push(eq(products.isActive, opts.isActive));
   if (opts?.search) {
+    // Prioritize exact name match first, then partial name match, then SKU
     conditions.push(
       or(
+        eq(products.name, opts.search),
         like(products.name, `%${opts.search}%`),
         like(products.sku, `%${opts.search}%`)
       )
@@ -268,8 +270,10 @@ export async function getCustomers(opts?: { search?: string; page?: number; limi
   const offset = (page - 1) * limit;
   const conditions = [];
   if (opts?.search) {
+    // Prioritize name match first, then phone, then email
     conditions.push(
       or(
+        eq(customers.name, opts.search),
         like(customers.name, `%${opts.search}%`),
         like(customers.phone, `%${opts.search}%`),
         like(customers.email, `%${opts.search}%`)

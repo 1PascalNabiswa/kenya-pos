@@ -212,3 +212,6 @@
 - [x] Fix API mutation error: undefined id being passed on /sales/pos page (fixed addPaymentMethod call to use 'id' instead of 'orderId')
 - [x] Fix receipt dialog showing "Order not found" after payment completion (fixed getOrderById to use orderId, fixed return value to use orderId)
 - [x] Fix customer wallet balance loading feature (fixed undefined newBalance variable in loadWalletBalance function)
+
+## Search Improvements
+- [x] Fix all search bars to prioritize item name matching as first priority (updated getProducts and getCustomers to use exact match first, then partial name match, then other fields)
