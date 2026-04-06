@@ -356,7 +356,7 @@ const ordersRouter = router({
         }).catch(console.error);
       }
 
-      return { success: true, id, orderNumber };
+      return { success: true, orderId: id, orderNumber };
     }),
 
   updateStatus: protectedProcedure

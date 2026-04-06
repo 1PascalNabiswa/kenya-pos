@@ -377,7 +377,7 @@ export async function getOrderById(id: number) {
   if (!db) return undefined;
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
   if (!order) return undefined;
-  const items = await db.select().from(orderItems).where(eq(orderItems.id, id));
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
   return { ...order, items };
 }
 
