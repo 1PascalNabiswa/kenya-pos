@@ -210,3 +210,142 @@ export const transactionReconciliation = mysqlTable("transaction_reconciliation"
 
 export type TransactionReconciliation = typeof transactionReconciliation.$inferSelect;
 export type InsertTransactionReconciliation = typeof transactionReconciliation.$inferInsert;
+
+// ─── Branches ──────────────────────────────────────────────────────────────
+export const branches = mysqlTable("branches", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  location: varchar("location", { length: 300 }),
+  phone: varchar("phone", { length: 20 }),
+  manager: varchar("manager", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Branch = typeof branches.$inferSelect;
+export type InsertBranch = typeof branches.$inferInsert;
+
+// ─── Serving Points ────────────────────────────────────────────────────────
+export const servingPoints = mysqlTable("serving_points", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").references(() => branches.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  location: varchar("location", { length: 300 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ServingPoint = typeof servingPoints.$inferSelect;
+export type InsertServingPoint = typeof servingPoints.$inferInsert;
+
+// ─── Forms (Group Feeding) ─────────────────────────────────────────────────
+export const forms = mysqlTable("forms", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 200 }).notNull().unique(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  spent: decimal("spent", { precision: 12, scale: 2 }).default("0"),
+  servingPointId: int("servingPointId").references(() => servingPoints.id),
+  status: mysqlEnum("status", [
+    "not_issued",
+    "issued_not_approved",
+    "issued_approved",
+    "submitted_for_payment",
+    "pending_payment",
+    "paid",
+  ])
+    .default("not_issued")
+    .notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Form = typeof forms.$inferSelect;
+export type InsertForm = typeof forms.$inferInsert;
+
+// ─── Credit Accounts ───────────────────────────────────────────────────────
+export const creditAccounts = mysqlTable("credit_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customerId").references(() => customers.id),
+  studentName: varchar("studentName", { length: 200 }).notNull(),
+  studentId: varchar("studentId", { length: 100 }),
+  balance: decimal("balance", { precision: 12, scale: 2 }).default("0"),
+  totalCredit: decimal("totalCredit", { precision: 12, scale: 2 }).default("0"),
+  totalPaid: decimal("totalPaid", { precision: 12, scale: 2 }).default("0"),
+  status: mysqlEnum("status", ["active", "settled", "suspended"]).default("active").notNull(),
+  authorizedBy: int("authorizedBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreditAccount = typeof creditAccounts.$inferSelect;
+export type InsertCreditAccount = typeof creditAccounts.$inferInsert;
+
+// ─── Credit Transactions ───────────────────────────────────────────────────
+export const creditTransactions = mysqlTable("credit_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  creditAccountId: int("creditAccountId").references(() => creditAccounts.id),
+  orderId: int("orderId").references(() => orders.id),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  type: mysqlEnum("type", ["credit", "payment", "adjustment"]).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreditTransaction = typeof creditTransactions.$inferSelect;
+export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
+
+// ─── Suppliers ─────────────────────────────────────────────────────────────
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 100 }),
+  address: text("address"),
+  paymentStatus: mysqlEnum("paymentStatus", ["paid", "unpaid", "partial"]).default("unpaid").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = typeof suppliers.$inferInsert;
+
+// ─── Audit Logs ────────────────────────────────────────────────────────────
+export const auditLogs = mysqlTable("audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id),
+  action: varchar("action", { length: 50 }).notNull(),
+  module: varchar("module", { length: 50 }).notNull(),
+  entityType: varchar("entityType", { length: 100 }),
+  entityId: int("entityId"),
+  beforeValue: json("beforeValue"),
+  afterValue: json("afterValue"),
+  deviceId: varchar("deviceId", { length: 100 }),
+  ipAddress: varchar("ipAddress", { length: 50 }),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+// ─── User Roles ────────────────────────────────────────────────────────────
+export const userRoles = mysqlTable("user_roles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id),
+  role: mysqlEnum("role", [
+    "admin",
+    "owner",
+    "manager",
+    "supervisor",
+    "cashier",
+    "waiter",
+    "store_manager",
+  ])
+    .notNull(),
+  branchId: int("branchId").references(() => branches.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserRole = typeof userRoles.$inferSelect;
+export type InsertUserRole = typeof userRoles.$inferInsert;

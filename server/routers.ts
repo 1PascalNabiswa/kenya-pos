@@ -46,6 +46,28 @@ import {
   matchTransaction,
   getTransactionHistory,
   searchTransactionsByCustomer,
+  createForm,
+  getForm,
+  listForms,
+  updateFormStatus,
+  updateFormSpent,
+  createCreditAccount,
+  getCreditAccount,
+  listCreditAccounts,
+  updateCreditBalance,
+  recordCreditTransaction,
+  getCreditTransactionHistory,
+  recordAuditLog,
+  getAuditLogs,
+  createBranch,
+  listBranches,
+  createServingPoint,
+  listServingPoints,
+  createSupplier,
+  listSuppliers,
+  updateSupplierPaymentStatus,
+  assignUserRole,
+  getUserRoles,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -620,6 +642,144 @@ const transactionsRouter = router({
     }),
 });
 
+// ─── Forms Router ──────────────────────────────────────────────────────────
+const formsRouter = router({
+  create: protectedProcedure
+    .input(z.object({ title: z.string(), code: z.string(), amount: z.number().positive(), servingPointId: z.number().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await createForm({ ...input, amount: input.amount.toString() });
+      await recordAuditLog({
+        userId: ctx.user?.id,
+        action: "CREATE",
+        module: "Forms",
+        entityType: "Form",
+        afterValue: input,
+      });
+      return result;
+    }),
+
+  list: protectedProcedure.query(async () => {
+    return listForms();
+  }),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return getForm(input.id);
+    }),
+
+  updateStatus: protectedProcedure
+    .input(z.object({ id: z.number(), status: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      await updateFormStatus(input.id, input.status);
+      await recordAuditLog({
+        userId: ctx.user?.id,
+        action: "UPDATE",
+        module: "Forms",
+        entityType: "Form",
+        entityId: input.id,
+        afterValue: { status: input.status },
+      });
+      return { success: true };
+    }),
+});
+
+// ─── Credit Router ──────────────────────────────────────────────────────────
+const creditRouter = router({
+  create: protectedProcedure
+    .input(z.object({ studentName: z.string(), studentId: z.string().optional(), customerId: z.number().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await createCreditAccount({
+        ...input,
+        balance: "0",
+        totalCredit: "0",
+        totalPaid: "0",
+        authorizedBy: ctx.user?.id,
+      });
+      await recordAuditLog({
+        userId: ctx.user?.id,
+        action: "CREATE",
+        module: "Credit",
+        entityType: "CreditAccount",
+        afterValue: input,
+      });
+      return result;
+    }),
+
+  list: protectedProcedure
+    .input(z.object({ status: z.string().optional() }))
+    .query(async ({ input }) => {
+      return listCreditAccounts(input.status);
+    }),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return getCreditAccount(input.id);
+    }),
+
+  history: protectedProcedure
+    .input(z.object({ creditAccountId: z.number() }))
+    .query(async ({ input }) => {
+      return getCreditTransactionHistory(input.creditAccountId);
+    }),
+});
+
+// ─── Audit Router ──────────────────────────────────────────────────────────
+const auditRouter = router({
+  list: protectedProcedure
+    .input(z.object({
+      userId: z.number().optional(),
+      action: z.string().optional(),
+      module: z.string().optional(),
+      limit: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      return getAuditLogs(input);
+    }),
+});
+
+// ─── Branches Router ────────────────────────────────────────────────────────
+const branchesRouter = router({
+  create: protectedProcedure
+    .input(z.object({ name: z.string(), location: z.string().optional(), phone: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      return createBranch(input);
+    }),
+
+  list: protectedProcedure.query(async () => {
+    return listBranches();
+  }),
+});
+
+// ─── Serving Points Router ─────────────────────────────────────────────────
+const servingPointsRouter = router({
+  create: protectedProcedure
+    .input(z.object({ branchId: z.number(), name: z.string(), description: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      return createServingPoint(input);
+    }),
+
+  list: protectedProcedure
+    .input(z.object({ branchId: z.number().optional() }))
+    .query(async ({ input }) => {
+      return listServingPoints(input.branchId);
+    }),
+});
+
+// ─── Suppliers Router ──────────────────────────────────────────────────────
+const suppliersRouter = router({
+  create: protectedProcedure
+    .input(z.object({ name: z.string(), phone: z.string().optional(), email: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      return createSupplier(input);
+    }),
+
+  list: protectedProcedure.query(async () => {
+    return listSuppliers();
+  }),
+});
+
 // ─── App Router ────────────────────────────────────────────────────────────
 export const appRouter = router({
   system: systemRouter,
@@ -640,6 +800,12 @@ export const appRouter = router({
   settings: settingsRouter,
   wallet: walletRouter,
   transactions: transactionsRouter,
+  forms: formsRouter,
+  credit: creditRouter,
+  audit: auditRouter,
+  branches: branchesRouter,
+  servingPoints: servingPointsRouter,
+  suppliers: suppliersRouter,
 });
 
 export type AppRouter = typeof appRouter;

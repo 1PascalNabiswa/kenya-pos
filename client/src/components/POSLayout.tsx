@@ -15,6 +15,12 @@ import {
   Wallet,
   AlertTriangle,
   CreditCard,
+  Menu,
+  X,
+  FileCheck,
+  Building2,
+  Truck,
+  LogIn,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -61,6 +67,17 @@ const navItems: NavItem[] = [
     ],
   },
   { label: "Customer Wallet", icon: <Wallet size={18} />, href: "/wallet" },
+  {
+    label: "Operations",
+    icon: <FileCheck size={18} />,
+    children: [
+      { label: "Group Feeding Forms", href: "/forms", icon: <FileCheck size={14} /> },
+      { label: "Credit System", href: "/credit", icon: <CreditCard size={14} /> },
+      { label: "Branches", href: "/branches", icon: <Building2 size={14} /> },
+      { label: "Suppliers", href: "/suppliers", icon: <Truck size={14} /> },
+    ],
+  },
+  { label: "Audit Trail", icon: <LogIn size={18} />, href: "/audit-logs" },
   { label: "Settings", icon: <Settings size={18} />, href: "/settings" },
 ];
 
@@ -108,6 +125,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const logout = () => logoutMutation.mutate(undefined, { onSuccess: () => window.location.href = '/' });
   const [location] = useLocation();
   const [openGroups, setOpenGroups] = useState<string[]>(["Sales"]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: dashboard } = trpc.reports.dashboard.useQuery(undefined, {
     refetchInterval: 60000,
@@ -124,7 +142,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6 px-4">
         <div className="text-center">
           <div className="text-4xl font-bold text-primary mb-2">KenPOS</div>
           <p className="text-muted-foreground">Kenyan Point of Sale System</p>
@@ -147,10 +165,22 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="sidebar w-60 flex-shrink-0 flex flex-col h-full overflow-y-auto">
+      <aside
+        className={`sidebar fixed lg:static w-60 flex-shrink-0 flex flex-col h-full overflow-y-auto z-50 transform transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
         {/* Logo */}
-        <div className="p-4 border-b border-white/10">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <ShoppingBag size={16} className="text-white" />
@@ -160,6 +190,12 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
               <div className="text-[10px] text-white/50">Point of Sale</div>
             </div>
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden text-white/50 hover:text-white"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Search */}
@@ -192,6 +228,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
                   className={`sidebar-item ${
                     location === item.href ? "active" : ""
                   }`}
+                  onClick={() => setSidebarOpen(false)}
                 >
                   {item.icon}
                   <span>{item.label}</span>
@@ -204,51 +241,70 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-
-          {/* Low stock alert */}
-          {dashboard && dashboard.lowStockCount > 0 && (
-            <Link href="/inventory/alerts">
-              <div className="sidebar-item mt-2 bg-orange-500/20 text-orange-300 hover:bg-orange-500/30">
-                <AlertTriangle size={16} />
-                <span className="text-xs">Low Stock Alert</span>
-                <Badge className="ml-auto bg-orange-500 text-white text-[10px]">
-                  {dashboard.lowStockCount}
-                </Badge>
-              </div>
-            </Link>
-          )}
         </nav>
 
-        {/* Bottom */}
-        <div className="border-t border-white/10 p-3 space-y-1">
-          <Link href="/settings">
-            <div className="sidebar-item text-sm">
-              <Settings size={16} />
-              <span>Settings</span>
-            </div>
-          </Link>
-          <button onClick={logout} className="sidebar-item w-full text-sm text-red-400 hover:text-red-300">
-            <LogOut size={16} />
-            <span>Log out</span>
-          </button>
-          <div className="flex items-center gap-3 px-3 py-2 mt-1">
-            <Avatar className="w-8 h-8">
-              <AvatarFallback className="bg-primary text-white text-xs">
-                {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
-              </AvatarFallback>
+        {/* Alerts */}
+        {dashboard?.lowStockCount && dashboard.lowStockCount > 0 && (
+          <div className="px-3 py-2 mx-3 mb-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <Link href="/inventory/alerts">
+              <div className="flex items-center gap-2 text-yellow-600 hover:text-yellow-500 cursor-pointer">
+                <AlertTriangle size={14} />
+                <span className="text-xs font-medium">{dashboard.lowStockCount} Low Stock</span>
+              </div>
+            </Link>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="p-3 border-t border-white/10 space-y-2">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="text-xs">{user?.name?.charAt(0)}</AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-medium truncate">{user?.name ?? "User"}</p>
-              <p className="text-white/40 text-[10px] capitalize">{user?.role ?? "staff"}</p>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-white truncate">{user?.name}</div>
+              <div className="text-[10px] text-white/50 truncate">{user?.email}</div>
             </div>
           </div>
+          <button
+            onClick={logout}
+            disabled={logoutMutation.isPending}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <LogOut size={14} />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-hidden flex flex-col">
-        {children}
-      </main>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-background border-b border-border px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden text-muted-foreground hover:text-foreground"
+          >
+            <Menu size={24} />
+          </button>
+          <div className="flex-1" />
+          <div className="text-sm text-muted-foreground">
+            {new Date().toLocaleDateString("en-KE", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 overflow-auto">
+          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

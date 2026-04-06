@@ -28,6 +28,20 @@ import {
   walletTransactions,
   paymentMethods,
   transactionReconciliation,
+  forms,
+  creditAccounts,
+  creditTransactions,
+  auditLogs,
+  branches,
+  servingPoints,
+  suppliers,
+  userRoles,
+  Form,
+  InsertForm,
+  CreditAccount,
+  InsertCreditAccount,
+  AuditLog,
+  InsertAuditLog,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -758,4 +772,224 @@ export async function searchTransactionsByCustomer(customerName: string) {
       )
     )
     .orderBy(desc(transactionReconciliation.createdAt));
+}
+
+
+// ─── Forms (Group Feeding) ─────────────────────────────────────────────────
+export async function createForm(data: InsertForm) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(forms).values(data);
+  return result;
+}
+
+export async function getForm(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(forms).where(eq(forms.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function listForms() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(forms).orderBy(desc(forms.createdAt));
+}
+
+export async function updateFormStatus(id: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(forms).set({ status: status as any }).where(eq(forms.id, id));
+}
+
+export async function updateFormSpent(id: number, amount: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(forms).set({ spent: amount.toString() }).where(eq(forms.id, id));
+}
+
+// ─── Credit Accounts ───────────────────────────────────────────────────────
+export async function createCreditAccount(data: InsertCreditAccount) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(creditAccounts).values(data);
+  return result;
+}
+
+export async function getCreditAccount(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(creditAccounts).where(eq(creditAccounts.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function listCreditAccounts(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (status) conditions.push(eq(creditAccounts.status, status as any));
+  
+  return db
+    .select()
+    .from(creditAccounts)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(creditAccounts.createdAt));
+}
+
+export async function updateCreditBalance(id: number, newBalance: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(creditAccounts).set({ balance: newBalance.toString() }).where(eq(creditAccounts.id, id));
+}
+
+// ─── Credit Transactions ───────────────────────────────────────────────────
+export async function recordCreditTransaction(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(creditTransactions).values(data);
+  return result;
+}
+
+export async function getCreditTransactionHistory(creditAccountId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select()
+    .from(creditTransactions)
+    .where(eq(creditTransactions.creditAccountId, creditAccountId))
+    .orderBy(desc(creditTransactions.createdAt));
+}
+
+// ─── Audit Logs ────────────────────────────────────────────────────────────
+export async function recordAuditLog(data: InsertAuditLog) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Audit] DB unavailable, log not recorded");
+    return;
+  }
+  
+  try {
+    await db.insert(auditLogs).values(data);
+  } catch (error) {
+    console.error("[Audit] Failed to record log:", error);
+  }
+}
+
+export async function getAuditLogs(filters?: {
+  userId?: number;
+  action?: string;
+  module?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (filters?.userId) conditions.push(eq(auditLogs.userId, filters.userId));
+  if (filters?.action) conditions.push(eq(auditLogs.action, filters.action));
+  if (filters?.module) conditions.push(eq(auditLogs.module, filters.module));
+  if (filters?.startDate) conditions.push(gte(auditLogs.timestamp, filters.startDate));
+  if (filters?.endDate) conditions.push(lte(auditLogs.timestamp, filters.endDate));
+  
+  return db
+    .select()
+    .from(auditLogs)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(auditLogs.timestamp))
+    .limit(filters?.limit || 1000);
+}
+
+// ─── Branches ──────────────────────────────────────────────────────────────
+export async function createBranch(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(branches).values(data);
+  return result;
+}
+
+export async function listBranches() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(branches).orderBy(desc(branches.createdAt));
+}
+
+// ─── Serving Points ────────────────────────────────────────────────────────
+export async function createServingPoint(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(servingPoints).values(data);
+  return result;
+}
+
+export async function listServingPoints(branchId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (branchId) conditions.push(eq(servingPoints.branchId, branchId));
+  
+  return db
+    .select()
+    .from(servingPoints)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(servingPoints.createdAt));
+}
+
+// ─── Suppliers ─────────────────────────────────────────────────────────────
+export async function createSupplier(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(suppliers).values(data);
+  return result;
+}
+
+export async function listSuppliers() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
+}
+
+export async function updateSupplierPaymentStatus(id: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(suppliers).set({ paymentStatus: status as any }).where(eq(suppliers.id, id));
+}
+
+// ─── User Roles ────────────────────────────────────────────────────────────
+export async function assignUserRole(userId: number, role: string, branchId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(userRoles).values({
+    userId,
+    role: role as any,
+    branchId,
+  });
+  return result;
+}
+
+export async function getUserRoles(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(userRoles).where(eq(userRoles.userId, userId));
 }

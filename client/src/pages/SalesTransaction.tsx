@@ -116,23 +116,23 @@ export default function SalesTransaction() {
   const totalProductCount = productsData?.total ?? 0;
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full overflow-hidden gap-4 lg:gap-0">
       {/* Center: Product Grid */}
-      <div className="flex-1 flex flex-col overflow-hidden border-r border-border">
+      <div className="flex-1 flex flex-col overflow-hidden lg:border-r border-border">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-border bg-card">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Sales Transaction</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-foreground">Sales Transaction</h1>
             <p className="text-xs text-muted-foreground">
               {new Date().toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="w-full sm:w-auto flex items-center gap-3">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
               <Input
-                placeholder="Search products..."
-                className="pl-9 w-64 h-9"
+                placeholder="Search..."
+                className="pl-9 w-full sm:w-64 h-9 text-sm"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -141,7 +141,7 @@ export default function SalesTransaction() {
         </div>
 
         {/* Category Tabs */}
-        <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-border bg-card/50">
+        <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-border bg-card/50 scrollbar-thin">
           <button
             onClick={() => setSelectedCategory(null)}
             className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -171,7 +171,7 @@ export default function SalesTransaction() {
 
         {/* Product Grid */}
         <ScrollArea className="flex-1">
-          <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
             {/* Add New Product Card */}
             <button
               onClick={() => setAddProductOpen(true)}
@@ -281,7 +281,7 @@ export default function SalesTransaction() {
       </div>
 
       {/* Right: Order Panel */}
-      <div className="w-80 flex-shrink-0 flex flex-col bg-card">
+      <div className="w-full lg:w-80 flex-shrink-0 flex flex-col bg-card border-t lg:border-t-0 lg:border-l border-border">
         <div className="px-4 py-4 border-b border-border">
           <h2 className="font-bold text-foreground">Detail Order</h2>
         </div>

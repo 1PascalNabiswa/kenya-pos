@@ -14,6 +14,11 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Transactions from "./pages/Transactions";
 import Wallet from "./pages/Wallet";
+import Forms from "./pages/Forms";
+import Credit from "./pages/Credit";
+import AuditLogs from "./pages/AuditLogs";
+import Branches from "./pages/Branches";
+import Suppliers from "./pages/Suppliers";
 
 function Router() {
   return (
@@ -111,6 +116,31 @@ function Router() {
       <Route path="/customers/wallet" component={() => (
         <POSLayout>
           <Wallet />
+        </POSLayout>
+      )} />
+      <Route path="/forms" component={() => (
+        <POSLayout>
+          <Forms />
+        </POSLayout>
+      )} />
+      <Route path="/credit" component={() => (
+        <POSLayout>
+          <Credit />
+        </POSLayout>
+      )} />
+      <Route path="/audit-logs" component={() => (
+        <POSLayout>
+          <AuditLogs />
+        </POSLayout>
+      )} />
+      <Route path="/branches" component={() => (
+        <POSLayout>
+          <Branches />
+        </POSLayout>
+      )} />
+      <Route path="/suppliers" component={() => (
+        <POSLayout>
+          <Suppliers />
         </POSLayout>
       )} />
       <Route path="/404" component={NotFound} />
