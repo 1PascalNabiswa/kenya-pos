@@ -306,7 +306,7 @@ const ordersRouter = router({
       taxAmount: z.string(),
       discountAmount: z.string().optional(),
       totalAmount: z.string(),
-      paymentMethod: z.enum(["cash", "mpesa", "stripe", "mixed"]),
+      paymentMethod: z.enum(["cash", "mpesa", "stripe", "mixed", "wallet"]),
       cashReceived: z.string().optional(),
       cashChange: z.string().optional(),
       status: z.enum(["pending", "completed"]).optional(),

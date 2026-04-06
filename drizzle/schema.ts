@@ -87,7 +87,7 @@ export const orders = mysqlTable("orders", {
   taxAmount: decimal("taxAmount", { precision: 12, scale: 2 }).default("0").notNull(),
   discountAmount: decimal("discountAmount", { precision: 12, scale: 2 }).default("0").notNull(),
   totalAmount: decimal("totalAmount", { precision: 12, scale: 2 }).notNull(),
-  paymentMethod: mysqlEnum("paymentMethod", ["cash", "mpesa", "stripe", "mixed"]).notNull(),
+  paymentMethod: mysqlEnum("paymentMethod", ["cash", "mpesa", "stripe", "mixed", "wallet"]).notNull(),
   paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "failed", "refunded"]).default("pending").notNull(),
   orderStatus: mysqlEnum("orderStatus", ["pending", "processing", "completed", "cancelled"]).default("pending").notNull(),
   mpesaTransactionId: varchar("mpesaTransactionId", { length: 100 }),

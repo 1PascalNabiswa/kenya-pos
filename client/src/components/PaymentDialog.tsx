@@ -212,7 +212,7 @@ export default function PaymentDialog({
         subtotal: String(subtotal),
         taxAmount: String(taxAmount),
         totalAmount: String(total),
-        paymentMethod: "cash",
+        paymentMethod: "wallet",
       });
       
       // Deduct from wallet balance

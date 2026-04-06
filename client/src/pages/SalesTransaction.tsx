@@ -12,7 +12,7 @@ import {
   ChevronRight, Printer
 } from "lucide-react";
 import PaymentDialog from "@/components/PaymentDialog";
-
+import ReceiptDialog from "@/components/ReceiptDialog";
 import AddProductDialog from "@/components/AddProductDialog";
 
 interface CartItem {
@@ -39,6 +39,9 @@ export default function SalesTransaction() {
   const [lastOrderNumber, setLastOrderNumber] = useState<string>("");
   const [addProductOpen, setAddProductOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [receiptOrderId, setReceiptOrderId] = useState<number | null>(null);
+  const [receiptOrderNumber, setReceiptOrderNumber] = useState<string>("");
 
   const { data: categoriesData } = trpc.categories.list.useQuery();
   const { data: productsData, isLoading: productsLoading } = trpc.products.list.useQuery({
@@ -105,6 +108,9 @@ export default function SalesTransaction() {
   const handleOrderComplete = (orderId: number, orderNumber: string) => {
     setLastOrderId(orderId);
     setLastOrderNumber(orderNumber);
+    setReceiptOrderId(orderId);
+    setReceiptOrderNumber(orderNumber);
+    setShowReceiptDialog(true);
     setPaymentDialogOpen(false);
     clearCart();
   };
@@ -450,6 +456,13 @@ export default function SalesTransaction() {
       <AddProductDialog
         open={addProductOpen}
         onClose={() => setAddProductOpen(false)}
+      />
+
+      <ReceiptDialog
+        open={showReceiptDialog}
+        onClose={() => setShowReceiptDialog(false)}
+        orderId={receiptOrderId || 0}
+        orderNumber={receiptOrderNumber}
       />
     </div>
   );
