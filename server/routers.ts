@@ -39,7 +39,6 @@ import {
   getWalletTransactions,
   addPaymentMethod,
   getPaymentMethods,
-  updatePaymentMethodStatus,
   recordTransaction,
   getUnusedTransactions,
   getTransactionsByAmount,
@@ -309,7 +308,7 @@ const ordersRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const orderNumber = await generateOrderNumber();
-      const orderId = await createOrder(
+      const id = await createOrder(
         {
           orderNumber,
           customerId: input.customerId,
@@ -323,7 +322,7 @@ const ordersRouter = router({
         },
         input.items.map((item) => ({
           ...item,
-          orderId: 0,
+          id: 0,
           discountAmount: item.discountAmount ?? "0",
         }))
       );
@@ -356,7 +355,7 @@ const ordersRouter = router({
         }).catch(console.error);
       }
 
-      return { success: true, orderId, orderNumber };
+      return { success: true, id, orderNumber };
     }),
 
   updateStatus: protectedProcedure
@@ -391,7 +390,7 @@ const paymentsRouter = router({
     .input(z.object({
       phone: z.string(),
       amount: z.number(),
-      orderId: z.number(),
+      id: z.number(),
       orderNumber: z.string(),
       callbackUrl: z.string().optional(),
     }))
@@ -401,7 +400,7 @@ const paymentsRouter = router({
         const result = await initiateStkPush({
           phone: input.phone,
           amount: input.amount,
-          orderId: input.orderNumber,
+          id: input.orderNumber,
           description: `KenPOS Order ${input.orderNumber}`,
           callbackUrl,
         });
@@ -438,7 +437,7 @@ const paymentsRouter = router({
     }),
 
   createStripeIntent: protectedProcedure
-    .input(z.object({ amount: z.number(), orderId: z.number(), orderNumber: z.string() }))
+    .input(z.object({ amount: z.number(), id: z.number(), orderNumber: z.string() }))
     .mutation(async ({ input }) => {
       const stripeKey = process.env.STRIPE_SECRET_KEY;
       if (!stripeKey) {
@@ -448,28 +447,28 @@ const paymentsRouter = router({
       const intent = await stripe.paymentIntents.create({
         amount: Math.round(input.amount * 100), // cents
         currency: "kes",
-        metadata: { orderId: String(input.orderId), orderNumber: input.orderNumber },
+        metadata: { id: String(input.id), orderNumber: input.orderNumber },
       });
       return { clientSecret: intent.client_secret, paymentIntentId: intent.id };
     }),
 
   addMethod: protectedProcedure
     .input(z.object({
-      orderId: z.number(),
+      id: z.number(),
       method: z.enum(["cash", "mpesa", "wallet", "card"]),
       amount: z.number().positive(),
     }))
     .mutation(async ({ input }) => {
-      await addPaymentMethod(input.orderId, {
+      await addPaymentMethod(input.id, {
         methodType: input.method as any,
       });
       return { success: true };
     }),
 
   confirmStripe: protectedProcedure
-    .input(z.object({ orderId: z.number(), paymentIntentId: z.string() }))
+    .input(z.object({ id: z.number(), paymentIntentId: z.string() }))
     .mutation(async ({ input }) => {
-      await updateOrderStatus(input.orderId, {
+      await updateOrderStatus(input.id, {
         paymentStatus: "paid",
         orderStatus: "completed",
         stripePaymentIntentId: input.paymentIntentId,
@@ -634,9 +633,9 @@ const transactionsRouter = router({
     }),
 
   match: protectedProcedure
-    .input(z.object({ transactionId: z.string(), customerId: z.number(), orderId: z.number() }))
+    .input(z.object({ transactionId: z.string(), customerId: z.number(), id: z.number() }))
     .mutation(async ({ input }) => {
-      await matchTransaction(input.transactionId, input.customerId, input.orderId);
+      await matchTransaction(input.transactionId, input.customerId, input.id);
       return { success: true };
     }),
 
@@ -795,15 +794,15 @@ const kdsRouter = router({
     }),
 
   updateOrderStatus: protectedProcedure
-    .input(z.object({ orderId: z.number(), status: z.string(), staffId: z.number().optional() }))
+    .input(z.object({ id: z.number(), status: z.string(), staffId: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
-      await updateOrderStatusInKDS(input.orderId, input.status, input.staffId);
+      await updateOrderStatusInKDS(input.id, input.status, input.staffId);
       await recordAuditLog({
         module: "POS",
         userId: ctx.user?.id,
         action: "UPDATE",
         entityType: "Order",
-        entityId: input.orderId,
+        entityId: input.id,
         beforeValue: { status: input.status },
       });
       return { success: true };
@@ -816,9 +815,9 @@ const kdsRouter = router({
     }),
 
   getOrderHistory: protectedProcedure
-    .input(z.object({ orderId: z.number() }))
+    .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      return getOrderStatusHistory(input.orderId);
+      return getOrderStatusHistory(input.id);
     }),
 });
 

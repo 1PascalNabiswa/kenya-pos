@@ -232,7 +232,7 @@ export async function adjustStock(
   productId: number,
   changeType: "sale" | "restock" | "adjustment" | "return" | "damage",
   quantityChange: number,
-  orderId?: number,
+  id?: number,
   notes?: string,
   createdBy?: number
 ) {
@@ -252,7 +252,7 @@ export async function adjustStock(
     quantityBefore,
     quantityChange,
     quantityAfter,
-    orderId,
+    id,
     notes,
     createdBy,
   });
@@ -331,17 +331,17 @@ export async function createOrder(
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   const result = await db.insert(orders).values(orderData);
-  const orderId = (result as any)[0]?.insertId as number;
+  const id = (result as any)[0]?.insertId as number;
   if (items.length > 0) {
-    await db.insert(orderItems).values(items.map((item) => ({ ...item, orderId })));
+    await db.insert(orderItems).values(items.map((item) => ({ ...item, id })));
   }
   // Deduct stock for each item
   for (const item of items) {
     if (item.productId) {
-      await adjustStock(item.productId, "sale", -item.quantity, orderId, "POS sale");
+      await adjustStock(item.productId, "sale", -item.quantity, id, "POS sale");
     }
   }
-  return orderId;
+  return id;
 }
 
 export async function getOrders(opts?: {
@@ -377,7 +377,7 @@ export async function getOrderById(id: number) {
   if (!db) return undefined;
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
   if (!order) return undefined;
-  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+  const items = await db.select().from(orderItems).where(eq(orderItems.id, id));
   return { ...order, items };
 }
 
@@ -430,7 +430,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       totalRevenue: sql<number>`sum(${orderItems.totalPrice})`,
     })
     .from(orderItems)
-    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .innerJoin(orders, eq(orderItems.id, orders.id))
     .where(
       and(
         gte(orders.createdAt, fromDate),
@@ -645,7 +645,7 @@ export async function spendFromWallet(customerId: number, amount: number, id: nu
     customerId,
     type: "spend",
     amount: amount.toString(),
-    orderId,
+    id,
   });
   
   return newBalance;
@@ -663,10 +663,10 @@ export async function getWalletTransactions(customerId: number, limit = 50) {
 }
 
 // ─── Payment Methods (Combined Payments) ────────────────────────────────────
-export async function addPaymentMethod(id: number, data: Omit<InsertPaymentMethod, 'orderId'>) {
+export async function addPaymentMethod(id: number, data: Omit<InsertPaymentMethod, 'id'>) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  await db.insert(paymentMethods).values({ orderId, ...data });
+  await db.insert(paymentMethods).values({ id, ...data });
 }
 
 export async function getPaymentMethods(id: number) {
@@ -731,7 +731,7 @@ export async function matchTransaction(transactionId: string, customerId: number
     .update(transactionReconciliation)
     .set({
       customerId,
-      orderId,
+      id,
       createdAt: new Date(),
     })
     .where(eq(transactionReconciliation.transactionId, transactionId));
@@ -1038,7 +1038,7 @@ export async function getOrderStatusHistory(id: number) {
   return db
     .select()
     .from(orderStatusHistory)
-    .where(eq(orderStatusHistory.orderId, orderId))
+    .where(eq(orderStatusHistory.id, id))
     .orderBy(orderStatusHistory.createdAt);
 }
 
@@ -1055,8 +1055,8 @@ export async function getKitchenQueue(status?: string) {
       items: orderItems,
     })
     .from(orders)
-    .leftJoin(orderItems, eq(orders.id, orderItems.orderId))
-    .leftJoin(orderStatusHistory, eq(orders.id, orderStatusHistory.orderId))
+    .leftJoin(orderItems, eq(orders.id, orderItems.id))
+    .leftJoin(orderStatusHistory, eq(orders.id, orderStatusHistory.id))
     .where(and(...conditions))
     .orderBy(orders.createdAt);
 }
@@ -1067,7 +1067,7 @@ export async function updateOrderStatusInKDS(id: number, newStatus: string, staf
   
   // Record status change
   await db.insert(orderStatusHistory).values({
-    orderId,
+    id,
     kitchenStaffId: staffId,
     startTime: new Date(),
   });
@@ -1081,7 +1081,7 @@ export async function updateOrderStatusInKDS(id: number, newStatus: string, staf
   };
   
   if (statusMap[newStatus]) {
-    await db.update(orders).set({ orderStatus: statusMap[newStatus] }).where(eq(orders.id, orderId));
+    await db.update(orders).set({ orderStatus: statusMap[newStatus] }).where(eq(orders.id, id));
   }
 }
 
