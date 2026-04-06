@@ -604,6 +604,7 @@ export async function loadWalletBalance(customerId: number, amount: number, desc
   if (!db) throw new Error("DB unavailable");
   
   const wallet = await getOrCreateWallet(customerId);
+  const newBalance = Number(wallet.creditLimit) + amount;
   
   await db
     .update(customerWallets)

@@ -211,3 +211,4 @@
 ## Bug Fixes
 - [x] Fix API mutation error: undefined id being passed on /sales/pos page (fixed addPaymentMethod call to use 'id' instead of 'orderId')
 - [x] Fix receipt dialog showing "Order not found" after payment completion (fixed getOrderById to use orderId, fixed return value to use orderId)
+- [x] Fix customer wallet balance loading feature (fixed undefined newBalance variable in loadWalletBalance function)
