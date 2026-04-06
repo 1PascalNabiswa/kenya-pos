@@ -30,7 +30,7 @@ export function UserManagement() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    phoneNumber: "",
+    phone: "",
     employeeId: "",
     department: "",
     position: "",
@@ -50,7 +50,7 @@ export function UserManagement() {
       setFormData({
         firstName: "",
         lastName: "",
-        phoneNumber: "",
+        phone: "",
         employeeId: "",
         department: "",
         position: "",
@@ -154,8 +154,8 @@ export function UserManagement() {
               </div>
               <Input
                 placeholder="Phone Number"
-                value={formData.phoneNumber}
-                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
               <Input
                 placeholder="Employee ID"
@@ -248,7 +248,7 @@ export function UserManagement() {
                       <td className="py-3 px-4 text-sm text-gray-600">{staff.employeeId || "-"}</td>
                       <td className="py-3 px-4 text-sm">{staff.position || "-"}</td>
                       <td className="py-3 px-4 text-sm">{staff.department || "-"}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{staff.phoneNumber || "-"}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600">{staff.phone || "-"}</td>
                       <td className="py-3 px-4">
                         <Badge className={statusColors[staff.status] || "bg-gray-100"}>
                           {staff.status}
@@ -266,7 +266,7 @@ export function UserManagement() {
                                   setFormData({
                                     firstName: staff.firstName,
                                     lastName: staff.lastName,
-                                    phoneNumber: staff.phoneNumber || "",
+                                    phone: staff.phone || "",
                                     employeeId: staff.employeeId || "",
                                     department: staff.department || "",
                                     position: staff.position || "",
@@ -296,8 +296,8 @@ export function UserManagement() {
                                 </div>
                                 <Input
                                   placeholder="Phone Number"
-                                  value={formData.phoneNumber}
-                                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                                  value={formData.phone}
+                                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 />
                                 <Input
                                   placeholder="Employee ID"

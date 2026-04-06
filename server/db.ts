@@ -163,8 +163,7 @@ export async function getProducts(opts?: {
     conditions.push(
       or(
         like(products.name, `%${opts.search}%`),
-        like(products.sku, `%${opts.search}%`),
-        like(products.barcode, `%${opts.search}%`)
+        like(products.sku, `%${opts.search}%`)
       )
     );
   }
@@ -223,10 +222,10 @@ export async function getLowStockProducts(threshold?: number) {
     .where(
       and(
         eq(products.isActive, true),
-        lte(products.stock, products.minStock)
+        lte(products.stockQuantity, products.lowStockThreshold)
       )
     )
-    .orderBy(products.stock);
+    .orderBy(products.stockQuantity);
 }
 
 export async function adjustStock(
@@ -241,15 +240,15 @@ export async function adjustStock(
   if (!db) throw new Error("DB unavailable");
   const product = await getProductById(productId);
   if (!product) throw new Error("Product not found");
-  const quantityBefore = product.stockQuantity;
+  const quantityBefore = product.stock;
   const quantityAfter = quantityBefore + quantityChange;
   await db
     .update(products)
-    .set({ stockQuantity: quantityAfter })
+    .set({ stock: quantityAfter })
     .where(eq(products.id, productId));
   await db.insert(inventoryLogs).values({
     productId,
-    changeType,
+    type: changeType,
     quantityBefore,
     quantityChange,
     quantityAfter,
@@ -1204,7 +1203,7 @@ export async function listStaffProfiles(filters?: {
         like(staffProfiles.firstName, `%${filters.search}%`),
         like(staffProfiles.lastName, `%${filters.search}%`),
         like(staffProfiles.employeeId, `%${filters.search}%`),
-        like(staffProfiles.phoneNumber, `%${filters.search}%`)
+        like(staffProfiles.phone, `%${filters.search}%`)
       )
     );
   }

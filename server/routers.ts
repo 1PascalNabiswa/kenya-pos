@@ -315,18 +315,13 @@ const ordersRouter = router({
         {
           orderNumber,
           customerId: input.customerId,
-          customerName: input.customerName,
           subtotal: input.subtotal,
           taxAmount: input.taxAmount,
           discountAmount: input.discountAmount ?? "0",
           totalAmount: input.totalAmount,
-          paymentMethod: input.paymentMethod,
           paymentStatus: input.paymentMethod === "cash" ? "paid" : "pending",
           orderStatus: input.paymentMethod === "cash" ? "completed" : "pending",
-          cashReceived: input.cashReceived,
-          cashChange: input.cashChange,
           notes: input.notes,
-          servedBy: ctx.user?.id,
         },
         input.items.map((item) => ({
           ...item,
@@ -339,7 +334,7 @@ const ordersRouter = router({
       if (input.customerId && input.paymentMethod === "cash") {
         const customer = await getCustomerById(input.customerId);
         if (customer) {
-          const newTotal = Number(customer.totalSpent) + Number(input.totalAmount);
+          const newTotal = Number(customer.totalSpent || 0) + Number(input.totalAmount);
           await updateCustomer(input.customerId, { totalSpent: String(newTotal) });
         }
       }
@@ -383,7 +378,7 @@ const ordersRouter = router({
         if (order?.customerId) {
           const customer = await getCustomerById(order.customerId);
           if (customer) {
-            const newTotal = Number(customer.totalSpent) + Number(order.totalAmount);
+            const newTotal = Number(customer.totalSpent || 0) + Number(order.totalAmount);
             await updateCustomer(order.customerId, { totalSpent: String(newTotal) });
           }
         }
@@ -463,14 +458,12 @@ const paymentsRouter = router({
   addMethod: protectedProcedure
     .input(z.object({
       orderId: z.number(),
-      method: z.enum(["cash", "mpesa", "stripe", "wallet"]),
+      method: z.enum(["cash", "mpesa", "wallet", "card"]),
       amount: z.number().positive(),
-      transactionId: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       await addPaymentMethod(input.orderId, {
         methodType: input.method as any,
-        transactionId: input.transactionId,
       });
       return { success: true };
     }),
@@ -614,7 +607,7 @@ const transactionsRouter = router({
     .input(
       z.object({
         transactionId: z.string(),
-        method: z.enum(["mpesa", "stripe", "bank"]),
+        method: z.enum(["mpesa", "wallet", "card"]),
         amount: z.number().positive(),
         customerName: z.string().optional(),
       })
@@ -709,7 +702,7 @@ const creditRouter = router({
     .mutation(async ({ input, ctx }) => {
       const result = await createCreditAccount({
         customerId: input.customerId || 0,
-        creditLimit: input.creditLimit || "0",
+        creditLimit: "0",
       });
       await recordAuditLog({
         userId: ctx.user?.id,

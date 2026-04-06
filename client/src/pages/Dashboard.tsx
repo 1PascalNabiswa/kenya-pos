@@ -177,10 +177,10 @@ export default function Dashboard() {
                     <Badge
                       variant="secondary"
                       className={`text-[10px] flex-shrink-0 ml-2 ${
-                        p.stockQuantity === 0 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                        p.stockQuantityQuantity === 0 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
                       }`}
                     >
-                      {p.stockQuantity === 0 ? "Out of stock" : `${p.stockQuantity} left`}
+                      {p.stockQuantityQuantity === 0 ? "Out of stock" : `${p.stockQuantityQuantity} left`}
                     </Badge>
                   </div>
                 ))}
@@ -227,7 +227,7 @@ export default function Dashboard() {
                   {stats.recentOrders.map((order) => (
                     <tr key={order.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                       <td className="py-2 font-mono text-xs text-primary">{order.orderNumber}</td>
-                      <td className="py-2 text-xs">{order.customerName ?? "Walk-in"}</td>
+                      <td className="py-2 text-xs">{order.customerId ?? "Walk-in"}</td>
                       <td className="py-2">
                         <span className="text-xs uppercase font-medium">{order.paymentMethod}</span>
                       </td>

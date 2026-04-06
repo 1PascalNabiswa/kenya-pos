@@ -104,8 +104,8 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber }: R
               <div className="text-center text-xs font-bold mb-1">RECEIPT</div>
               <div className="text-xs">Order: {order.orderNumber}</div>
               <div className="text-xs">Date: {formatDate(order.createdAt)}</div>
-              {order.customerName && (
-                <div className="text-xs">Customer: {order.customerName}</div>
+              {order.customerId && (
+                <div className="text-xs">Customer ID: {order.customerId}</div>
               )}
 
               <div className="receipt-divider" />
@@ -165,16 +165,10 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber }: R
                   </div>
                 </>
               )}
-              {order.paymentMethod === "mpesa" && order.mpesaTransactionId && (
+              {order.paymentStatus === "paid" && (
                 <div className="receipt-row text-xs">
-                  <span>M-Pesa Ref</span>
-                  <span>{order.mpesaTransactionId}</span>
-                </div>
-              )}
-              {order.paymentMethod === "mpesa" && order.mpesaPhone && (
-                <div className="receipt-row text-xs">
-                  <span>Phone</span>
-                  <span>{order.mpesaPhone}</span>
+                  <span>Payment</span>
+                  <span>Completed</span>
                 </div>
               )}
 

@@ -116,8 +116,8 @@ export default function SalesOrders() {
             ) : orders.map((order) => (
               <tr key={order.id} className="border-t border-border/50 hover:bg-secondary/20 transition-colors">
                 <td className="p-3 font-mono text-xs text-primary font-medium">{order.orderNumber}</td>
-                <td className="p-3 text-xs">{order.customerName ?? "Walk-in"}</td>
-                <td className="p-3">{paymentBadge(order.paymentMethod)}</td>
+                <td className="p-3 text-xs">{order.customerId ?? "Walk-in"}</td>
+                <td className="p-3">-</td>
                 <td className="p-3 text-center">
                   <span className={`status-${order.paymentStatus}`}>{order.paymentStatus}</span>
                 </td>
@@ -177,7 +177,7 @@ export default function SalesOrders() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Payment Method</p>
-                  {paymentBadge(viewOrder.paymentMethod)}
+                  {viewOrder.paymentStatus}
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Status</p>
@@ -200,7 +200,7 @@ export default function SalesOrders() {
                   <span className="text-primary">KES {Number(viewOrder.totalAmount).toLocaleString()}</span>
                 </div>
               </div>
-              {viewOrder.paymentMethod === "cash" && viewOrder.cashReceived && (
+              {viewOrder.paymentStatus === "paid" && (
                 <div className="bg-green-50 rounded-lg p-3 text-sm space-y-1">
                   <div className="flex justify-between">
                     <span>Cash Received</span>
