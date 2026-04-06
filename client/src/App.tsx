@@ -20,6 +20,8 @@ import AuditLogs from "./pages/AuditLogs";
 import Branches from "./pages/Branches";
 import Suppliers from "@/pages/Suppliers";
 import KitchenDisplay from "@/pages/KitchenDisplay";
+import { UserManagement } from "@/pages/UserManagement";
+import { StaffActivityLogs } from "@/pages/StaffActivityLogs";
 
 function Router() {
   return (
@@ -142,6 +144,16 @@ function Router() {
       <Route path="/suppliers" component={() => (
         <POSLayout>
           <Suppliers />
+        </POSLayout>
+      )} />
+      <Route path="/users" component={() => (
+        <POSLayout>
+          <UserManagement />
+        </POSLayout>
+      )} />
+      <Route path="/staff-activity" component={() => (
+        <POSLayout>
+          <StaffActivityLogs />
         </POSLayout>
       )} />
       <Route path="/kitchen" component={KitchenDisplay} />

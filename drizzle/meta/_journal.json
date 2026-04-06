@@ -36,6 +36,20 @@
       "when": 1775462218764,
       "tag": "0004_short_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1775463482816,
+      "tag": "0005_nifty_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1775464161159,
+      "tag": "0006_add_staff_management",
+      "breakpoints": true
     }
   ]
 }

@@ -187,3 +187,15 @@
 - [x] Test KDS with multiple concurrent orders
 - [x] Write 18 comprehensive KDS tests
 - [x] Add Kitchen Display menu item to navigation
+
+
+## Phase 21: User Management System
+- [ ] Update schema: add staff_profiles, user_roles, staff_activity_logs, role_permissions tables
+- [ ] Create User Management backend routers: CRUD, role assignment, activity logging
+- [ ] Build User Management page with staff directory and role assignment
+- [ ] Build Staff Activity Logs viewer page
+- [ ] Build Permissions Matrix configuration page
+- [ ] Add password management and user status controls
+- [ ] Implement user search and filtering
+- [ ] Write comprehensive user management tests
+- [ ] Add User Management menu item to navigation

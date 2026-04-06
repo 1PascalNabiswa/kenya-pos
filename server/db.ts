@@ -51,6 +51,11 @@ import {
   InsertOrderStatusHistory,
   KdsSettings,
   InsertKdsSettings,
+  staffProfiles,
+  staffActivityLogs,
+  StaffProfile,
+  InsertStaffProfile,
+  InsertStaffActivityLog,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1149,4 +1154,134 @@ export async function createKdsSettings(data: InsertKdsSettings) {
   
   const result = await db.insert(kdsSettings).values(data);
   return result;
+}
+
+
+// ─── Staff Management ──────────────────────────────────────────────────────
+export async function createStaffProfile(data: InsertStaffProfile) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(staffProfiles).values(data);
+  return result;
+}
+
+export async function getStaffProfile(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(staffProfiles).where(eq(staffProfiles.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function getStaffProfileByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(staffProfiles).where(eq(staffProfiles.userId, userId)).limit(1);
+  return result[0] || null;
+}
+
+export async function listStaffProfiles(filters?: {
+  status?: string;
+  branchId?: number;
+  department?: string;
+  search?: string;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (filters?.status) conditions.push(eq(staffProfiles.status, filters.status as any));
+  if (filters?.branchId) conditions.push(eq(staffProfiles.branchId, filters.branchId));
+  if (filters?.department) conditions.push(eq(staffProfiles.department, filters.department));
+  if (filters?.search) {
+    conditions.push(
+      or(
+        like(staffProfiles.firstName, `%${filters.search}%`),
+        like(staffProfiles.lastName, `%${filters.search}%`),
+        like(staffProfiles.employeeId, `%${filters.search}%`),
+        like(staffProfiles.phoneNumber, `%${filters.search}%`)
+      )
+    );
+  }
+  
+  return db
+    .select()
+    .from(staffProfiles)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(staffProfiles.createdAt);
+}
+
+export async function updateStaffProfile(id: number, data: Partial<StaffProfile>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const { id: _, ...updateData } = data as any;
+  await db.update(staffProfiles).set(updateData).where(eq(staffProfiles.id, id));
+}
+
+export async function deleteStaffProfile(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.delete(staffProfiles).where(eq(staffProfiles.id, id));
+}
+
+// ─── Staff Activity Logs ───────────────────────────────────────────────────
+export async function recordStaffActivity(data: InsertStaffActivityLog) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Activity] DB unavailable, log not recorded");
+    return;
+  }
+  
+  try {
+    await db.insert(staffActivityLogs).values(data);
+  } catch (error) {
+    console.error("[Activity] Failed to record log:", error);
+  }
+}
+
+export async function getStaffActivityLogs(filters?: {
+  userId?: number;
+  activityType?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (filters?.userId) conditions.push(eq(staffActivityLogs.userId, filters.userId));
+  if (filters?.activityType) conditions.push(eq(staffActivityLogs.activityType, filters.activityType as any));
+  if (filters?.startDate) conditions.push(gte(staffActivityLogs.createdAt, filters.startDate));
+  if (filters?.endDate) conditions.push(lte(staffActivityLogs.createdAt, filters.endDate));
+  
+  return db
+    .select()
+    .from(staffActivityLogs)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(staffActivityLogs.createdAt))
+    .limit(filters?.limit || 1000);
+}
+
+export async function getUserActivitySummary(userId: number, days: number = 7) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  return db
+    .select()
+    .from(staffActivityLogs)
+    .where(
+      and(
+        eq(staffActivityLogs.userId, userId),
+        gte(staffActivityLogs.createdAt, startDate)
+      )
+    )
+    .orderBy(desc(staffActivityLogs.createdAt));
 }

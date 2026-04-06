@@ -22,6 +22,8 @@ import {
   Truck,
   LogIn,
   UtensilsCrossed,
+  UserCheck,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -79,6 +81,14 @@ const navItems: NavItem[] = [
     ],
   },
   { label: "Audit Trail", icon: <LogIn size={18} />, href: "/audit-logs" },
+  {
+    label: "Administration",
+    icon: <UserCheck size={18} />,
+    children: [
+      { label: "User Management", href: "/users", icon: <Users size={14} /> },
+      { label: "Staff Activity", href: "/staff-activity", icon: <Activity size={14} /> },
+    ],
+  },
   { label: "Kitchen Display", icon: <UtensilsCrossed size={18} />, href: "/kitchen" },
   { label: "Settings", icon: <Settings size={18} />, href: "/settings" },
 ];

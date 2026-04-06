@@ -80,6 +80,15 @@ import {
   getKdsSettings,
   updateKdsSettings,
   createKdsSettings,
+  createStaffProfile,
+  getStaffProfile,
+  getStaffProfileByUserId,
+  listStaffProfiles,
+  updateStaffProfile,
+  deleteStaffProfile,
+  recordStaffActivity,
+  getStaffActivityLogs,
+  getUserActivitySummary,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -460,8 +469,7 @@ const paymentsRouter = router({
     }))
     .mutation(async ({ input }) => {
       await addPaymentMethod(input.orderId, {
-        method: input.method,
-        amount: String(input.amount),
+        methodType: input.method as any,
         transactionId: input.transactionId,
       });
       return { success: true };
@@ -614,9 +622,9 @@ const transactionsRouter = router({
     .mutation(async ({ input }) => {
       await recordTransaction({
         transactionId: input.transactionId,
-        method: input.method,
+        paymentMethod: input.method,
         amount: input.amount.toString(),
-        customerName: input.customerName,
+        notes: input.customerName,
         status: "unused",
       });
       return { success: true };
@@ -659,13 +667,12 @@ const formsRouter = router({
   create: protectedProcedure
     .input(z.object({ title: z.string(), code: z.string(), amount: z.number().positive(), servingPointId: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
-      const result = await createForm({ ...input, amount: input.amount.toString() });
+      const result = await createForm({ ...input, totalAmount: input.amount.toString() });
       await recordAuditLog({
         userId: ctx.user?.id,
         action: "CREATE",
-        module: "Forms",
         entityType: "Form",
-        afterValue: input,
+        changes: input,
       });
       return result;
     }),
@@ -687,10 +694,9 @@ const formsRouter = router({
       await recordAuditLog({
         userId: ctx.user?.id,
         action: "UPDATE",
-        module: "Forms",
         entityType: "Form",
         entityId: input.id,
-        afterValue: { status: input.status },
+        changes: { status: input.status },
       });
       return { success: true };
     }),
@@ -702,18 +708,14 @@ const creditRouter = router({
     .input(z.object({ studentName: z.string(), studentId: z.string().optional(), customerId: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
       const result = await createCreditAccount({
-        ...input,
-        balance: "0",
-        totalCredit: "0",
-        totalPaid: "0",
-        authorizedBy: ctx.user?.id,
+        customerId: input.customerId || 0,
+        creditLimit: input.creditLimit || "0",
       });
       await recordAuditLog({
         userId: ctx.user?.id,
         action: "CREATE",
-        module: "Credit",
         entityType: "CreditAccount",
-        afterValue: input,
+        changes: input,
       });
       return result;
     }),
@@ -806,10 +808,9 @@ const kdsRouter = router({
       await recordAuditLog({
         userId: ctx.user?.id,
         action: "UPDATE",
-        module: "KDS",
         entityType: "Order",
         entityId: input.orderId,
-        afterValue: { status: input.status },
+        changes: { status: input.status },
       });
       return { success: true };
     }),
@@ -824,6 +825,113 @@ const kdsRouter = router({
     .input(z.object({ orderId: z.number() }))
     .query(async ({ input }) => {
       return getOrderStatusHistory(input.orderId);
+    }),
+});
+
+// ─── Staff Management Router ───────────────────────────────────────────────
+const staffRouter = router({
+  createProfile: protectedProcedure
+    .input(z.object({
+      userId: z.number(),
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      phoneNumber: z.string().optional(),
+      employeeId: z.string().optional(),
+      department: z.string().optional(),
+      position: z.string().optional(),
+      hireDate: z.date().optional(),
+      branchId: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const profile = await createStaffProfile(input);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Created staff profile for user ${input.userId}`,
+        status: "success",
+      });
+      return profile;
+    }),
+
+  getProfile: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return getStaffProfile(input.id);
+    }),
+
+  getByUserId: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return getStaffProfileByUserId(input.userId);
+    }),
+
+  list: protectedProcedure
+    .input(z.object({
+      status: z.string().optional(),
+      branchId: z.number().optional(),
+      department: z.string().optional(),
+      search: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      return listStaffProfiles(input);
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      phoneNumber: z.string().optional(),
+      department: z.string().optional(),
+      position: z.string().optional(),
+      status: z.enum(["active", "inactive", "suspended", "on_leave"]).optional(),
+      branchId: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...updateData } = input;
+      await updateStaffProfile(id, updateData as any);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "status_change",
+        description: `Updated staff profile ${id}`,
+        entityType: "StaffProfile",
+        entityId: id,
+        status: "success",
+      });
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await deleteStaffProfile(input.id);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Deleted staff profile ${input.id}`,
+        entityType: "StaffProfile",
+        entityId: input.id,
+        status: "success",
+      });
+      return { success: true };
+    }),
+
+  getActivityLogs: protectedProcedure
+    .input(z.object({
+      userId: z.number().optional(),
+      activityType: z.string().optional(),
+      days: z.number().optional(),
+      limit: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      if (input.userId && input.days) {
+        return getUserActivitySummary(input.userId, input.days);
+      }
+      return getStaffActivityLogs({
+        userId: input.userId,
+        activityType: input.activityType,
+        limit: input.limit,
+      });
     }),
 });
 
@@ -854,6 +962,7 @@ export const appRouter = router({
   servingPoints: servingPointsRouter,
   suppliers: suppliersRouter,
   kds: kdsRouter,
+  staff: staffRouter,
 });
 
 export type AppRouter = typeof appRouter;
