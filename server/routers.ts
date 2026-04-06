@@ -49,6 +49,7 @@ import {
   getForm,
   listForms,
   updateFormSpent,
+  updateFormStatus,
   createCreditAccount,
   getCreditAccount,
   listCreditAccounts,
@@ -688,6 +689,7 @@ const formsRouter = router({
   updateStatus: protectedProcedure
     .input(z.object({ id: z.number(), status: z.string() }))
     .mutation(async ({ input, ctx }) => {
+      await updateFormStatus(input.id, input.status);
       await recordAuditLog({
         module: "POS",
         userId: ctx.user?.id,

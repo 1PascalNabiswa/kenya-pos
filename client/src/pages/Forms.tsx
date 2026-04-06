@@ -85,6 +85,7 @@ export default function Forms() {
                 <th className="px-6 py-3 text-left text-sm font-semibold">Code</th>
                 <th className="px-6 py-3 text-right text-sm font-semibold">Amount</th>
                 <th className="px-6 py-3 text-right text-sm font-semibold">Spent</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Serving Date</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
                 <th className="px-6 py-3 text-right text-sm font-semibold">Actions</th>
               </tr>
@@ -92,7 +93,7 @@ export default function Forms() {
             <tbody className="divide-y divide-border">
               {forms.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
                     No forms created yet
                   </td>
                 </tr>
@@ -103,14 +104,17 @@ export default function Forms() {
                     <td className="px-6 py-4 text-sm text-muted-foreground">{form.code}</td>
                     <td className="px-6 py-4 text-right font-semibold">KES {Number(form.amount).toLocaleString()}</td>
                     <td className="px-6 py-4 text-right text-sm">KES {Number(form.spent || 0).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                      {form.servingDate ? new Date(form.servingDate).toLocaleString() : "Not set"}
+                    </td>
                     <td className="px-6 py-4">
                       <Badge className={statusColors[form.status] || "bg-gray-100 text-gray-800"}>
                         {form.status.replace(/_/g, " ").toUpperCase()}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Select value={form.status} onValueChange={(val) => handleStatusChange(form.id, val)}>
-                        <SelectTrigger className="w-32 h-8 text-xs">
+                      <Select value={form.status} onValueChange={(val) => handleStatusChange(form.id, val)} disabled={updateMutation.isPending}>
+                        <SelectTrigger className="w-40 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

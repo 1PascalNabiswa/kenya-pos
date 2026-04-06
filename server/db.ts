@@ -800,7 +800,14 @@ export async function updateFormSpent(id: number, amount: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
-  await db.update(forms).set({ amountSpent: amount.toString() }).where(eq(forms.id, id));
+  await db.update(forms).set({ spent: amount.toString() }).where(eq(forms.id, id));
+}
+
+export async function updateFormStatus(id: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(forms).set({ status: status as any }).where(eq(forms.id, id));
 }
 
 // ─── Credit Accounts ───────────────────────────────────────────────────────
