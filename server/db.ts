@@ -169,17 +169,20 @@ export async function getProducts(opts?: {
     );
   }
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  // Build the query with proper where clause handling
+  let query = db.select().from(products);
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+  }
+  
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(products);
+  if (conditions.length > 0) {
+    countQuery = countQuery.where(and(...conditions));
+  }
 
   const [items, countResult] = await Promise.all([
-    db
-      .select()
-      .from(products)
-      .where(whereClause)
-      .orderBy(products.name)
-      .limit(limit)
-      .offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(products).where(whereClause),
+    query.orderBy(products.name).limit(limit).offset(offset),
+    countQuery,
   ]);
 
   return { items, total: Number(countResult[0]?.count ?? 0) };
