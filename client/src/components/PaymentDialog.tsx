@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { Smartphone, Banknote, CreditCard, Loader2, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReceiptDialog from "./ReceiptDialog";
+import { useEffect } from "react";
 interface CartItem {
   productId: number;
   productName: string;
@@ -65,6 +66,24 @@ export default function PaymentDialog({
   const [completedOrderNumber, setCompletedOrderNumber] = useState<string>("");
 
   const utils = trpc.useUtils();
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      // Reset all state variables
+      setPaymentMode("single");
+      setMethod("cash");
+      setCashReceived("");
+      setMpesaPhone("");
+      setMpesaStatus("idle");
+      setCheckoutRequestId("");
+      setIsProcessing(false);
+      setSplitPayments([]);
+      setShowReceipt(false);
+      setCompletedOrderId(null);
+      setCompletedOrderNumber("");
+    }
+  }, [open]);
 
   const createOrder = trpc.orders.create.useMutation({
     onSuccess: (data) => {
