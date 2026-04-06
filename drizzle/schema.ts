@@ -349,3 +349,50 @@ export const userRoles = mysqlTable("user_roles", {
 
 export type UserRole = typeof userRoles.$inferSelect;
 export type InsertUserRole = typeof userRoles.$inferInsert;
+
+
+// ─── Kitchen Display System (KDS) ──────────────────────────────────────────
+export const kitchenStaff = mysqlTable("kitchen_staff", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  station: varchar("station", { length: 100 }).notNull(), // e.g., "Grill", "Fryer", "Prep"
+  isActive: boolean("isActive").default(true).notNull(),
+  ordersCompleted: int("ordersCompleted").default(0).notNull(),
+  averagePrepTime: int("averagePrepTime").default(0).notNull(), // in seconds
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KitchenStaff = typeof kitchenStaff.$inferSelect;
+export type InsertKitchenStaff = typeof kitchenStaff.$inferInsert;
+
+// Order status history for KDS tracking
+export const orderStatusHistory = mysqlTable("order_status_history", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull().references(() => orders.id),
+  status: mysqlEnum("status", ["pending", "preparing", "ready", "served", "completed"]).notNull(),
+  kitchenStaffId: int("kitchenStaffId").references(() => kitchenStaff.id),
+  notes: text("notes"),
+  startTime: timestamp("startTime").defaultNow().notNull(),
+  endTime: timestamp("endTime"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OrderStatusHistory = typeof orderStatusHistory.$inferSelect;
+export type InsertOrderStatusHistory = typeof orderStatusHistory.$inferInsert;
+
+// KDS configuration and settings
+export const kdsSettings = mysqlTable("kds_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").references(() => branches.id),
+  soundAlertEnabled: boolean("soundAlertEnabled").default(true).notNull(),
+  visualAlertEnabled: boolean("visualAlertEnabled").default(true).notNull(),
+  autoMarkReady: boolean("autoMarkReady").default(false).notNull(),
+  readyDisplayTime: int("readyDisplayTime").default(300).notNull(), // in seconds
+  theme: varchar("theme", { length: 20 }).default("dark"), // dark or light
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KdsSettings = typeof kdsSettings.$inferSelect;
+export type InsertKdsSettings = typeof kdsSettings.$inferInsert;

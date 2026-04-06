@@ -18,7 +18,8 @@ import Forms from "./pages/Forms";
 import Credit from "./pages/Credit";
 import AuditLogs from "./pages/AuditLogs";
 import Branches from "./pages/Branches";
-import Suppliers from "./pages/Suppliers";
+import Suppliers from "@/pages/Suppliers";
+import KitchenDisplay from "@/pages/KitchenDisplay";
 
 function Router() {
   return (
@@ -143,6 +144,7 @@ function Router() {
           <Suppliers />
         </POSLayout>
       )} />
+      <Route path="/kitchen" component={KitchenDisplay} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

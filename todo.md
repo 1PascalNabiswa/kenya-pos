@@ -171,3 +171,19 @@
 - Production-ready system
 - 112 restaurant menu items seeded
 - 11 organized categories
+
+
+## Phase 20: Kitchen Display System (KDS)
+- [x] Update schema: add order_status_history, kitchen_staff, kds_settings tables
+- [x] Create KDS backend routers: updateOrderStatus, getKitchenQueue, assignStaff, getStaffPerformance
+- [x] Build Kitchen Display page with order queue grid
+- [x] Implement order status workflow: Pending → Preparing → Ready → Served → Completed
+- [x] Add drag-drop to move orders between status columns
+- [x] Add real-time WebSocket updates for incoming orders
+- [x] Build kitchen staff assignment UI
+- [x] Add order timer and priority indicators
+- [x] Implement kitchen staff performance metrics
+- [x] Add sound/visual alerts for new orders
+- [x] Test KDS with multiple concurrent orders
+- [x] Write 18 comprehensive KDS tests
+- [x] Add Kitchen Display menu item to navigation

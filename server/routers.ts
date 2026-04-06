@@ -68,6 +68,18 @@ import {
   updateSupplierPaymentStatus,
   assignUserRole,
   getUserRoles,
+  createKitchenStaff,
+  getKitchenStaff,
+  listKitchenStaff,
+  updateKitchenStaffStatus,
+  updateKitchenStaffMetrics,
+  recordOrderStatus,
+  getOrderStatusHistory,
+  getKitchenQueue,
+  updateOrderStatusInKDS,
+  getKdsSettings,
+  updateKdsSettings,
+  createKdsSettings,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -780,6 +792,41 @@ const suppliersRouter = router({
   }),
 });
 
+const kdsRouter = router({
+  listStaff: protectedProcedure
+    .input(z.object({ active: z.boolean().optional() }))
+    .query(async ({ input }) => {
+      return listKitchenStaff(input.active);
+    }),
+
+  updateOrderStatus: protectedProcedure
+    .input(z.object({ orderId: z.number(), status: z.string(), staffId: z.number().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      await updateOrderStatusInKDS(input.orderId, input.status, input.staffId);
+      await recordAuditLog({
+        userId: ctx.user?.id,
+        action: "UPDATE",
+        module: "KDS",
+        entityType: "Order",
+        entityId: input.orderId,
+        afterValue: { status: input.status },
+      });
+      return { success: true };
+    }),
+
+  getQueue: protectedProcedure
+    .input(z.object({ status: z.string().optional() }))
+    .query(async ({ input }) => {
+      return getKitchenQueue(input.status);
+    }),
+
+  getOrderHistory: protectedProcedure
+    .input(z.object({ orderId: z.number() }))
+    .query(async ({ input }) => {
+      return getOrderStatusHistory(input.orderId);
+    }),
+});
+
 // ─── App Router ────────────────────────────────────────────────────────────
 export const appRouter = router({
   system: systemRouter,
@@ -806,6 +853,7 @@ export const appRouter = router({
   branches: branchesRouter,
   servingPoints: servingPointsRouter,
   suppliers: suppliersRouter,
+  kds: kdsRouter,
 });
 
 export type AppRouter = typeof appRouter;

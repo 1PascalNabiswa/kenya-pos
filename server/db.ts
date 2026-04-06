@@ -42,6 +42,15 @@ import {
   InsertCreditAccount,
   AuditLog,
   InsertAuditLog,
+  kitchenStaff,
+  orderStatusHistory,
+  kdsSettings,
+  KitchenStaff,
+  InsertKitchenStaff,
+  OrderStatusHistory,
+  InsertOrderStatusHistory,
+  KdsSettings,
+  InsertKdsSettings,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -992,4 +1001,152 @@ export async function getUserRoles(userId: number) {
   if (!db) return [];
   
   return db.select().from(userRoles).where(eq(userRoles.userId, userId));
+}
+
+
+// ─── Kitchen Display System (KDS) ──────────────────────────────────────────
+export async function createKitchenStaff(data: InsertKitchenStaff) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(kitchenStaff).values(data);
+  return result;
+}
+
+export async function getKitchenStaff(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(kitchenStaff).where(eq(kitchenStaff.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function listKitchenStaff(active?: boolean) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (active !== undefined) conditions.push(eq(kitchenStaff.isActive, active));
+  
+  return db
+    .select()
+    .from(kitchenStaff)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(kitchenStaff.station);
+}
+
+export async function updateKitchenStaffStatus(id: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(kitchenStaff).set({ isActive }).where(eq(kitchenStaff.id, id));
+}
+
+export async function updateKitchenStaffMetrics(id: number, ordersCompleted: number, avgPrepTime: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(kitchenStaff)
+    .set({ ordersCompleted, averagePrepTime: avgPrepTime })
+    .where(eq(kitchenStaff.id, id));
+}
+
+// Order status history
+export async function recordOrderStatus(data: InsertOrderStatusHistory) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(orderStatusHistory).values(data);
+  return result;
+}
+
+export async function getOrderStatusHistory(orderId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select()
+    .from(orderStatusHistory)
+    .where(eq(orderStatusHistory.orderId, orderId))
+    .orderBy(orderStatusHistory.createdAt);
+}
+
+export async function getKitchenQueue(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [eq(orders.orderStatus, "processing" as any)];
+  if (status) conditions.push(eq(orderStatusHistory.status, status as any));
+  
+  return db
+    .select({
+      order: orders,
+      items: orderItems,
+      status: orderStatusHistory,
+    })
+    .from(orders)
+    .leftJoin(orderItems, eq(orders.id, orderItems.orderId))
+    .leftJoin(orderStatusHistory, eq(orders.id, orderStatusHistory.orderId))
+    .where(and(...conditions))
+    .orderBy(orders.createdAt);
+}
+
+export async function updateOrderStatusInKDS(orderId: number, newStatus: string, staffId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // Record status change
+  await db.insert(orderStatusHistory).values({
+    orderId,
+    status: newStatus as any,
+    kitchenStaffId: staffId,
+    startTime: new Date(),
+  });
+  
+  // Update order status
+  const statusMap: Record<string, any> = {
+    "preparing": "processing",
+    "ready": "processing",
+    "served": "completed",
+    "completed": "completed",
+  };
+  
+  if (statusMap[newStatus]) {
+    await db.update(orders).set({ orderStatus: statusMap[newStatus] }).where(eq(orders.id, orderId));
+  }
+}
+
+// KDS Settings
+export async function getKdsSettings(branchId?: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const conditions = [];
+  if (branchId) conditions.push(eq(kdsSettings.branchId, branchId));
+  
+  const result = await db
+    .select()
+    .from(kdsSettings)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+export async function updateKdsSettings(data: Partial<KdsSettings>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const { id, ...updateData } = data as any;
+  if (!id) throw new Error("KDS Settings ID required");
+  
+  await db.update(kdsSettings).set(updateData).where(eq(kdsSettings.id, id));
+}
+
+export async function createKdsSettings(data: InsertKdsSettings) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.insert(kdsSettings).values(data);
+  return result;
 }
