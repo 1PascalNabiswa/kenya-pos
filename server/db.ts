@@ -606,13 +606,14 @@ export async function loadWalletBalance(customerId: number, amount: number, desc
   if (!db) throw new Error("DB unavailable");
   
   const wallet = await getOrCreateWallet(customerId);
-  const newBalance = Number(wallet.creditLimit) + amount;
+  const newTotalLoaded = Number(wallet.totalLoaded) + amount;
+  const newBalance = newTotalLoaded - Number(wallet.totalSpent);
   
   await db
     .update(customerWallets)
     .set({
-      creditLimit: newBalance.toString(),
-      totalLoaded: (Number(wallet.totalLoaded) + amount).toString(),
+      balance: newBalance.toString(),
+      totalLoaded: newTotalLoaded.toString(),
     })
     .where(eq(customerWallets.id, wallet.id));
   
@@ -634,12 +635,14 @@ export async function spendFromWallet(customerId: number, amount: number, id: nu
   const wallet = await getWallet(customerId);
   if (!wallet) throw new Error("Wallet not found");
   
+  const newTotalSpent = Number(wallet.totalSpent) + amount;
+  const newBalance = Number(wallet.totalLoaded) - newTotalSpent;
   
   await db
     .update(customerWallets)
     .set({
-      creditLimit: newBalance.toString(),
-      totalSpent: (Number(wallet.totalSpent) + amount).toString(),
+      balance: newBalance.toString(),
+      totalSpent: newTotalSpent.toString(),
     })
     .where(eq(customerWallets.id, wallet.id));
   
