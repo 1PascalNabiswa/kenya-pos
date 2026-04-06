@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { Smartphone, Banknote, CreditCard, Loader2, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReceiptDialog from "./ReceiptDialog";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 interface CartItem {
   productId: number;
   productName: string;
@@ -99,9 +98,10 @@ export default function PaymentDialog({
   const updateStatus = trpc.orders.updateStatus.useMutation();
   const addPaymentMethod = trpc.payments.addMethod.useMutation();
   const queryMpesaStatus = trpc.payments.queryMpesaStatus.useMutation();
+  const deductWallet = trpc.wallet.deduct.useMutation();
   const getWallet = trpc.wallet.get.useQuery(
     { customerId: customerId || 0 },
-    { enabled: !!customerId && paymentMode === "split" && method === "wallet" }
+    { enabled: !!customerId && (method === "wallet") }
   );
 
   const cashChange = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0;
@@ -154,6 +154,56 @@ export default function PaymentDialog({
     );
   };
 
+  const handleWalletPayment = async () => {
+    if (!customerId) {
+      toast.error("No customer selected");
+      return;
+    }
+    if (!getWallet.data || getWallet.data.creditLimit < total) {
+      toast.error("Insufficient wallet balance");
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await createOrder.mutateAsync({
+        customerId,
+        customerName: customerName || "Walk-in Customer",
+        items: cart.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          unitPrice: String(item.unitPrice),
+          originalPrice: item.originalPrice ? String(item.originalPrice) : undefined,
+          totalPrice: String(item.unitPrice * item.quantity),
+        })),
+        subtotal: String(subtotal),
+        taxAmount: String(taxAmount),
+        totalAmount: String(total),
+        paymentMethod: "wallet",
+      });
+      
+      // Deduct from wallet balance
+      await deductWallet.mutateAsync({
+        customerId,
+        amount: total,
+      });
+      
+      // Invalidate wallet query to refresh balance
+      utils.wallet.get.invalidate();
+      
+      toast.success(`Payment of KES ${total.toLocaleString()} deducted from wallet`);
+      setCompletedOrderId(result.orderId);
+      setCompletedOrderNumber(result.orderNumber);
+      setShowReceipt(true);
+      onComplete(result.orderId, result.orderNumber);
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to process wallet payment");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCashPayment = async () => {
     if (!cashReceived || Number(cashReceived) < total) {
       toast.error("Cash received must be at least KES " + total.toLocaleString());
@@ -193,8 +243,15 @@ export default function PaymentDialog({
   };
 
   const handleSplitPayment = async () => {
-    if (splitTotal !== total) {
-      toast.error(`Total split payments (KES ${splitTotal}) must equal order total (KES ${total})`);
+    // Calculate confirmed amounts (cash is always confirmed, M-Pesa is pending)
+    const confirmedTotal = splitPayments
+      .filter((p) => p.method === "cash")
+      .reduce((sum, p) => sum + p.amount, 0);
+    
+    // Check if we have enough confirmed payment (cash) to cover the order
+    if (confirmedTotal < total) {
+      const needed = total - confirmedTotal;
+      toast.error(`Need at least KES ${needed} more in confirmed payments (cash)`);
       return;
     }
 
@@ -209,17 +266,13 @@ export default function PaymentDialog({
 
     setIsProcessing(true);
     try {
-      // Determine primary payment method from first split payment
-      const primaryMethod = splitPayments[0]?.method || "cash";
-      let cashReceivedAmount = "0";
-      let cashChangeAmount = "0";
-
-      // Calculate cash if any split payment is cash
-      const cashPayment = splitPayments.find((p) => p.method === "cash");
-      if (cashPayment) {
-        cashReceivedAmount = String(cashPayment.amount);
-        cashChangeAmount = "0";
-      }
+      // Calculate total received and excess (change/refund)
+      const totalReceived = splitPayments.reduce((sum, p) => sum + p.amount, 0);
+      const excessAmount = Math.max(0, totalReceived - total);
+      
+      // Determine order status: COMPLETED if all confirmed payments cover the total, PENDING if waiting for M-Pesa
+      const hasMpesaPending = mpesaPayments.length > 0;
+      const orderStatus = hasMpesaPending ? "pending" : "completed";
 
       const result = await createOrder.mutateAsync({
         customerId,
@@ -237,17 +290,20 @@ export default function PaymentDialog({
         taxAmount: String(taxAmount),
         totalAmount: String(total),
         paymentMethod: "mixed",
-        cashReceived: cashReceivedAmount,
-        cashChange: cashChangeAmount,
+        cashReceived: String(confirmedTotal),
+        cashChange: String(excessAmount),
+        status: orderStatus,
       });
 
-      // Record split payments
+      // Record split payments with confirmation status
       for (const payment of splitPayments) {
         try {
           await addPaymentMethod.mutateAsync({
             id: result.orderId,
             method: payment.method,
             amount: Number(payment.amount),
+            status: payment.method === "cash" ? "confirmed" : "pending",
+            mpesaPhone: payment.mpesaPhone,
           });
         } catch (e) {
           console.error("Failed to record payment method:", e);
@@ -255,7 +311,8 @@ export default function PaymentDialog({
       }
 
       const methods = splitPayments.map((p) => `${p.method}: KES ${p.amount}`).join(", ");
-      toast.success(`Payment split across: ${methods}`);
+      const statusMsg = hasMpesaPending ? " (M-Pesa pending confirmation)" : " (Paid)";
+      toast.success(`Payment split across: ${methods}${statusMsg}`);
       setCompletedOrderId(result.orderId);
       setCompletedOrderNumber(result.orderNumber);
       setShowReceipt(true);
@@ -285,143 +342,43 @@ export default function PaymentDialog({
       const result = await initiateMpesa.mutateAsync({
         phone: payment.mpesaPhone,
         amount: payment.amount,
-        orderId: customerId || 0,
-        orderNumber: `SPLIT-${Date.now()}`,
+        orderId: "",
+        description: `Split payment - KES ${payment.amount}`,
+        callbackUrl: "",
       });
 
-      setCheckoutRequestId(result.CheckoutRequestID);
-
-      // Update to waiting status
       setSplitPayments(
         splitPayments.map((p) =>
           p.id === paymentId
-            ? { ...p, mpesaStatus: "waiting", checkoutRequestId: result.CheckoutRequestID }
+            ? {
+                ...p,
+                mpesaStatus: "waiting",
+                checkoutRequestId: result.checkoutRequestId,
+              }
             : p
         )
       );
 
-      // Poll for payment status
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusResult = await queryMpesaStatus.mutateAsync({
-            checkoutRequestId: result.CheckoutRequestID,
-          });
-
-          if (statusResult.ResultCode === "0") {
-            clearInterval(pollInterval);
-            setSplitPayments(
-              splitPayments.map((p) =>
-                p.id === paymentId ? { ...p, mpesaStatus: "success" } : p
-              )
-            );
-            toast.success(`M-Pesa payment of KES ${payment.amount} confirmed!`);
-          }
-        } catch (e) {
-          console.error("Status check error:", e);
-        }
-      }, 3000);
-
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        const currentPayment = splitPayments.find((p) => p.id === paymentId);
-        if (currentPayment?.mpesaStatus === "waiting") {
-          setSplitPayments(
-            splitPayments.map((p) =>
-              p.id === paymentId ? { ...p, mpesaStatus: "failed" } : p
-            )
-          );
-          toast.error("M-Pesa payment timeout");
-        }
-      }, 60000);
+      toast.info("M-Pesa prompt sent. Please complete payment on your phone.");
     } catch (e: any) {
       setSplitPayments(
         splitPayments.map((p) =>
           p.id === paymentId ? { ...p, mpesaStatus: "failed" } : p
         )
       );
-      toast.error(e.message ?? "Failed to initiate M-Pesa payment");
-    }
-  };
-
-  const handleMpesaPayment = async () => {
-    if (!mpesaPhone) {
-      toast.error("Please enter M-Pesa phone number");
-      return;
-    }
-    setMpesaStatus("sending");
-    try {
-      const result = await initiateMpesa.mutateAsync({
-        phone: mpesaPhone,
-        amount: total,
-        orderId: customerId || 0,
-        orderNumber: `ORD-${Date.now()}`,
-      });
-      setCheckoutRequestId(result.checkoutRequestId);
-      setMpesaStatus("waiting");
-      toast.info("M-Pesa prompt sent to " + mpesaPhone);
-
-      // Poll for status
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusResult = await queryMpesaStatus.mutateAsync({
-            checkoutRequestId: result.checkoutRequestId,
-          });
-          if (statusResult.success) {
-            setMpesaStatus("success");
-            clearInterval(pollInterval);
-
-              const orderResult = await createOrder.mutateAsync({
-              customerId,
-              customerName: customerName || "Walk-in Customer",
-              items: cart.map((item) => ({
-                productId: item.productId,
-                productName: item.productName,
-                productSku: item.productSku,
-                quantity: item.quantity,
-                unitPrice: String(item.unitPrice),
-                originalPrice: item.originalPrice ? String(item.originalPrice) : undefined,
-                totalPrice: String(item.unitPrice * item.quantity),
-              })),
-              subtotal: String(subtotal),
-              taxAmount: String(taxAmount),
-              totalAmount: String(total),
-              paymentMethod: "mpesa",
-            });
-
-            toast.success("M-Pesa payment successful!");
-            setCompletedOrderId(orderResult.orderId);
-            setCompletedOrderNumber(orderResult.orderNumber);
-            setShowReceipt(true);
-            onComplete(orderResult.orderId, orderResult.orderNumber);
-          }
-        } catch (e) {
-          console.error("Status check error:", e);
-        }
-      }, 3000);
-
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (mpesaStatus === "waiting") {
-          setMpesaStatus("failed");
-          toast.error("M-Pesa payment timeout");
-        }
-      }, 60000);
-    } catch (e: any) {
-      setMpesaStatus("failed");
-      toast.error(e.message ?? "Failed to initiate M-Pesa payment");
+      toast.error("Failed to send M-Pesa prompt: " + (e.message || "Unknown error"));
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Process Payment</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Order Summary */}
-          <div className="bg-muted p-4 rounded-lg space-y-2">
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span>KES {subtotal.toLocaleString()}</span>
@@ -437,45 +394,55 @@ export default function PaymentDialog({
             </div>
           </div>
 
-          {/* Payment Mode Selection */}
-          <Tabs value={paymentMode} onValueChange={(v) => setPaymentMode(v as "single" | "split")}>
+          <Tabs
+            value={paymentMode}
+            onValueChange={(v) => setPaymentMode(v as "single" | "split")}
+          >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="single">Single Payment</TabsTrigger>
               <TabsTrigger value="split">Split Payment</TabsTrigger>
             </TabsList>
 
             <TabsContent value="single" className="space-y-4">
-              {/* Payment Method Selection */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant={method === "cash" ? "default" : "outline"}
                   onClick={() => setMethod("cash")}
-                  className="flex items-center gap-2"
+                  className="flex-1"
                 >
-                  <Banknote className="w-4 h-4" />
+                  <Banknote className="w-4 h-4 mr-2" />
                   Cash
                 </Button>
                 <Button
                   variant={method === "mpesa" ? "default" : "outline"}
                   onClick={() => setMethod("mpesa")}
-                  className="flex items-center gap-2"
+                  className="flex-1"
                 >
-                  <Smartphone className="w-4 h-4" />
+                  <Smartphone className="w-4 h-4 mr-2" />
                   M-Pesa
                 </Button>
                 <Button
                   variant={method === "stripe" ? "default" : "outline"}
                   onClick={() => setMethod("stripe")}
-                  className="flex items-center gap-2"
+                  className="flex-1"
                 >
-                  <CreditCard className="w-4 h-4" />
+                  <CreditCard className="w-4 h-4 mr-2" />
                   Card
                 </Button>
+                {customerId && (
+                  <Button
+                    variant={method === "wallet" ? "default" : "outline"}
+                    onClick={() => setMethod("wallet")}
+                    className="flex-1"
+                  >
+                    <Banknote className="w-4 h-4 mr-2" />
+                    Wallet
+                  </Button>
+                )}
               </div>
 
-              {/* Cash Payment */}
               {method === "cash" && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
                     <Label>Cash Received</Label>
                     <Input
@@ -483,253 +450,284 @@ export default function PaymentDialog({
                       placeholder="Enter amount"
                       value={cashReceived}
                       onChange={(e) => setCashReceived(e.target.value)}
-                      min="0"
                     />
                   </div>
-                  
-                  {/* Quick Amount Buttons */}
-                  <div>
-                    <Label className="text-xs text-gray-600">Quick Select</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[50, 100, 200, 500, 1000].map((amount) => (
-                        <Button
-                          key={amount}
-                          variant={Number(cashReceived) === amount ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCashReceived(String(amount))}
-                          className="text-sm"
-                        >
-                          {amount}
-                        </Button>
-                      ))}
-                      <Button
-                        variant={Number(cashReceived) === total ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCashReceived(String(total))}
-                        className="text-sm col-span-3"
-                      >
-                        Exact ({total})
-                      </Button>
-                    </div>
+
+                  <div className="grid grid-cols-5 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCashReceived("50")}
+                      className={cashReceived === "50" ? "bg-blue-100" : ""}
+                    >
+                      50
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCashReceived("100")}
+                      className={cashReceived === "100" ? "bg-blue-100" : ""}
+                    >
+                      100
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCashReceived("200")}
+                      className={cashReceived === "200" ? "bg-blue-100" : ""}
+                    >
+                      200
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCashReceived("500")}
+                      className={cashReceived === "500" ? "bg-blue-100" : ""}
+                    >
+                      500
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCashReceived("1000")}
+                      className={cashReceived === "1000" ? "bg-blue-100" : ""}
+                    >
+                      1000
+                    </Button>
                   </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCashReceived(String(total))}
+                    className={cashReceived === String(total) ? "bg-blue-100" : ""}
+                  >
+                    Exact ({total})
+                  </Button>
+
                   {cashReceived && (
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <div className="flex justify-between mb-2">
-                        <span>Amount Received:</span>
-                        <span className="font-semibold">KES {Number(cashReceived).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Change:</span>
-                        <span className={`font-semibold ${cashSufficient ? "text-green-600" : "text-red-600"}`}>
-                          KES {cashChange.toLocaleString()}
-                        </span>
+                    <div className="bg-blue-50 p-3 rounded">
+                      <div className="text-sm">Amount Received: KES {Number(cashReceived).toLocaleString()}</div>
+                      <div className={`text-sm font-bold ${cashChange > 0 ? "text-green-600" : ""}`}>
+                        Change: KES {cashChange.toLocaleString()}
                       </div>
                     </div>
                   )}
+
                   <Button
                     onClick={handleCashPayment}
                     disabled={!cashSufficient || isProcessing}
                     className="w-full"
                   >
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Confirm Cash Payment
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Confirm Cash Payment"
+                    )}
                   </Button>
                 </div>
               )}
 
-              {/* M-Pesa Payment */}
+              {method === "wallet" && (
+                <div className="space-y-3">
+                  {getWallet.isLoading ? (
+                    <div className="bg-blue-50 p-3 rounded text-sm">Loading wallet balance...</div>
+                  ) : getWallet.data ? (
+                    <>
+                      <div className="bg-blue-50 p-3 rounded space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Wallet Balance:</span>
+                          <span className="font-bold">KES {getWallet.data.balance.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Amount to Pay:</span>
+                          <span className="font-bold">KES {total.toLocaleString()}</span>
+                        </div>
+                        {getWallet.data.balance >= total ? (
+                          <div className="text-xs text-green-600">✓ Sufficient balance</div>
+                        ) : (
+                          <div className="text-xs text-red-600">✗ Insufficient balance (short by KES {(total - getWallet.data.balance).toLocaleString()})</div>
+                        )}
+                      </div>
+                      <Button
+                        onClick={handleWalletPayment}
+                        disabled={!getWallet.data || getWallet.data.balance < total || isProcessing}
+                        className="w-full"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          "Pay from Wallet"
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="bg-red-50 p-3 rounded text-sm text-red-600">Unable to load wallet information</div>
+                  )}
+                </div>
+              )}
+
               {method === "mpesa" && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
                     <Label>M-Pesa Phone Number</Label>
                     <Input
                       type="tel"
-                      placeholder="254700000000"
+                      placeholder="254712345678"
                       value={mpesaPhone}
                       onChange={(e) => setMpesaPhone(e.target.value)}
                     />
                   </div>
+
+                  {mpesaStatus === "waiting" && (
+                    <div className="bg-yellow-50 p-3 rounded flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Waiting for M-Pesa confirmation...</span>
+                    </div>
+                  )}
+
                   {mpesaStatus === "success" && (
-                    <div className="bg-green-50 p-3 rounded-lg flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      <span className="text-green-600">Payment successful!</span>
+                    <div className="bg-green-50 p-3 rounded flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span className="text-sm text-green-600">Payment confirmed!</span>
                     </div>
                   )}
+
                   {mpesaStatus === "failed" && (
-                    <div className="bg-red-50 p-3 rounded-lg flex items-center gap-2">
-                      <AlertCircle className="w-5 h-5 text-red-600" />
-                      <span className="text-red-600">Payment failed. Please try again.</span>
+                    <div className="bg-red-50 p-3 rounded flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                      <span className="text-sm text-red-600">Payment failed. Please try again.</span>
                     </div>
                   )}
+
                   <Button
-                    onClick={handleMpesaPayment}
-                    disabled={mpesaStatus !== "idle" || isProcessing}
+                    onClick={() => handleSplitMpesaPayment("")}
+                    disabled={!mpesaPhone || isProcessing || mpesaStatus === "waiting"}
                     className="w-full"
                   >
-                    {mpesaStatus === "sending" && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                    {mpesaStatus === "waiting" && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                    {mpesaStatus === "idle" ? "Send M-Pesa Prompt" : "Processing..."}
-                  </Button>
-                </div>
-              )}
-
-              {/* Stripe Payment */}
-              {method === "stripe" && (
-                <div className="space-y-4">
-                  <div className="bg-yellow-50 p-3 rounded-lg">
-                    <p className="text-sm text-yellow-700">
-                      Stripe integration ready. Card details would be collected here in production.
-                    </p>
-                  </div>
-                  <Button disabled className="w-full">
-                    Stripe Payment (Coming Soon)
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      "Send M-Pesa Prompt"
+                    )}
                   </Button>
                 </div>
               )}
             </TabsContent>
 
             <TabsContent value="split" className="space-y-4">
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <div className="flex justify-between mb-2">
+              <div className="bg-blue-50 p-3 rounded space-y-2">
+                <div className="flex justify-between text-sm">
                   <span>Total to Collect:</span>
-                  <span className="font-semibold">KES {total.toLocaleString()}</span>
+                  <span className="font-bold">KES {total.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm">
                   <span>Collected So Far:</span>
-                  <span className={`font-semibold ${splitTotal === total ? "text-green-600" : "text-orange-600"}`}>
-                    KES {splitTotal.toLocaleString()}
-                  </span>
+                  <span className="text-orange-600 font-bold">KES {splitTotal.toLocaleString()}</span>
                 </div>
-                {splitRemaining > 0 && (
-                  <div className="flex justify-between mt-2 text-red-600">
-                    <span>Still Needed:</span>
-                    <span className="font-semibold">KES {splitRemaining.toLocaleString()}</span>
-                  </div>
-                )}
+                <div className="flex justify-between text-sm">
+                  <span>Still Needed:</span>
+                  <span className="text-red-600 font-bold">KES {splitRemaining.toLocaleString()}</span>
+                </div>
               </div>
 
-              {/* Split Payments List */}
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {splitPayments.map((payment) => (
-                  <div key={payment.id} className="border rounded-lg p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Label className="text-xs">Method</Label>
-                        <select
-                          value={payment.method}
-                          onChange={(e) =>
-                            handleUpdateSplitPayment(payment.id, "method", e.target.value as PaymentMethod)
-                          }
-                          className="w-full px-2 py-1 border rounded text-sm"
+              {splitPayments.map((payment) => (
+                <div key={payment.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <select
+                      value={payment.method}
+                      onChange={(e) =>
+                        handleUpdateSplitPayment(payment.id, "method", e.target.value as PaymentMethod)
+                      }
+                      className="flex-1 px-2 py-1 border rounded"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="mpesa">M-Pesa</option>
+                      <option value="stripe">Card</option>
+                      <option value="wallet">Wallet</option>
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={payment.amount}
+                      onChange={(e) =>
+                        handleUpdateSplitPayment(payment.id, "amount", Number(e.target.value))
+                      }
+                      className="w-24 px-2 py-1 border rounded"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveSplitPayment(payment.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {payment.method === "mpesa" && (
+                    <div className="space-y-2">
+                      <input
+                        type="tel"
+                        placeholder="M-Pesa phone number"
+                        value={payment.mpesaPhone || ""}
+                        onChange={(e) =>
+                          handleUpdateSplitPayment(payment.id, "mpesaPhone", e.target.value)
+                        }
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                      {payment.mpesaStatus === "waiting" && (
+                        <div className="text-xs text-orange-600 flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Waiting for confirmation...
+                        </div>
+                      )}
+                      {payment.mpesaStatus === "failed" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRetrySplitMpesa(payment.id)}
+                          className="w-full text-xs"
                         >
-                          <option value="cash">Cash</option>
-                          <option value="mpesa">M-Pesa</option>
-                          <option value="stripe">Card</option>
-                          <option value="wallet">Wallet</option>
-                        </select>
-                      </div>
-                      <div className="flex-1">
-                        <Label className="text-xs">Amount</Label>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={payment.amount}
-                          onChange={(e) =>
-                            handleUpdateSplitPayment(payment.id, "amount", Number(e.target.value))
-                          }
-                          min="0"
-                          max={splitRemaining + payment.amount}
-                          className="text-sm"
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSplitPayment(payment.id)}
-                        className="text-red-600 hover:text-red-700 mt-6"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                          Retry M-Pesa
+                        </Button>
+                      )}
                     </div>
-
-                    {/* M-Pesa specific UI */}
-                    {payment.method === "mpesa" && (
-                      <div className="space-y-2 bg-blue-50 p-2 rounded">
-                        <Input
-                          type="tel"
-                          placeholder="254700000000"
-                          value={payment.mpesaPhone || ""}
-                          onChange={(e) =>
-                            handleUpdateSplitPayment(payment.id, "mpesaPhone", e.target.value)
-                          }
-                          className="text-sm"
-                        />
-                        {payment.mpesaStatus === "idle" && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleSplitMpesaPayment(payment.id)}
-                            className="w-full text-xs"
-                          >
-                            Send M-Pesa Prompt
-                          </Button>
-                        )}
-                        {payment.mpesaStatus === "sending" && (
-                          <div className="flex items-center gap-2 text-sm text-blue-600">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Sending prompt...</span>
-                          </div>
-                        )}
-                        {payment.mpesaStatus === "waiting" && (
-                          <div className="flex items-center gap-2 text-sm text-blue-600">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Waiting for payment...</span>
-                          </div>
-                        )}
-                        {payment.mpesaStatus === "success" && (
-                          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>Payment confirmed!</span>
-                          </div>
-                        )}
-                        {payment.mpesaStatus === "failed" && (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                              <AlertCircle className="w-4 h-4" />
-                              <span>Payment failed</span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRetrySplitMpesa(payment.id)}
-                              className="w-full text-xs"
-                            >
-                              Retry
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              ))}
 
               <Button
                 variant="outline"
                 onClick={handleAddSplitPayment}
                 disabled={splitRemaining <= 0}
-                className="w-full flex items-center gap-2"
+                className="w-full"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 mr-2" />
                 Add Payment Method
               </Button>
 
               <Button
                 onClick={handleSplitPayment}
-                disabled={splitTotal !== total || isProcessing}
+                disabled={splitTotal === 0 || isProcessing}
                 className="w-full"
               >
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Confirm Split Payment
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Confirm Split Payment"
+                )}
               </Button>
             </TabsContent>
           </Tabs>
@@ -738,18 +736,19 @@ export default function PaymentDialog({
             Cancel
           </Button>
         </div>
-      </DialogContent>
 
-      {/* Receipt Dialog */}
-      <ReceiptDialog
-        open={showReceipt}
-        onClose={() => {
-          setShowReceipt(false);
-          onClose();
-        }}
-        orderId={completedOrderId || 0}
-        orderNumber={completedOrderNumber}
-      />
+        {showReceipt && completedOrderId && (
+          <ReceiptDialog
+            orderId={completedOrderId}
+            orderNumber={completedOrderNumber}
+            open={showReceipt}
+            onClose={() => {
+              setShowReceipt(false);
+              onClose();
+            }}
+          />
+        )}
+      </DialogContent>
     </Dialog>
   );
 }

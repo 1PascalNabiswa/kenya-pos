@@ -1,4 +1,7 @@
 import { TRPCError } from "@trpc/server";
+import { getDb } from "./db";
+import { customerWallets } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
@@ -306,6 +309,7 @@ const ordersRouter = router({
       paymentMethod: z.enum(["cash", "mpesa", "stripe", "mixed"]),
       cashReceived: z.string().optional(),
       cashChange: z.string().optional(),
+      status: z.enum(["pending", "completed"]).optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -320,8 +324,8 @@ const ordersRouter = router({
           discountAmount: input.discountAmount ?? "0",
           totalAmount: input.totalAmount,
           paymentMethod: input.paymentMethod,
-          paymentStatus: input.paymentMethod === "cash" ? "paid" : "pending",
-          orderStatus: "pending",
+          paymentStatus: "paid",
+          orderStatus: "completed",
           notes: input.notes,
         },
         input.items.map((item) => ({
@@ -598,6 +602,29 @@ const walletRouter = router({
     .input(z.object({ customerId: z.number(), limit: z.number().optional() }))
     .query(async ({ input }) => {
       return getWalletTransactions(input.customerId, input.limit);
+    }),
+
+  deduct: protectedProcedure
+    .input(z.object({ customerId: z.number(), amount: z.number().positive() }))
+    .mutation(async ({ input }) => {
+      const wallet = await getWallet(input.customerId);
+      if (!wallet || Number(wallet.balance) < input.amount) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Insufficient wallet balance",
+        });
+      }
+      const newBalance = Number(wallet.balance) - input.amount;
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .update(customerWallets)
+        .set({
+          balance: newBalance.toString(),
+          totalSpent: (Number(wallet.totalSpent) + input.amount).toString(),
+        })
+        .where(eq(customerWallets.id, wallet.id));
+      return { success: true, newBalance };
     }),
 });
 
