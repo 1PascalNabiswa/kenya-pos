@@ -12,7 +12,7 @@ import {
   ChevronRight, Printer
 } from "lucide-react";
 import PaymentDialog from "@/components/PaymentDialog";
-import ReceiptDialog from "@/components/ReceiptDialog";
+
 import AddProductDialog from "@/components/AddProductDialog";
 
 interface CartItem {
@@ -34,7 +34,7 @@ export default function SalesTransaction() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedCustomerName, setSelectedCustomerName] = useState<string>("");
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+
   const [lastOrderId, setLastOrderId] = useState<number | null>(null);
   const [lastOrderNumber, setLastOrderNumber] = useState<string>("");
   const [addProductOpen, setAddProductOpen] = useState(false);
@@ -106,7 +106,6 @@ export default function SalesTransaction() {
     setLastOrderId(orderId);
     setLastOrderNumber(orderNumber);
     setPaymentDialogOpen(false);
-    setReceiptDialogOpen(true);
     clearCart();
   };
 
@@ -446,14 +445,7 @@ export default function SalesTransaction() {
         onComplete={handleOrderComplete}
       />
 
-      {lastOrderId && (
-        <ReceiptDialog
-          open={receiptDialogOpen}
-          onClose={() => setReceiptDialogOpen(false)}
-          orderId={lastOrderId}
-          orderNumber={lastOrderNumber}
-        />
-      )}
+
 
       <AddProductDialog
         open={addProductOpen}
