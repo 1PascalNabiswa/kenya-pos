@@ -217,3 +217,11 @@
 - [x] Fix all search bars to prioritize item name matching as first priority (updated getProducts and getCustomers to use exact match first, then partial name match, then other fields)
 
 - [ ] Improve search to be case-insensitive and find letters anywhere in names (not just exact matches)
+
+
+## Phase 23: Customer Spending Reports
+- [x] Create server queries for weekly/monthly spending aggregation
+- [x] Add tRPC procedures for spending reports
+- [x] Build customer spending reports UI page
+- [x] Add charts and trend analysis visualizations
+- [ ] Test reports with sample data

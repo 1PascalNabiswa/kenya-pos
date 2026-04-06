@@ -22,6 +22,12 @@ import {
   getCustomers,
   getDashboardStats,
   getInventoryLogs,
+  getCustomerSpendingByWeek,
+  getCustomerSpendingByMonth,
+  getCustomerSpendingTrends,
+  getCustomerPaymentMethodBreakdown,
+  getTopCustomersBySpending,
+  getCustomerSpendingComparison,
   getLowStockProducts,
   getOrderById,
   getOrders,
@@ -553,6 +559,48 @@ const reportsRouter = router({
   inventoryLogs: protectedProcedure
     .input(z.object({ productId: z.number().optional(), limit: z.number().optional() }))
     .query(({ input }) => getInventoryLogs(input.productId, input.limit)),
+
+  customerSpendingWeekly: protectedProcedure
+    .input(z.object({ customerId: z.number(), weeksBack: z.number().optional() }))
+    .query(async ({ input }) => {
+      const { getCustomerSpendingByWeek } = await import("./db");
+      return getCustomerSpendingByWeek(input.customerId, input.weeksBack ?? 12);
+    }),
+
+  customerSpendingMonthly: protectedProcedure
+    .input(z.object({ customerId: z.number(), monthsBack: z.number().optional() }))
+    .query(async ({ input }) => {
+      const { getCustomerSpendingByMonth } = await import("./db");
+      return getCustomerSpendingByMonth(input.customerId, input.monthsBack ?? 12);
+    }),
+
+  customerSpendingTrends: protectedProcedure
+    .input(z.object({ customerId: z.number() }))
+    .query(async ({ input }) => {
+      const { getCustomerSpendingTrends } = await import("./db");
+      return getCustomerSpendingTrends(input.customerId);
+    }),
+
+  customerPaymentBreakdown: protectedProcedure
+    .input(z.object({ customerId: z.number() }))
+    .query(async ({ input }) => {
+      const { getCustomerPaymentMethodBreakdown } = await import("./db");
+      return getCustomerPaymentMethodBreakdown(input.customerId);
+    }),
+
+  topCustomers: protectedProcedure
+    .input(z.object({ limit: z.number().optional(), monthsBack: z.number().optional() }))
+    .query(async () => {
+      const { getTopCustomersBySpending } = await import("./db");
+      return getTopCustomersBySpending(10, 3);
+    }),
+
+  customerComparison: protectedProcedure
+    .input(z.object({ customerId: z.number() }))
+    .query(async ({ input }) => {
+      const { getCustomerSpendingComparison } = await import("./db");
+      return getCustomerSpendingComparison(input.customerId);
+    }),
 });
 
 // ─── Settings Router ───────────────────────────────────────────────────────

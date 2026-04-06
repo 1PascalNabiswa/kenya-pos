@@ -1302,3 +1302,149 @@ export async function searchTransactionsByCustomer(customerName: string) {
     .where(like(transactionReconciliation.customerId, `%${customerName}%`))
     .limit(20);
 }
+
+
+// ─── Customer Spending Reports ─────────────────────────────────────────────────
+export async function getCustomerSpendingByWeek(customerId: number, weeksBack: number = 12) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - (weeksBack * 7));
+  
+  const result = await db.execute(sql`
+    SELECT 
+      WEEK(o.createdAt) as week,
+      YEAR(o.createdAt) as year,
+      DATE_FORMAT(o.createdAt, '%Y-W%u') as weekLabel,
+      MIN(DATE(o.createdAt)) as weekStart,
+      MAX(DATE(o.createdAt)) as weekEnd,
+      COUNT(o.id) as orderCount,
+      SUM(o.totalAmount) as totalSpent,
+      AVG(o.totalAmount) as avgOrderValue,
+      COUNT(DISTINCT o.paymentMethod) as paymentMethodsUsed
+    FROM orders o
+    WHERE o.customerId = ? AND o.createdAt >= ? AND o.orderStatus = 'completed'
+    GROUP BY YEAR(o.createdAt), WEEK(o.createdAt)
+    ORDER BY YEAR(o.createdAt) DESC, WEEK(o.createdAt) DESC
+  `, [customerId, startDate]);
+  
+  return result as any[];
+}
+
+export async function getCustomerSpendingByMonth(customerId: number, monthsBack: number = 12) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - monthsBack);
+  
+  const result = await db.execute(sql`
+    SELECT 
+      MONTH(o.createdAt) as month,
+      YEAR(o.createdAt) as year,
+      DATE_FORMAT(o.createdAt, '%Y-%m') as monthLabel,
+      DATE_FORMAT(o.createdAt, '%B %Y') as monthName,
+      COUNT(o.id) as orderCount,
+      SUM(o.totalAmount) as totalSpent,
+      AVG(o.totalAmount) as avgOrderValue,
+      MAX(o.totalAmount) as maxOrderValue,
+      MIN(o.totalAmount) as minOrderValue,
+      SUM(o.taxAmount) as totalTax,
+      SUM(o.discountAmount) as totalDiscount
+    FROM orders o
+    WHERE o.customerId = ? AND o.createdAt >= ? AND o.orderStatus = 'completed'
+    GROUP BY YEAR(o.createdAt), MONTH(o.createdAt)
+    ORDER BY YEAR(o.createdAt) DESC, MONTH(o.createdAt) DESC
+  `, [customerId, startDate]);
+  
+  return result as any[];
+}
+
+export async function getCustomerSpendingTrends(customerId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.execute(sql`
+    SELECT 
+      COUNT(o.id) as totalOrders,
+      SUM(o.totalAmount) as totalSpent,
+      AVG(o.totalAmount) as avgOrderValue,
+      MAX(o.totalAmount) as maxOrderValue,
+      MIN(o.totalAmount) as minOrderValue,
+      STDDEV(o.totalAmount) as spendingVariance,
+      DATE_FORMAT(MIN(o.createdAt), '%Y-%m-%d') as firstOrderDate,
+      DATE_FORMAT(MAX(o.createdAt), '%Y-%m-%d') as lastOrderDate,
+      DATEDIFF(MAX(o.createdAt), MIN(o.createdAt)) as daysSinceFirstOrder
+    FROM orders o
+    WHERE o.customerId = ? AND o.orderStatus = 'completed'
+  `, [customerId]);
+  
+  return result[0] as any;
+}
+
+export async function getCustomerPaymentMethodBreakdown(customerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.execute(sql`
+    SELECT 
+      o.paymentMethod,
+      COUNT(o.id) as orderCount,
+      SUM(o.totalAmount) as totalAmount,
+      AVG(o.totalAmount) as avgAmount,
+      ROUND(SUM(o.totalAmount) / (SELECT SUM(totalAmount) FROM orders WHERE customerId = ? AND orderStatus = 'completed') * 100, 2) as percentageOfTotal
+    FROM orders o
+    WHERE o.customerId = ? AND o.orderStatus = 'completed'
+    GROUP BY o.paymentMethod
+    ORDER BY totalAmount DESC
+  `, [customerId, customerId]);
+  
+  return result as any[];
+}
+
+export async function getTopCustomersBySpending(limit: number = 10, monthsBack: number = 3) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - monthsBack);
+  
+  const result = await db.execute(sql`
+    SELECT 
+      c.id,
+      c.name,
+      c.phone,
+      c.email,
+      COUNT(o.id) as orderCount,
+      SUM(o.totalAmount) as totalSpent,
+      AVG(o.totalAmount) as avgOrderValue,
+      MAX(o.createdAt) as lastOrderDate,
+      DATEDIFF(NOW(), MAX(o.createdAt)) as daysSinceLastOrder
+    FROM customers c
+    LEFT JOIN orders o ON c.id = o.customerId AND o.createdAt >= ? AND o.orderStatus = 'completed'
+    GROUP BY c.id, c.name, c.phone, c.email
+    HAVING totalSpent > 0
+    ORDER BY totalSpent DESC
+    LIMIT ?
+  `, [startDate, limit]);
+  
+  return result as any[];
+}
+
+export async function getCustomerSpendingComparison(customerId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.execute(sql`
+    SELECT 
+      (SELECT SUM(totalAmount) FROM orders WHERE customerId = ? AND orderStatus = 'completed') as customerTotal,
+      (SELECT AVG(total) FROM (
+        SELECT SUM(totalAmount) as total FROM orders WHERE orderStatus = 'completed' GROUP BY customerId
+      ) as t) as averageCustomerSpending,
+      (SELECT COUNT(DISTINCT customerId) FROM orders WHERE orderStatus = 'completed') as totalCustomers,
+      (SELECT SUM(totalAmount) FROM orders WHERE orderStatus = 'completed') as totalSystemRevenue
+  `, [customerId]);
+  
+  return result[0] as any;
+}

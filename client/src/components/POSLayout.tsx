@@ -67,6 +67,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Sales Report", href: "/reports/sales" },
       { label: "Inventory Report", href: "/reports/inventory" },
+      { label: "Customer Spending", href: "/reports/customer-spending" },
     ],
   },
   { label: "Customer Wallet", icon: <Wallet size={18} />, href: "/wallet" },

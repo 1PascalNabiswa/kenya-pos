@@ -23,6 +23,7 @@ import KitchenDisplay from "@/pages/KitchenDisplay";
 import ServingDisplay from "@/pages/ServingDisplay";
 import { UserManagement } from "@/pages/UserManagement";
 import { StaffActivityLogs } from "@/pages/StaffActivityLogs";
+import CustomerSpendingReports from "@/pages/CustomerSpendingReports";
 
 function Router() {
   return (
@@ -95,6 +96,11 @@ function Router() {
       <Route path="/reports" component={() => (
         <POSLayout>
           <Reports />
+        </POSLayout>
+      )} />
+      <Route path="/reports/customer-spending" component={() => (
+        <POSLayout>
+          <CustomerSpendingReports />
         </POSLayout>
       )} />
       <Route path="/settings" component={() => (
