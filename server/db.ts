@@ -810,6 +810,24 @@ export async function updateFormStatus(id: number, status: string) {
   await db.update(forms).set({ status: status as any }).where(eq(forms.id, id));
 }
 
+export async function updateForm(id: number, data: { title: string; code: string; amount: string; servingDate?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const updateData: any = {
+    title: data.title,
+    code: data.code,
+    amount: data.amount,
+  };
+  
+  if (data.servingDate) {
+    updateData.servingDate = data.servingDate;
+  }
+  
+  await db.update(forms).set(updateData).where(eq(forms.id, id));
+  return getForm(id);
+}
+
 // ─── Credit Accounts ───────────────────────────────────────────────────────
 export async function createCreditAccount(data: InsertCreditAccount) {
   const db = await getDb();

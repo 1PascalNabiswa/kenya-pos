@@ -50,6 +50,7 @@ import {
   listForms,
   updateFormSpent,
   updateFormStatus,
+  updateForm,
   createCreditAccount,
   getCreditAccount,
   listCreditAccounts,
@@ -699,6 +700,27 @@ const formsRouter = router({
         beforeValue: { status: input.status },
       });
       return { success: true };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({ id: z.number(), title: z.string(), code: z.string(), amount: z.number().positive(), servingDate: z.date().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      const result = await updateForm(id, {
+        title: data.title,
+        code: data.code,
+        amount: data.amount.toString(),
+        servingDate: data.servingDate,
+      });
+      await recordAuditLog({
+        module: "POS",
+        userId: ctx.user?.id,
+        action: "UPDATE",
+        entityType: "Form",
+        entityId: id,
+        beforeValue: data,
+      });
+      return result;
     }),
 });
 
