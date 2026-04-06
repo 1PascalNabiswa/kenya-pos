@@ -215,3 +215,5 @@
 
 ## Search Improvements
 - [x] Fix all search bars to prioritize item name matching as first priority (updated getProducts and getCustomers to use exact match first, then partial name match, then other fields)
+
+- [ ] Improve search to be case-insensitive and find letters anywhere in names (not just exact matches)
