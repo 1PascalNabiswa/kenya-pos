@@ -360,6 +360,32 @@ export default function PaymentDialog({
                       min="0"
                     />
                   </div>
+                  
+                  {/* Quick Amount Buttons */}
+                  <div>
+                    <Label className="text-xs text-gray-600">Quick Select</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[50, 100, 200, 500, 1000].map((amount) => (
+                        <Button
+                          key={amount}
+                          variant={Number(cashReceived) === amount ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCashReceived(String(amount))}
+                          className="text-sm"
+                        >
+                          {amount}
+                        </Button>
+                      ))}
+                      <Button
+                        variant={Number(cashReceived) === total ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCashReceived(String(total))}
+                        className="text-sm col-span-3"
+                      >
+                        Exact ({total})
+                      </Button>
+                    </div>
+                  </div>
                   {cashReceived && (
                     <div className="bg-blue-50 p-3 rounded-lg">
                       <div className="flex justify-between mb-2">
