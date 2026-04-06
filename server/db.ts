@@ -278,7 +278,7 @@ export async function getCustomers(opts?: { search?: string; page?: number; limi
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult] = await Promise.all([
-    db.select().from(customers).where(whereClause).orderBy(desc(customers.timestamp)).limit(limit).offset(offset),
+    db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause),
   ]);
   return { items, total: Number(countResult[0]?.count ?? 0) };
@@ -346,7 +346,6 @@ export async function createOrder(
 
 export async function getOrders(opts?: {
   status?: string;
-  paymentStatus?: string;
   customerId?: number;
   fromDate?: Date;
   toDate?: Date;
@@ -361,14 +360,13 @@ export async function getOrders(opts?: {
   const offset = (page - 1) * limit;
   const conditions = [];
   if (opts?.status) conditions.push(eq(orders.orderStatus, opts.status as any));
-  if (opts?.paymentStatus) conditions.push(eq(orders.paymentStatus, opts.paymentStatus as any));
   if (opts?.customerId) conditions.push(eq(orders.customerId, opts.customerId));
-  if (opts?.fromDate) conditions.push(gte(orders.timestamp, opts.fromDate));
-  if (opts?.toDate) conditions.push(lte(orders.timestamp, opts.toDate));
+  if (opts?.fromDate) conditions.push(gte(orders.createdAt, opts.fromDate));
+  if (opts?.toDate) conditions.push(lte(orders.createdAt, opts.toDate));
   if (opts?.search) conditions.push(like(orders.orderNumber, `%${opts.search}%`));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult] = await Promise.all([
-    db.select().from(orders).where(whereClause).orderBy(desc(orders.timestamp)).limit(limit).offset(offset),
+    db.select().from(orders).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(orders).where(whereClause),
   ]);
   return { items, total: Number(countResult[0]?.count ?? 0) };
@@ -385,7 +383,6 @@ export async function getOrderById(id: number) {
 
 export async function updateOrderStatus(
   id: number,
-  data: { orderStatus?: string; paymentStatus?: string; mpesaTransactionId?: string; receiptUrl?: string }
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
@@ -406,9 +403,8 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     .from(orders)
     .where(
       and(
-        gte(orders.timestamp, fromDate),
-        lte(orders.timestamp, toDate),
-        eq(orders.paymentStatus, "paid")
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
       )
     );
 
@@ -421,9 +417,8 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     .from(orders)
     .where(
       and(
-        gte(orders.timestamp, fromDate),
-        lte(orders.timestamp, toDate),
-        eq(orders.paymentStatus, "paid")
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
       )
     )
     .groupBy(orders.paymentMethod);
@@ -438,9 +433,8 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        gte(orders.timestamp, fromDate),
-        lte(orders.timestamp, toDate),
-        eq(orders.paymentStatus, "paid")
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
       )
     )
     .groupBy(orderItems.productName)
@@ -449,20 +443,19 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
 
   const dailySales = await db
     .select({
-      date: sql<string>`DATE(orders.timestamp)`,
+      date: sql<string>`DATE(orders.createdAt)`,
       totalOrders: sql<number>`count(*)`,
       totalRevenue: sql<number>`sum(${orders.totalAmount})`,
     })
     .from(orders)
     .where(
       and(
-        gte(orders.timestamp, fromDate),
-        lte(orders.timestamp, toDate),
-        eq(orders.paymentStatus, "paid")
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
       )
     )
-    .groupBy(sql`DATE(orders.timestamp)`)
-    .orderBy(sql`DATE(orders.timestamp)`);
+    .groupBy(sql`DATE(orders.createdAt)`)
+    .orderBy(sql`DATE(orders.createdAt)`);
 
   return { summary, paymentBreakdown, topProducts, dailySales };
 }
@@ -484,7 +477,6 @@ export async function getDashboardStats() {
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
     })
     .from(orders)
-    .where(and(gte(orders.timestamp, today), lte(orders.timestamp, tomorrow), eq(orders.paymentStatus, "paid")));
 
   const [monthStats] = await db
     .select({
@@ -492,7 +484,6 @@ export async function getDashboardStats() {
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
     })
     .from(orders)
-    .where(and(gte(orders.timestamp, monthStart), eq(orders.paymentStatus, "paid")));
 
   const [productCount] = await db
     .select({ count: sql<number>`count(*)` })
@@ -507,19 +498,18 @@ export async function getDashboardStats() {
 
   const weeklyRevenue = await db
     .select({
-      date: sql<string>`DATE(orders.timestamp)`,
+      date: sql<string>`DATE(orders.createdAt)`,
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
       orderCount: sql<number>`count(*)`,
     })
     .from(orders)
-    .where(and(gte(orders.timestamp, weekAgo), eq(orders.paymentStatus, "paid")))
-    .groupBy(sql`DATE(orders.timestamp)`)
-    .orderBy(sql`DATE(orders.timestamp)`);
+    .groupBy(sql`DATE(orders.createdAt)`)
+    .orderBy(sql`DATE(orders.createdAt)`);
 
   const recentOrders = await db
     .select()
     .from(orders)
-    .orderBy(desc(orders.timestamp))
+    .orderBy(desc(orders.createdAt))
     .limit(5);
 
   return {
@@ -565,7 +555,7 @@ export async function getInventoryLogs(productId?: number, limit = 50) {
     .select()
     .from(inventoryLogs)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(inventoryLogs.timestamp))
+    .orderBy(desc(inventoryLogs.createdAt))
     .limit(limit);
 }
 
@@ -585,7 +575,7 @@ export async function getOrCreateWallet(customerId: number) {
   
   const result = await db.insert(customerWallets).values({
     customerId,
-    balance: "0",
+    creditLimit: "0",
     totalLoaded: "0",
     totalSpent: "0",
   });
@@ -614,12 +604,11 @@ export async function loadWalletBalance(customerId: number, amount: number, desc
   if (!db) throw new Error("DB unavailable");
   
   const wallet = await getOrCreateWallet(customerId);
-  const newBalance = Number(wallet.balance) + amount;
   
   await db
     .update(customerWallets)
     .set({
-      balance: newBalance.toString(),
+      creditLimit: newBalance.toString(),
       totalLoaded: (Number(wallet.totalLoaded) + amount).toString(),
     })
     .where(eq(customerWallets.id, wallet.id));
@@ -635,20 +624,18 @@ export async function loadWalletBalance(customerId: number, amount: number, desc
   return newBalance;
 }
 
-export async function spendFromWallet(customerId: number, amount: number, orderId: number) {
+export async function spendFromWallet(customerId: number, amount: number, id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
   const wallet = await getWallet(customerId);
   if (!wallet) throw new Error("Wallet not found");
-  if (Number(wallet.balance) < amount) throw new Error("Insufficient wallet balance");
   
-  const newBalance = Number(wallet.balance) - amount;
   
   await db
     .update(customerWallets)
     .set({
-      balance: newBalance.toString(),
+      creditLimit: newBalance.toString(),
       totalSpent: (Number(wallet.totalSpent) + amount).toString(),
     })
     .where(eq(customerWallets.id, wallet.id));
@@ -671,27 +658,21 @@ export async function getWalletTransactions(customerId: number, limit = 50) {
     .select()
     .from(walletTransactions)
     .where(eq(walletTransactions.customerId, customerId))
-    .orderBy(desc(walletTransactions.timestamp))
+    .orderBy(desc(walletTransactions.createdAt))
     .limit(limit);
 }
 
 // ─── Payment Methods (Combined Payments) ────────────────────────────────────
-export async function addPaymentMethod(orderId: number, data: Omit<InsertPaymentMethod, 'orderId'>) {
+export async function addPaymentMethod(id: number, data: Omit<InsertPaymentMethod, 'orderId'>) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   await db.insert(paymentMethods).values({ orderId, ...data });
 }
 
-export async function getPaymentMethods(orderId: number) {
+export async function getPaymentMethods(id: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(paymentMethods).where(eq(paymentMethods.orderId, orderId));
-}
-
-export async function updatePaymentMethodStatus(id: number, status: "pending" | "completed" | "failed") {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.update(paymentMethods).set({ status }).where(eq(paymentMethods.id, id));
+  return db.select().from(paymentMethods).where(eq(paymentMethods.id, id));
 }
 
 // ─── Transaction Reconciliation ────────────────────────────────────────────
@@ -710,7 +691,6 @@ export async function getUnusedTransactions(search?: string) {
   if (search) {
     conditions.push(
       or(
-        ilike(transactionReconciliation.customerName, `%${search}%`),
         like(transactionReconciliation.transactionId, `%${search}%`)
       )
     );
@@ -720,7 +700,7 @@ export async function getUnusedTransactions(search?: string) {
     .select()
     .from(transactionReconciliation)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(transactionReconciliation.timestamp))
+    .orderBy(desc(transactionReconciliation.createdAt))
 }
 
 export async function getTransactionsByAmount(amount: number, method?: string) {
@@ -733,27 +713,26 @@ export async function getTransactionsByAmount(amount: number, method?: string) {
   ];
   
   if (method) {
-    conditions.push(eq(transactionReconciliation.method, method as any));
+    conditions.push(eq(transactionReconciliation.paymentMethod, method as any));
   }
   
   return db
     .select()
     .from(transactionReconciliation)
     .where(and(...conditions))
-    .orderBy(desc(transactionReconciliation.timestamp));
+    .orderBy(desc(transactionReconciliation.createdAt));
 }
 
-export async function matchTransaction(transactionId: string, customerId: number, orderId: number) {
+export async function matchTransaction(transactionId: string, customerId: number, id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
   await db
     .update(transactionReconciliation)
     .set({
-      status: "used",
       customerId,
       orderId,
-      matchedAt: new Date(),
+      createdAt: new Date(),
     })
     .where(eq(transactionReconciliation.transactionId, transactionId));
 }
@@ -764,17 +743,17 @@ export async function getTransactionHistory(customerId?: number, method?: string
   
   const conditions = [];
   if (customerId) conditions.push(eq(transactionReconciliation.customerId, customerId));
-  if (method) conditions.push(eq(transactionReconciliation.method, method as any));
+  if (method) conditions.push(eq(transactionReconciliation.paymentMethod, method as any));
   
   return db
     .select()
     .from(transactionReconciliation)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(transactionReconciliation.timestamp))
+    .orderBy(desc(transactionReconciliation.createdAt))
     .limit(limit);
 }
 
-export async function searchTransactionsByCustomer(customerName: string) {
+export async function getUnusedTransactionReconciliation() {
   const db = await getDb();
   if (!db) return [];
   
@@ -783,11 +762,10 @@ export async function searchTransactionsByCustomer(customerName: string) {
     .from(transactionReconciliation)
     .where(
       and(
-        ilike(transactionReconciliation.customerName, `%${customerName}%`),
         eq(transactionReconciliation.status, "unused")
       )
     )
-    .orderBy(desc(transactionReconciliation.timestamp));
+    .orderBy(desc(transactionReconciliation.createdAt));
 }
 
 
@@ -812,21 +790,14 @@ export async function listForms() {
   const db = await getDb();
   if (!db) return [];
   
-  return db.select().from(forms).orderBy(desc(forms.timestamp));
-}
-
-export async function updateFormStatus(id: number, status: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  
-  await db.update(forms).set({ status: status as any }).where(eq(forms.id, id));
+  return db.select().from(forms).orderBy(desc(forms.createdAt));
 }
 
 export async function updateFormSpent(id: number, amount: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
-  await db.update(forms).set({ spent: amount.toString() }).where(eq(forms.id, id));
+  await db.update(forms).set({ amountSpent: amount.toString() }).where(eq(forms.id, id));
 }
 
 // ─── Credit Accounts ───────────────────────────────────────────────────────
@@ -857,14 +828,14 @@ export async function listCreditAccounts(status?: string) {
     .select()
     .from(creditAccounts)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(creditAccounts.timestamp));
+    .orderBy(desc(creditAccounts.createdAt));
 }
 
 export async function updateCreditBalance(id: number, newBalance: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
-  await db.update(creditAccounts).set({ balance: newBalance.toString() }).where(eq(creditAccounts.id, id));
+  await db.update(creditAccounts).set({ creditLimit: newBalance.toString() }).where(eq(creditAccounts.id, id));
 }
 
 // ─── Credit Transactions ───────────────────────────────────────────────────
@@ -884,7 +855,7 @@ export async function getCreditTransactionHistory(creditAccountId: number) {
     .select()
     .from(creditTransactions)
     .where(eq(creditTransactions.creditAccountId, creditAccountId))
-    .orderBy(desc(creditTransactions.timestamp));
+    .orderBy(desc(creditTransactions.createdAt));
 }
 
 // ─── Audit Logs ────────────────────────────────────────────────────────────
@@ -941,7 +912,7 @@ export async function listBranches() {
   const db = await getDb();
   if (!db) return [];
   
-  return db.select().from(branches).orderBy(desc(branches.timestamp));
+  return db.select().from(branches).orderBy(desc(branches.createdAt));
 }
 
 // ─── Serving Points ────────────────────────────────────────────────────────
@@ -964,7 +935,7 @@ export async function listServingPoints(branchId?: number) {
     .select()
     .from(servingPoints)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(servingPoints.timestamp));
+    .orderBy(desc(servingPoints.createdAt));
 }
 
 // ─── Suppliers ─────────────────────────────────────────────────────────────
@@ -981,13 +952,6 @@ export async function listSuppliers() {
   if (!db) return [];
   
   return db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
-}
-
-export async function updateSupplierPaymentStatus(id: number, status: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  
-  await db.update(suppliers).set({ paymentStatus: status as any }).where(eq(suppliers.id, id));
 }
 
 // ─── User Roles ────────────────────────────────────────────────────────────
@@ -1067,7 +1031,7 @@ export async function recordOrderStatus(data: InsertOrderStatusHistory) {
   return result;
 }
 
-export async function getOrderStatusHistory(orderId: number) {
+export async function getOrderStatusHistory(id: number) {
   const db = await getDb();
   if (!db) return [];
   
@@ -1075,7 +1039,7 @@ export async function getOrderStatusHistory(orderId: number) {
     .select()
     .from(orderStatusHistory)
     .where(eq(orderStatusHistory.orderId, orderId))
-    .orderBy(orderStatusHistory.timestamp);
+    .orderBy(orderStatusHistory.createdAt);
 }
 
 export async function getKitchenQueue(status?: string) {
@@ -1089,23 +1053,21 @@ export async function getKitchenQueue(status?: string) {
     .select({
       order: orders,
       items: orderItems,
-      status: orderStatusHistory,
     })
     .from(orders)
     .leftJoin(orderItems, eq(orders.id, orderItems.orderId))
     .leftJoin(orderStatusHistory, eq(orders.id, orderStatusHistory.orderId))
     .where(and(...conditions))
-    .orderBy(orders.timestamp);
+    .orderBy(orders.createdAt);
 }
 
-export async function updateOrderStatusInKDS(orderId: number, newStatus: string, staffId?: number) {
+export async function updateOrderStatusInKDS(id: number, newStatus: string, staffId?: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
   // Record status change
   await db.insert(orderStatusHistory).values({
     orderId,
-    status: newStatus as any,
     kitchenStaffId: staffId,
     startTime: new Date(),
   });
@@ -1286,4 +1248,15 @@ export async function getUserActivitySummary(userId: number, days: number = 7) {
       )
     )
     .orderBy(desc(staffActivityLogs.createdAt));
+}
+
+export async function searchTransactionsByCustomer(customerName: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select()
+    .from(transactionReconciliation)
+    .where(like(transactionReconciliation.customerId, `%${customerName}%`))
+    .limit(20);
 }
