@@ -662,10 +662,11 @@ const formsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const result = await createForm({ ...input, totalAmount: input.amount.toString() });
       await recordAuditLog({
+        module: "POS",
         userId: ctx.user?.id,
         action: "CREATE",
         entityType: "Form",
-        changes: input,
+        beforeValue: input,
       });
       return result;
     }),
@@ -685,11 +686,12 @@ const formsRouter = router({
     .mutation(async ({ input, ctx }) => {
       await updateFormStatus(input.id, input.status);
       await recordAuditLog({
+        module: "POS",
         userId: ctx.user?.id,
         action: "UPDATE",
         entityType: "Form",
         entityId: input.id,
-        changes: { status: input.status },
+        beforeValue: { status: input.status },
       });
       return { success: true };
     }),
@@ -705,10 +707,11 @@ const creditRouter = router({
         creditLimit: "0",
       });
       await recordAuditLog({
+        module: "POS",
         userId: ctx.user?.id,
         action: "CREATE",
         entityType: "CreditAccount",
-        changes: input,
+        beforeValue: input,
       });
       return result;
     }),
@@ -799,11 +802,12 @@ const kdsRouter = router({
     .mutation(async ({ input, ctx }) => {
       await updateOrderStatusInKDS(input.orderId, input.status, input.staffId);
       await recordAuditLog({
+        module: "POS",
         userId: ctx.user?.id,
         action: "UPDATE",
         entityType: "Order",
         entityId: input.orderId,
-        changes: { status: input.status },
+        beforeValue: { status: input.status },
       });
       return { success: true };
     }),

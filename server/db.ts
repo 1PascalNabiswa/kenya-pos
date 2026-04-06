@@ -278,7 +278,7 @@ export async function getCustomers(opts?: { search?: string; page?: number; limi
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult] = await Promise.all([
-    db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt)).limit(limit).offset(offset),
+    db.select().from(customers).where(whereClause).orderBy(desc(customers.timestamp)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause),
   ]);
   return { items, total: Number(countResult[0]?.count ?? 0) };
@@ -363,12 +363,12 @@ export async function getOrders(opts?: {
   if (opts?.status) conditions.push(eq(orders.orderStatus, opts.status as any));
   if (opts?.paymentStatus) conditions.push(eq(orders.paymentStatus, opts.paymentStatus as any));
   if (opts?.customerId) conditions.push(eq(orders.customerId, opts.customerId));
-  if (opts?.fromDate) conditions.push(gte(orders.createdAt, opts.fromDate));
-  if (opts?.toDate) conditions.push(lte(orders.createdAt, opts.toDate));
+  if (opts?.fromDate) conditions.push(gte(orders.timestamp, opts.fromDate));
+  if (opts?.toDate) conditions.push(lte(orders.timestamp, opts.toDate));
   if (opts?.search) conditions.push(like(orders.orderNumber, `%${opts.search}%`));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult] = await Promise.all([
-    db.select().from(orders).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
+    db.select().from(orders).where(whereClause).orderBy(desc(orders.timestamp)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(orders).where(whereClause),
   ]);
   return { items, total: Number(countResult[0]?.count ?? 0) };
@@ -406,8 +406,8 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     .from(orders)
     .where(
       and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
+        gte(orders.timestamp, fromDate),
+        lte(orders.timestamp, toDate),
         eq(orders.paymentStatus, "paid")
       )
     );
@@ -421,8 +421,8 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     .from(orders)
     .where(
       and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
+        gte(orders.timestamp, fromDate),
+        lte(orders.timestamp, toDate),
         eq(orders.paymentStatus, "paid")
       )
     )
@@ -438,8 +438,8 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
+        gte(orders.timestamp, fromDate),
+        lte(orders.timestamp, toDate),
         eq(orders.paymentStatus, "paid")
       )
     )
@@ -449,20 +449,20 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
 
   const dailySales = await db
     .select({
-      date: sql<string>`DATE(orders.createdAt)`,
+      date: sql<string>`DATE(orders.timestamp)`,
       totalOrders: sql<number>`count(*)`,
       totalRevenue: sql<number>`sum(${orders.totalAmount})`,
     })
     .from(orders)
     .where(
       and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
+        gte(orders.timestamp, fromDate),
+        lte(orders.timestamp, toDate),
         eq(orders.paymentStatus, "paid")
       )
     )
-    .groupBy(sql`DATE(orders.createdAt)`)
-    .orderBy(sql`DATE(orders.createdAt)`);
+    .groupBy(sql`DATE(orders.timestamp)`)
+    .orderBy(sql`DATE(orders.timestamp)`);
 
   return { summary, paymentBreakdown, topProducts, dailySales };
 }
@@ -484,7 +484,7 @@ export async function getDashboardStats() {
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
     })
     .from(orders)
-    .where(and(gte(orders.createdAt, today), lte(orders.createdAt, tomorrow), eq(orders.paymentStatus, "paid")));
+    .where(and(gte(orders.timestamp, today), lte(orders.timestamp, tomorrow), eq(orders.paymentStatus, "paid")));
 
   const [monthStats] = await db
     .select({
@@ -492,7 +492,7 @@ export async function getDashboardStats() {
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
     })
     .from(orders)
-    .where(and(gte(orders.createdAt, monthStart), eq(orders.paymentStatus, "paid")));
+    .where(and(gte(orders.timestamp, monthStart), eq(orders.paymentStatus, "paid")));
 
   const [productCount] = await db
     .select({ count: sql<number>`count(*)` })
@@ -507,19 +507,19 @@ export async function getDashboardStats() {
 
   const weeklyRevenue = await db
     .select({
-      date: sql<string>`DATE(orders.createdAt)`,
+      date: sql<string>`DATE(orders.timestamp)`,
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
       orderCount: sql<number>`count(*)`,
     })
     .from(orders)
-    .where(and(gte(orders.createdAt, weekAgo), eq(orders.paymentStatus, "paid")))
-    .groupBy(sql`DATE(orders.createdAt)`)
-    .orderBy(sql`DATE(orders.createdAt)`);
+    .where(and(gte(orders.timestamp, weekAgo), eq(orders.paymentStatus, "paid")))
+    .groupBy(sql`DATE(orders.timestamp)`)
+    .orderBy(sql`DATE(orders.timestamp)`);
 
   const recentOrders = await db
     .select()
     .from(orders)
-    .orderBy(desc(orders.createdAt))
+    .orderBy(desc(orders.timestamp))
     .limit(5);
 
   return {
@@ -565,7 +565,7 @@ export async function getInventoryLogs(productId?: number, limit = 50) {
     .select()
     .from(inventoryLogs)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(inventoryLogs.createdAt))
+    .orderBy(desc(inventoryLogs.timestamp))
     .limit(limit);
 }
 
@@ -671,7 +671,7 @@ export async function getWalletTransactions(customerId: number, limit = 50) {
     .select()
     .from(walletTransactions)
     .where(eq(walletTransactions.customerId, customerId))
-    .orderBy(desc(walletTransactions.createdAt))
+    .orderBy(desc(walletTransactions.timestamp))
     .limit(limit);
 }
 
@@ -720,7 +720,7 @@ export async function getUnusedTransactions(search?: string) {
     .select()
     .from(transactionReconciliation)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(transactionReconciliation.createdAt))
+    .orderBy(desc(transactionReconciliation.timestamp))
 }
 
 export async function getTransactionsByAmount(amount: number, method?: string) {
@@ -740,7 +740,7 @@ export async function getTransactionsByAmount(amount: number, method?: string) {
     .select()
     .from(transactionReconciliation)
     .where(and(...conditions))
-    .orderBy(desc(transactionReconciliation.createdAt));
+    .orderBy(desc(transactionReconciliation.timestamp));
 }
 
 export async function matchTransaction(transactionId: string, customerId: number, orderId: number) {
@@ -770,7 +770,7 @@ export async function getTransactionHistory(customerId?: number, method?: string
     .select()
     .from(transactionReconciliation)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(transactionReconciliation.createdAt))
+    .orderBy(desc(transactionReconciliation.timestamp))
     .limit(limit);
 }
 
@@ -787,7 +787,7 @@ export async function searchTransactionsByCustomer(customerName: string) {
         eq(transactionReconciliation.status, "unused")
       )
     )
-    .orderBy(desc(transactionReconciliation.createdAt));
+    .orderBy(desc(transactionReconciliation.timestamp));
 }
 
 
@@ -812,7 +812,7 @@ export async function listForms() {
   const db = await getDb();
   if (!db) return [];
   
-  return db.select().from(forms).orderBy(desc(forms.createdAt));
+  return db.select().from(forms).orderBy(desc(forms.timestamp));
 }
 
 export async function updateFormStatus(id: number, status: string) {
@@ -857,7 +857,7 @@ export async function listCreditAccounts(status?: string) {
     .select()
     .from(creditAccounts)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(creditAccounts.createdAt));
+    .orderBy(desc(creditAccounts.timestamp));
 }
 
 export async function updateCreditBalance(id: number, newBalance: number) {
@@ -884,7 +884,7 @@ export async function getCreditTransactionHistory(creditAccountId: number) {
     .select()
     .from(creditTransactions)
     .where(eq(creditTransactions.creditAccountId, creditAccountId))
-    .orderBy(desc(creditTransactions.createdAt));
+    .orderBy(desc(creditTransactions.timestamp));
 }
 
 // ─── Audit Logs ────────────────────────────────────────────────────────────
@@ -941,7 +941,7 @@ export async function listBranches() {
   const db = await getDb();
   if (!db) return [];
   
-  return db.select().from(branches).orderBy(desc(branches.createdAt));
+  return db.select().from(branches).orderBy(desc(branches.timestamp));
 }
 
 // ─── Serving Points ────────────────────────────────────────────────────────
@@ -964,7 +964,7 @@ export async function listServingPoints(branchId?: number) {
     .select()
     .from(servingPoints)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(servingPoints.createdAt));
+    .orderBy(desc(servingPoints.timestamp));
 }
 
 // ─── Suppliers ─────────────────────────────────────────────────────────────
@@ -980,7 +980,7 @@ export async function listSuppliers() {
   const db = await getDb();
   if (!db) return [];
   
-  return db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
+  return db.select().from(suppliers).orderBy(desc(suppliers.timestamp));
 }
 
 export async function updateSupplierPaymentStatus(id: number, status: string) {
@@ -1075,7 +1075,7 @@ export async function getOrderStatusHistory(orderId: number) {
     .select()
     .from(orderStatusHistory)
     .where(eq(orderStatusHistory.orderId, orderId))
-    .orderBy(orderStatusHistory.createdAt);
+    .orderBy(orderStatusHistory.timestamp);
 }
 
 export async function getKitchenQueue(status?: string) {
@@ -1095,7 +1095,7 @@ export async function getKitchenQueue(status?: string) {
     .leftJoin(orderItems, eq(orders.id, orderItems.orderId))
     .leftJoin(orderStatusHistory, eq(orders.id, orderStatusHistory.orderId))
     .where(and(...conditions))
-    .orderBy(orders.createdAt);
+    .orderBy(orders.timestamp);
 }
 
 export async function updateOrderStatusInKDS(orderId: number, newStatus: string, staffId?: number) {
@@ -1203,7 +1203,7 @@ export async function listStaffProfiles(filters?: {
         like(staffProfiles.firstName, `%${filters.search}%`),
         like(staffProfiles.lastName, `%${filters.search}%`),
         like(staffProfiles.employeeId, `%${filters.search}%`),
-        like(staffProfiles.phone, `%${filters.search}%`)
+        like(staffProfiles.phoneNumber, `%${filters.search}%`)
       )
     );
   }
@@ -1258,14 +1258,14 @@ export async function getStaffActivityLogs(filters?: {
   const conditions = [];
   if (filters?.userId) conditions.push(eq(staffActivityLogs.userId, filters.userId));
   if (filters?.activityType) conditions.push(eq(staffActivityLogs.activityType, filters.activityType as any));
-  if (filters?.startDate) conditions.push(gte(staffActivityLogs.createdAt, filters.startDate));
-  if (filters?.endDate) conditions.push(lte(staffActivityLogs.createdAt, filters.endDate));
+  if (filters?.startDate) conditions.push(gte(staffActivityLogs.timestamp, filters.startDate));
+  if (filters?.endDate) conditions.push(lte(staffActivityLogs.timestamp, filters.endDate));
   
   return db
     .select()
     .from(staffActivityLogs)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(staffActivityLogs.createdAt))
+    .orderBy(desc(staffActivityLogs.timestamp))
     .limit(filters?.limit || 1000);
 }
 
@@ -1282,8 +1282,8 @@ export async function getUserActivitySummary(userId: number, days: number = 7) {
     .where(
       and(
         eq(staffActivityLogs.userId, userId),
-        gte(staffActivityLogs.createdAt, startDate)
+        gte(staffActivityLogs.timestamp, startDate)
       )
     )
-    .orderBy(desc(staffActivityLogs.createdAt));
+    .orderBy(desc(staffActivityLogs.timestamp));
 }

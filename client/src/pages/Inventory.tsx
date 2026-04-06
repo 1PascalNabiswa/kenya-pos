@@ -165,7 +165,7 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
                   </td></tr>
                 ) : products.map((p) => {
                   const cat = categories?.find((c) => c.id === p.categoryId);
-                  const isLow = p.stockQuantityQuantity <= p.lowStockThreshold;
+                  const isLow = p.stockQuantity <= p.lowStockThreshold;
                   return (
                     <tr key={p.id} className="border-t border-border/50 hover:bg-secondary/20 transition-colors">
                       <td className="p-3">
@@ -192,13 +192,13 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
                       <td className="p-3 text-right font-medium">KES {Number(p.price).toLocaleString()}</td>
                       <td className="p-3 text-right">
                         <span className={`font-medium ${isLow ? "text-orange-600" : "text-foreground"}`}>
-                          {p.stockQuantityQuantity} {p.unit}
+                          {p.stockQuantity} {p.unit}
                         </span>
                       </td>
                       <td className="p-3 text-center">
                         {!p.isActive ? (
                           <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
-                        ) : p.stockQuantityQuantity === 0 ? (
+                        ) : p.stockQuantity === 0 ? (
                           <Badge className="bg-red-100 text-red-700 text-[10px]">Out of Stock</Badge>
                         ) : isLow ? (
                           <Badge className="bg-orange-100 text-orange-700 text-[10px]">Low Stock</Badge>
@@ -211,7 +211,7 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
                           <Button
                             size="sm" variant="ghost" className="h-7 w-7 p-0"
                             title="Adjust Stock"
-                            onClick={() => { setAdjustTarget({ id: p.id, name: p.name, qty: p.stockQuantityQuantity }); setAdjustStockOpen(true); }}
+                            onClick={() => { setAdjustTarget({ id: p.id, name: p.name, qty: p.stockQuantity }); setAdjustStockOpen(true); }}
                           >
                             <RefreshCw size={13} />
                           </Button>
@@ -286,8 +286,8 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
             lowStock.map((p) => (
               <div key={p.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:bg-secondary/20 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${p.stockQuantityQuantity === 0 ? "bg-red-100" : "bg-orange-100"}`}>
-                    <AlertTriangle size={18} className={p.stockQuantityQuantity === 0 ? "text-red-600" : "text-orange-600"} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${p.stockQuantity === 0 ? "bg-red-100" : "bg-orange-100"}`}>
+                    <AlertTriangle size={18} className={p.stockQuantity === 0 ? "text-red-600" : "text-orange-600"} />
                   </div>
                   <div>
                     <p className="font-medium text-sm">{p.name}</p>
@@ -296,14 +296,14 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className={`font-bold text-lg ${p.stockQuantityQuantity === 0 ? "text-red-600" : "text-orange-600"}`}>
-                      {p.stockQuantityQuantity}
+                    <p className={`font-bold text-lg ${p.stockQuantity === 0 ? "text-red-600" : "text-orange-600"}`}>
+                      {p.stockQuantity}
                     </p>
                     <p className="text-xs text-muted-foreground">{p.unit} remaining</p>
                   </div>
                   <Button
                     size="sm" variant="outline"
-                    onClick={() => { setAdjustTarget({ id: p.id, name: p.name, qty: p.stockQuantityQuantity }); setAdjustType("restock"); setAdjustStockOpen(true); }}
+                    onClick={() => { setAdjustTarget({ id: p.id, name: p.name, qty: p.stockQuantity }); setAdjustType("restock"); setAdjustStockOpen(true); }}
                   >
                     <RefreshCw size={13} className="mr-1" /> Restock
                   </Button>

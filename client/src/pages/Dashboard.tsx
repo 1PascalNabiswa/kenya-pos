@@ -177,10 +177,10 @@ export default function Dashboard() {
                     <Badge
                       variant="secondary"
                       className={`text-[10px] flex-shrink-0 ml-2 ${
-                        p.stockQuantityQuantity === 0 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                        p.stockQuantity === 0 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
                       }`}
                     >
-                      {p.stockQuantityQuantity === 0 ? "Out of stock" : `${p.stockQuantityQuantity} left`}
+                      {p.stockQuantity === 0 ? "Out of stock" : `${p.stockQuantity} left`}
                     </Badge>
                   </div>
                 ))}

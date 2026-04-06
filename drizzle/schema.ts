@@ -312,13 +312,15 @@ export type InsertSupplier = typeof suppliers.$inferInsert;
 export const auditLogs = mysqlTable("audit_logs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").references(() => users.id),
-  action: varchar("action", { length: 100 }).notNull(),
-  entityType: varchar("entityType", { length: 50 }).notNull(),
+  action: varchar("action", { length: 50 }).notNull(),
+  module: varchar("module", { length: 50 }).notNull(),
+  entityType: varchar("entityType", { length: 100 }),
   entityId: int("entityId"),
-  changes: json("changes"),
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  userAgent: text("userAgent"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  beforeValue: json("beforeValue"),
+  afterValue: json("afterValue"),
+  deviceId: varchar("deviceId", { length: 100 }),
+  ipAddress: varchar("ipAddress", { length: 50 }),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
 export type AuditLog = typeof auditLogs.$inferSelect;
