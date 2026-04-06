@@ -1439,9 +1439,9 @@ export async function getCustomerSpendingComparison(customerId: number) {
   const result = await db.execute(sql`
     SELECT 
       (SELECT SUM(totalAmount) FROM orders WHERE customerId = ? AND orderStatus = 'completed') as customerTotal,
-      (SELECT AVG(total) FROM (
-        SELECT SUM(totalAmount) as total FROM orders WHERE orderStatus = 'completed' GROUP BY customerId
-      ) as t) as averageCustomerSpending,
+      (SELECT AVG(customerTotal) FROM (
+        SELECT SUM(totalAmount) as customerTotal FROM orders WHERE orderStatus = 'completed' GROUP BY customerId
+      ) as avgTable) as averageCustomerSpending,
       (SELECT COUNT(DISTINCT customerId) FROM orders WHERE orderStatus = 'completed') as totalCustomers,
       (SELECT SUM(totalAmount) FROM orders WHERE orderStatus = 'completed') as totalSystemRevenue
   `, [customerId]);

@@ -224,4 +224,5 @@
 - [x] Add tRPC procedures for spending reports
 - [x] Build customer spending reports UI page
 - [x] Add charts and trend analysis visualizations
-- [ ] Test reports with sample data
+- [x] Test reports with sample data
+- [x] Fix SQL syntax errors in spending comparison query
