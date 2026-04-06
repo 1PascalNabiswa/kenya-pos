@@ -113,6 +113,8 @@ export default function SalesTransaction() {
     setShowReceiptDialog(true);
     setPaymentDialogOpen(false);
     clearCart();
+    // Invalidate customers list to refresh totalSpent
+    utils.customers.list.invalidate();
   };
 
   const cartItemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
