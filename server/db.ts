@@ -223,10 +223,10 @@ export async function getLowStockProducts(threshold?: number) {
     .where(
       and(
         eq(products.isActive, true),
-        sql`${products.stockQuantity} <= ${products.lowStockThreshold}`
+        lte(products.stock, products.minStock)
       )
     )
-    .orderBy(products.stockQuantity);
+    .orderBy(products.stock);
 }
 
 export async function adjustStock(
