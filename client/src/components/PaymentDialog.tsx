@@ -39,6 +39,9 @@ interface SplitPayment {
   id: string;
   method: PaymentMethod;
   amount: number;
+  mpesaPhone?: string;
+  mpesaStatus?: "idle" | "sending" | "waiting" | "success" | "failed";
+  checkoutRequestId?: string;
 }
 
 export default function PaymentDialog({
@@ -126,9 +129,28 @@ export default function PaymentDialog({
     setSplitPayments(splitPayments.filter((p) => p.id !== id));
   };
 
+  const handleRetrySplitMpesa = (paymentId: string) => {
+    setSplitPayments(
+      splitPayments.map((p) =>
+        p.id === paymentId ? { ...p, mpesaStatus: "idle" } : p
+      )
+    );
+  };
+
   const handleUpdateSplitPayment = (id: string, field: string, value: any) => {
     setSplitPayments(
-      splitPayments.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+      splitPayments.map((p) => {
+        if (p.id === id) {
+          const updated = { ...p, [field]: value };
+          // Reset M-Pesa status if method changes away from mpesa
+          if (field === "method" && value !== "mpesa") {
+            updated.mpesaStatus = "idle";
+            updated.mpesaPhone = "";
+          }
+          return updated;
+        }
+        return p;
+      })
     );
   };
 
@@ -174,6 +196,15 @@ export default function PaymentDialog({
     if (splitTotal !== total) {
       toast.error(`Total split payments (KES ${splitTotal}) must equal order total (KES ${total})`);
       return;
+    }
+
+    // Verify all M-Pesa payments have phone numbers
+    const mpesaPayments = splitPayments.filter((p) => p.method === "mpesa");
+    for (const payment of mpesaPayments) {
+      if (!payment.mpesaPhone) {
+        toast.error(`Please enter M-Pesa phone number for KES ${payment.amount} payment`);
+        return;
+      }
     }
 
     setIsProcessing(true);
@@ -233,6 +264,82 @@ export default function PaymentDialog({
       toast.error(e.message ?? "Failed to process split payment");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleSplitMpesaPayment = async (paymentId: string) => {
+    const payment = splitPayments.find((p) => p.id === paymentId);
+    if (!payment || !payment.mpesaPhone) {
+      toast.error("Please enter M-Pesa phone number");
+      return;
+    }
+
+    // Update payment status to sending
+    setSplitPayments(
+      splitPayments.map((p) =>
+        p.id === paymentId ? { ...p, mpesaStatus: "sending" } : p
+      )
+    );
+
+    try {
+      const result = await initiateMpesa.mutateAsync({
+        phone: payment.mpesaPhone,
+        amount: payment.amount,
+        orderId: customerId || 0,
+        orderNumber: `SPLIT-${Date.now()}`,
+      });
+
+      setCheckoutRequestId(result.CheckoutRequestID);
+
+      // Update to waiting status
+      setSplitPayments(
+        splitPayments.map((p) =>
+          p.id === paymentId
+            ? { ...p, mpesaStatus: "waiting", checkoutRequestId: result.CheckoutRequestID }
+            : p
+        )
+      );
+
+      // Poll for payment status
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResult = await queryMpesaStatus.mutateAsync({
+            checkoutRequestId: result.CheckoutRequestID,
+          });
+
+          if (statusResult.ResultCode === "0") {
+            clearInterval(pollInterval);
+            setSplitPayments(
+              splitPayments.map((p) =>
+                p.id === paymentId ? { ...p, mpesaStatus: "success" } : p
+              )
+            );
+            toast.success(`M-Pesa payment of KES ${payment.amount} confirmed!`);
+          }
+        } catch (e) {
+          console.error("Status check error:", e);
+        }
+      }, 3000);
+
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        const currentPayment = splitPayments.find((p) => p.id === paymentId);
+        if (currentPayment?.mpesaStatus === "waiting") {
+          setSplitPayments(
+            splitPayments.map((p) =>
+              p.id === paymentId ? { ...p, mpesaStatus: "failed" } : p
+            )
+          );
+          toast.error("M-Pesa payment timeout");
+        }
+      }, 60000);
+    } catch (e: any) {
+      setSplitPayments(
+        splitPayments.map((p) =>
+          p.id === paymentId ? { ...p, mpesaStatus: "failed" } : p
+        )
+      );
+      toast.error(e.message ?? "Failed to initiate M-Pesa payment");
     }
   };
 
@@ -502,46 +609,106 @@ export default function PaymentDialog({
               </div>
 
               {/* Split Payments List */}
-              <div className="space-y-3 max-h-64 overflow-y-auto">
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {splitPayments.map((payment) => (
-                  <div key={payment.id} className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <Label className="text-xs">Method</Label>
-                      <select
-                        value={payment.method}
-                        onChange={(e) =>
-                          handleUpdateSplitPayment(payment.id, "method", e.target.value as PaymentMethod)
-                        }
-                        className="w-full px-2 py-1 border rounded text-sm"
+                  <div key={payment.id} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Label className="text-xs">Method</Label>
+                        <select
+                          value={payment.method}
+                          onChange={(e) =>
+                            handleUpdateSplitPayment(payment.id, "method", e.target.value as PaymentMethod)
+                          }
+                          className="w-full px-2 py-1 border rounded text-sm"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="mpesa">M-Pesa</option>
+                          <option value="stripe">Card</option>
+                          <option value="wallet">Wallet</option>
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs">Amount</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={payment.amount}
+                          onChange={(e) =>
+                            handleUpdateSplitPayment(payment.id, "amount", Number(e.target.value))
+                          }
+                          min="0"
+                          max={splitRemaining + payment.amount}
+                          className="text-sm"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveSplitPayment(payment.id)}
+                        className="text-red-600 hover:text-red-700 mt-6"
                       >
-                        <option value="cash">Cash</option>
-                        <option value="mpesa">M-Pesa</option>
-                        <option value="stripe">Card</option>
-                        <option value="wallet">Wallet</option>
-                      </select>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <div className="flex-1">
-                      <Label className="text-xs">Amount</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={payment.amount}
-                        onChange={(e) =>
-                          handleUpdateSplitPayment(payment.id, "amount", Number(e.target.value))
-                        }
-                        min="0"
-                        max={splitRemaining + payment.amount}
-                        className="text-sm"
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveSplitPayment(payment.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+
+                    {/* M-Pesa specific UI */}
+                    {payment.method === "mpesa" && (
+                      <div className="space-y-2 bg-blue-50 p-2 rounded">
+                        <Input
+                          type="tel"
+                          placeholder="254700000000"
+                          value={payment.mpesaPhone || ""}
+                          onChange={(e) =>
+                            handleUpdateSplitPayment(payment.id, "mpesaPhone", e.target.value)
+                          }
+                          className="text-sm"
+                        />
+                        {payment.mpesaStatus === "idle" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleSplitMpesaPayment(payment.id)}
+                            className="w-full text-xs"
+                          >
+                            Send M-Pesa Prompt
+                          </Button>
+                        )}
+                        {payment.mpesaStatus === "sending" && (
+                          <div className="flex items-center gap-2 text-sm text-blue-600">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Sending prompt...</span>
+                          </div>
+                        )}
+                        {payment.mpesaStatus === "waiting" && (
+                          <div className="flex items-center gap-2 text-sm text-blue-600">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Waiting for payment...</span>
+                          </div>
+                        )}
+                        {payment.mpesaStatus === "success" && (
+                          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Payment confirmed!</span>
+                          </div>
+                        )}
+                        {payment.mpesaStatus === "failed" && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                              <AlertCircle className="w-4 h-4" />
+                              <span>Payment failed</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRetrySplitMpesa(payment.id)}
+                              className="w-full text-xs"
+                            >
+                              Retry
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
