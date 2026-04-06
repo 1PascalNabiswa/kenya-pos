@@ -414,7 +414,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
 
   const paymentBreakdown = await db
     .select({
-      paymentMethod: orders.paymentMethod,
+      methodType: orders.paymentMethod,
       count: sql<number>`count(*)`,
       total: sql<number>`sum(${orders.totalAmount})`,
     })
@@ -980,7 +980,7 @@ export async function listSuppliers() {
   const db = await getDb();
   if (!db) return [];
   
-  return db.select().from(suppliers).orderBy(desc(suppliers.timestamp));
+  return db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
 }
 
 export async function updateSupplierPaymentStatus(id: number, status: string) {
@@ -1258,14 +1258,14 @@ export async function getStaffActivityLogs(filters?: {
   const conditions = [];
   if (filters?.userId) conditions.push(eq(staffActivityLogs.userId, filters.userId));
   if (filters?.activityType) conditions.push(eq(staffActivityLogs.activityType, filters.activityType as any));
-  if (filters?.startDate) conditions.push(gte(staffActivityLogs.timestamp, filters.startDate));
-  if (filters?.endDate) conditions.push(lte(staffActivityLogs.timestamp, filters.endDate));
+  if (filters?.startDate) conditions.push(gte(staffActivityLogs.createdAt, filters.startDate));
+  if (filters?.endDate) conditions.push(lte(staffActivityLogs.createdAt, filters.endDate));
   
   return db
     .select()
     .from(staffActivityLogs)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(staffActivityLogs.timestamp))
+    .orderBy(desc(staffActivityLogs.createdAt))
     .limit(filters?.limit || 1000);
 }
 
@@ -1282,8 +1282,8 @@ export async function getUserActivitySummary(userId: number, days: number = 7) {
     .where(
       and(
         eq(staffActivityLogs.userId, userId),
-        gte(staffActivityLogs.timestamp, startDate)
+        gte(staffActivityLogs.createdAt, startDate)
       )
     )
-    .orderBy(desc(staffActivityLogs.timestamp));
+    .orderBy(desc(staffActivityLogs.createdAt));
 }
