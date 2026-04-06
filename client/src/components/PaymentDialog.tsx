@@ -195,9 +195,9 @@ export default function PaymentDialog({
       for (const payment of splitPayments) {
         try {
           await addPaymentMethod.mutateAsync({
-            orderId: result.orderId,
+            id: result.orderId,
             method: payment.method,
-            amount: payment.amount,
+            amount: Number(payment.amount),
           });
         } catch (e) {
           console.error("Failed to record payment method:", e);

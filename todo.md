@@ -207,3 +207,6 @@
 - [x] Add serving order display route and navigation menu item
 - [x] Test complete flow: payment → receipt → serving display
 - [x] Save checkpoint with new features
+
+## Bug Fixes
+- [x] Fix API mutation error: undefined id being passed on /sales/pos page (fixed addPaymentMethod call to use 'id' instead of 'orderId')
