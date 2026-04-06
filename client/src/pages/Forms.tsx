@@ -20,7 +20,7 @@ const statusColors: Record<string, string> = {
 export default function Forms() {
   const [open, setOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<any>(null);
-  const [formData, setFormData] = useState({ title: "", code: "", amount: "" });
+  const [formData, setFormData] = useState({ title: "", code: "", amount: "", servingDate: "" });
 
   const { data: formsData, refetch } = trpc.forms.list.useQuery();
   const createMutation = trpc.forms.create.useMutation();
@@ -30,18 +30,22 @@ export default function Forms() {
 
   const handleCreate = async () => {
     if (!formData.title || !formData.code || !formData.amount) {
-      toast.error("Please fill all fields");
+      toast.error("Please fill all required fields");
       return;
     }
 
     try {
-      await createMutation.mutateAsync({
+      const payload: any = {
         title: formData.title,
         code: formData.code,
         amount: parseFloat(formData.amount),
-      });
+      };
+      if (formData.servingDate) {
+        payload.servingDate = new Date(formData.servingDate);
+      }
+      await createMutation.mutateAsync(payload);
       toast.success("Form created successfully");
-      setFormData({ title: "", code: "", amount: "" });
+      setFormData({ title: "", code: "", amount: "", servingDate: "" });
       setOpen(false);
       refetch();
     } catch (error) {
@@ -157,6 +161,14 @@ export default function Forms() {
                 placeholder="5000"
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Serving Date (Optional)</label>
+              <Input
+                type="datetime-local"
+                value={formData.servingDate}
+                onChange={(e) => setFormData({ ...formData, servingDate: e.target.value })}
               />
             </div>
             <div className="flex gap-2 justify-end pt-4">

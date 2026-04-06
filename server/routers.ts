@@ -656,9 +656,15 @@ const transactionsRouter = router({
 // ─── Forms Router ──────────────────────────────────────────────────────────
 const formsRouter = router({
   create: protectedProcedure
-    .input(z.object({ title: z.string(), code: z.string(), amount: z.number().positive(), servingPointId: z.number().optional() }))
+    .input(z.object({ title: z.string(), code: z.string(), amount: z.number().positive(), servingDate: z.date().optional(), servingPointId: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
-      const result = await createForm({ ...input, totalAmount: input.amount.toString() });
+      const result = await createForm({
+        title: input.title,
+        code: input.code,
+        amount: input.amount.toString(),
+        servingDate: input.servingDate,
+        servingPointId: input.servingPointId,
+      });
       await recordAuditLog({
         module: "POS",
         userId: ctx.user?.id,

@@ -244,12 +244,13 @@ export type InsertServingPoint = typeof servingPoints.$inferInsert;
 // ─── Forms ─────────────────────────────────────────────────────────────────
 export const forms = mysqlTable("forms", {
   id: int("id").autoincrement().primaryKey(),
-  title: varchar("title", { length: 200 }).notNull(),
-  description: text("description"),
-  totalAmount: decimal("totalAmount", { precision: 12, scale: 2 }).notNull(),
-  amountSpent: decimal("amountSpent", { precision: 12, scale: 2 }).default("0").notNull(),
-  status: mysqlEnum("status", ["active", "completed", "cancelled"]).default("active").notNull(),
-  branchId: int("branchId").references(() => branches.id),
+  title: varchar("title", { length: 200 }).notNull().unique(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  spent: decimal("spent", { precision: 12, scale: 2 }).default("0"),
+  servingPointId: int("servingPointId").references(() => servingPoints.id),
+  status: mysqlEnum("status", ["not_issued", "issued_not_approved", "issued_approved", "submitted_for_payment", "pending_payment", "paid"]).default("not_issued").notNull(),
+  servingDate: timestamp("servingDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
