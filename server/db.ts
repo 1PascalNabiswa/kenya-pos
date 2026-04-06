@@ -279,11 +279,22 @@ export async function getCustomers(opts?: { search?: string; page?: number; limi
     );
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-  const [items, countResult] = await Promise.all([
+  const [items, countResult, walletData] = await Promise.all([
     db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause),
+    db.select().from(customerWallets),
   ]);
-  return { items, total: Number(countResult[0]?.count ?? 0) };
+  
+  // Create a map of customer ID to wallet data for quick lookup
+  const walletMap = new Map(walletData.map(w => [w.customerId, w]));
+  
+  // Merge wallet totalSpent with customer data
+  const itemsWithWalletData = items.map(customer => ({
+    ...customer,
+    totalSpent: walletMap.get(customer.id)?.totalSpent ?? "0",
+  }));
+  
+  return { items: itemsWithWalletData, total: Number(countResult[0]?.count ?? 0) };
 }
 
 export async function getCustomerById(id: number) {
