@@ -232,7 +232,7 @@ export async function adjustStock(
   productId: number,
   changeType: "sale" | "restock" | "adjustment" | "return" | "damage",
   quantityChange: number,
-  id?: number,
+  orderId?: number,
   notes?: string,
   createdBy?: number
 ) {
@@ -240,19 +240,19 @@ export async function adjustStock(
   if (!db) throw new Error("DB unavailable");
   const product = await getProductById(productId);
   if (!product) throw new Error("Product not found");
-  const quantityBefore = product.stock;
+  const quantityBefore = product.stockQuantity ?? 0;
   const quantityAfter = quantityBefore + quantityChange;
   await db
     .update(products)
-    .set({ stock: quantityAfter })
+    .set({ stockQuantity: quantityAfter })
     .where(eq(products.id, productId));
   await db.insert(inventoryLogs).values({
     productId,
-    type: changeType,
+    changeType,
     quantityBefore,
     quantityChange,
     quantityAfter,
-    id,
+    orderId,
     notes,
     createdBy,
   });
@@ -326,14 +326,14 @@ export async function generateOrderNumber() {
 
 export async function createOrder(
   orderData: InsertOrder,
-  items: InsertOrderItem[]
+  items: Omit<InsertOrderItem, 'orderId' | 'id'>[]
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   const result = await db.insert(orders).values(orderData);
   const id = (result as any)[0]?.insertId as number;
   if (items.length > 0) {
-    await db.insert(orderItems).values(items.map((item) => ({ ...item, id })));
+    await db.insert(orderItems).values(items.map((item) => ({ ...item, orderId: id })));
   }
   // Deduct stock for each item
   for (const item of items) {

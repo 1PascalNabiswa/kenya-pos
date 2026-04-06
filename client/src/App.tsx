@@ -20,6 +20,7 @@ import AuditLogs from "./pages/AuditLogs";
 import Branches from "./pages/Branches";
 import Suppliers from "@/pages/Suppliers";
 import KitchenDisplay from "@/pages/KitchenDisplay";
+import ServingDisplay from "@/pages/ServingDisplay";
 import { UserManagement } from "@/pages/UserManagement";
 import { StaffActivityLogs } from "@/pages/StaffActivityLogs";
 
@@ -157,6 +158,7 @@ function Router() {
         </POSLayout>
       )} />
       <Route path="/kitchen" component={KitchenDisplay} />
+      <Route path="/serving" component={ServingDisplay} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

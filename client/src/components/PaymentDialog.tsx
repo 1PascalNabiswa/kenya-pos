@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Smartphone, Banknote, CreditCard, Loader2, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import ReceiptDialog from "./ReceiptDialog";
 interface CartItem {
   productId: number;
   productName: string;
@@ -60,6 +60,9 @@ export default function PaymentDialog({
   const [isProcessing, setIsProcessing] = useState(false);
   const [splitPayments, setSplitPayments] = useState<SplitPayment[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [completedOrderId, setCompletedOrderId] = useState<number | null>(null);
+  const [completedOrderNumber, setCompletedOrderNumber] = useState<string>("");
 
   const utils = trpc.useUtils();
 
@@ -137,6 +140,9 @@ export default function PaymentDialog({
         cashChange: String(cashChange),
       });
       toast.success(`Payment received! Change: KES ${cashChange.toLocaleString()}`);
+      setCompletedOrderId(result.orderId);
+      setCompletedOrderNumber(result.orderNumber);
+      setShowReceipt(true);
       onComplete(result.orderId, result.orderNumber);
     } catch (e: any) {
       toast.error(e.message ?? "Failed to process payment");
@@ -200,6 +206,9 @@ export default function PaymentDialog({
 
       const methods = splitPayments.map((p) => `${p.method}: KES ${p.amount}`).join(", ");
       toast.success(`Payment split across: ${methods}`);
+      setCompletedOrderId(result.orderId);
+      setCompletedOrderNumber(result.orderNumber);
+      setShowReceipt(true);
       onComplete(result.orderId, result.orderNumber);
     } catch (e: any) {
       toast.error(e.message ?? "Failed to process split payment");
@@ -254,6 +263,9 @@ export default function PaymentDialog({
             });
 
             toast.success("M-Pesa payment successful!");
+            setCompletedOrderId(orderResult.orderId);
+            setCompletedOrderNumber(orderResult.orderNumber);
+            setShowReceipt(true);
             onComplete(orderResult.orderId, orderResult.orderNumber);
           }
         } catch (e) {
@@ -515,6 +527,17 @@ export default function PaymentDialog({
           </Button>
         </div>
       </DialogContent>
+
+      {/* Receipt Dialog */}
+      <ReceiptDialog
+        open={showReceipt}
+        onClose={() => {
+          setShowReceipt(false);
+          onClose();
+        }}
+        orderId={completedOrderId || 0}
+        orderNumber={completedOrderNumber}
+      />
     </Dialog>
   );
 }

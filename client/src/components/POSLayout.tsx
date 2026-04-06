@@ -90,6 +90,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: "Kitchen Display", icon: <UtensilsCrossed size={18} />, href: "/kitchen" },
+  { label: "Serving Display", icon: <ShoppingBag size={18} />, href: "/serving" },
   { label: "Settings", icon: <Settings size={18} />, href: "/settings" },
 ];
 

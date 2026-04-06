@@ -312,17 +312,18 @@ const ordersRouter = router({
         {
           orderNumber,
           customerId: input.customerId,
+          customerName: input.customerName || "Walk-in Customer",
           subtotal: input.subtotal,
           taxAmount: input.taxAmount,
           discountAmount: input.discountAmount ?? "0",
           totalAmount: input.totalAmount,
+          paymentMethod: input.paymentMethod,
           paymentStatus: input.paymentMethod === "cash" ? "paid" : "pending",
-          orderStatus: input.paymentMethod === "cash" ? "completed" : "pending",
+          orderStatus: "pending",
           notes: input.notes,
         },
         input.items.map((item) => ({
           ...item,
-          id: 0,
           discountAmount: item.discountAmount ?? "0",
         }))
       );
