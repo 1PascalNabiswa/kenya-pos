@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,19 @@ export default function Customers() {
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", notes: "" });
 
   const utils = trpc.useUtils();
-  const { data, isLoading } = trpc.customers.list.useQuery({ search: search || undefined, page, limit: 20 });
+  const { data, isLoading, refetch } = trpc.customers.list.useQuery({ search: search || undefined, page, limit: 20 });
+  
+  // Refetch customers when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refetch();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refetch]);
   const { data: history } = trpc.customers.purchaseHistory.useQuery(
     { customerId: viewCustomer?.id ?? 0 },
     { enabled: !!viewCustomer }
