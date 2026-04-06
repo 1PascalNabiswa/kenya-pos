@@ -154,12 +154,44 @@ export default function PaymentDialog({
     );
   };
 
+  const handleCardPayment = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await createOrder.mutateAsync({
+        customerId,
+        customerName: customerName || "Walk-in Customer",
+        items: cart.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          unitPrice: String(item.unitPrice),
+          originalPrice: item.originalPrice ? String(item.originalPrice) : undefined,
+          totalPrice: String(item.unitPrice * item.quantity),
+        })),
+        subtotal: String(subtotal),
+        taxAmount: String(taxAmount),
+        totalAmount: String(total),
+        paymentMethod: "stripe",
+      });
+      toast.success(`Card payment processed! Order: ${result.orderNumber}`);
+      setCompletedOrderId(result.orderId);
+      setCompletedOrderNumber(result.orderNumber);
+      setShowReceipt(true);
+      onComplete(result.orderId, result.orderNumber);
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to process card payment");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleWalletPayment = async () => {
     if (!customerId) {
       toast.error("No customer selected");
       return;
     }
-    if (!getWallet.data || getWallet.data.creditLimit < total) {
+    if (!getWallet.data || getWallet.data.balance < total) {
       toast.error("Insufficient wallet balance");
       return;
     }
@@ -180,7 +212,7 @@ export default function PaymentDialog({
         subtotal: String(subtotal),
         taxAmount: String(taxAmount),
         totalAmount: String(total),
-        paymentMethod: "wallet",
+        paymentMethod: "cash",
       });
       
       // Deduct from wallet balance
@@ -526,6 +558,32 @@ export default function PaymentDialog({
                       </>
                     ) : (
                       "Confirm Cash Payment"
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {method === "stripe" && (
+                <div className="space-y-3">
+                  <div className="bg-blue-50 p-3 rounded">
+                    <p className="text-sm text-gray-700">Card payment will open a secure payment gateway.</p>
+                    <div className="mt-2 flex justify-between text-sm font-bold">
+                      <span>Total Amount:</span>
+                      <span>KES {total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleCardPayment}
+                    disabled={isProcessing}
+                    className="w-full"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Proceed to Card Payment"
                     )}
                   </Button>
                 </div>
