@@ -3,25 +3,28 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Calendar, PieChart as PieChartIcon } from "lucide-react";
 
 export default function CustomerSpendingReports() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
-  const [reportType, setReportType] = useState<"weekly" | "monthly">("monthly");
+  const [startDate, setStartDate] = useState<string>(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 3);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
   // Fetch customers for selection
   const { data: customersData } = trpc.customers.list.useQuery({ limit: 100 });
 
-  // Fetch spending reports
-  const { data: weeklyData } = trpc.reports.customerSpendingWeekly.useQuery(
-    { customerId: selectedCustomerId ?? 0, weeksBack: 12 },
-    { enabled: !!selectedCustomerId && reportType === "weekly" }
-  );
-
+  // Fetch spending reports with date range
   const { data: monthlyData } = trpc.reports.customerSpendingMonthly.useQuery(
     { customerId: selectedCustomerId ?? 0, monthsBack: 12 },
-    { enabled: !!selectedCustomerId && reportType === "monthly" }
+    { enabled: !!selectedCustomerId }
   );
 
   const { data: trendsData } = trpc.reports.customerSpendingTrends.useQuery(
@@ -40,7 +43,6 @@ export default function CustomerSpendingReports() {
     { enabled: !!selectedCustomerId }
   );
 
-  const chartData = reportType === "weekly" ? weeklyData : monthlyData;
   const selectedCustomer = customersData?.items?.find((c: any) => c.id === selectedCustomerId);
 
   const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
@@ -54,8 +56,8 @@ export default function CustomerSpendingReports() {
           <p className="text-muted-foreground">Analyze customer spending patterns and trends</p>
         </div>
 
-        {/* Customer Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">Select Customer</label>
             <Select value={selectedCustomerId?.toString() ?? ""} onValueChange={(v) => setSelectedCustomerId(Number(v))}>
@@ -73,16 +75,23 @@ export default function CustomerSpendingReports() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Report Period</label>
-            <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
+            <label className="text-sm font-medium text-foreground mb-2 block">Start Date</label>
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">End Date</label>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full"
+            />
           </div>
         </div>
 
@@ -137,12 +146,12 @@ export default function CustomerSpendingReports() {
 
             {/* Spending Trend Chart */}
             <Card className="p-6 mb-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Spending Trend ({reportType === "weekly" ? "Weekly" : "Monthly"})</h2>
-              {chartData && chartData.length > 0 ? (
+              <h2 className="text-lg font-bold text-foreground mb-4">Spending Trend (Monthly)</h2>
+              {monthlyData && monthlyData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
+                  <LineChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey={reportType === "weekly" ? "weekLabel" : "monthName"} />
+                    <XAxis dataKey="monthName" />
                     <YAxis />
                     <Tooltip formatter={(value) => `KES ${Number(value).toLocaleString()}`} />
                     <Legend />
@@ -151,7 +160,7 @@ export default function CustomerSpendingReports() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-muted-foreground">No data available</p>
+                <p className="text-muted-foreground">No data available for selected period</p>
               )}
             </Card>
 

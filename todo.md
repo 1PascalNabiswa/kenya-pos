@@ -226,3 +226,24 @@
 - [x] Add charts and trend analysis visualizations
 - [x] Test reports with sample data
 - [x] Fix SQL syntax errors in spending comparison query
+
+
+## Bug Fixes - Customer Spending Reports
+- [ ] Fix total spent showing 0 for customers with purchases
+- [ ] Replace period dropdown with start date and end date selectors
+- [ ] Update spending queries to use date range filters
+- [ ] Test reports with date range filters
+
+
+## Phase 24: Daily Sales Report
+- [ ] Create server queries for daily sales aggregation by item
+- [ ] Add database query to get sales items, quantities, and revenue per item
+- [ ] Add tRPC procedures for daily sales report data
+- [ ] Build Daily Sales Report UI page with date range filters
+- [ ] Add data table showing items sold, quantities, and revenue
+- [ ] Add summary metrics: total items sold, total revenue
+- [ ] Add charts for sales trends and item popularity
+- [ ] Implement date range selector (start date, end date)
+- [ ] Add export functionality (PDF, CSV)
+- [ ] Test report with actual sales data
+- [ ] Write comprehensive tests for daily sales queries

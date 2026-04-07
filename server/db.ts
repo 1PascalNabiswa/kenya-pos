@@ -1365,10 +1365,16 @@ export async function getCustomerSpendingTrends(customerId: number) {
   const db = await getDb();
   if (!db) return null;
   
+  const walletResult = await db.execute(sql`
+    SELECT totalSpent, balance FROM customerWallets WHERE customerId = ?
+  `, [customerId]);
+  
+  const walletData = walletResult[0] as any;
+  const totalSpent = walletData?.totalSpent ?? 0;
+  
   const result = await db.execute(sql`
     SELECT 
       COUNT(o.id) as totalOrders,
-      SUM(o.totalAmount) as totalSpent,
       AVG(o.totalAmount) as avgOrderValue,
       MAX(o.totalAmount) as maxOrderValue,
       MIN(o.totalAmount) as minOrderValue,
@@ -1380,7 +1386,11 @@ export async function getCustomerSpendingTrends(customerId: number) {
     WHERE o.customerId = ? AND o.orderStatus = 'completed'
   `, [customerId]);
   
-  return result[0] as any;
+  const orderData = result[0] as any;
+  return {
+    ...orderData,
+    totalSpent: totalSpent
+  };
 }
 
 export async function getCustomerPaymentMethodBreakdown(customerId: number) {
