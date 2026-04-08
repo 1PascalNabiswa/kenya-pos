@@ -27,6 +27,7 @@ import CustomerSpendingReports from "@/pages/CustomerSpendingReports";
 import StaffManagement from "@/pages/StaffManagement";
 import PayrollManagement from "@/pages/PayrollManagement";
 import { RolePermissionsMatrix } from "@/pages/RolePermissionsMatrix";
+import CustomRoleBuilder from "@/pages/CustomRoleBuilder";
 
 function Router() {
   return (
@@ -179,6 +180,11 @@ function Router() {
       <Route path="/role-permissions" component={() => (
         <POSLayout>
           <RolePermissionsMatrix />
+        </POSLayout>
+      )} />
+      <Route path="/custom-roles" component={() => (
+        <POSLayout>
+          <CustomRoleBuilder />
         </POSLayout>
       )} />
       <Route path="/kitchen" component={KitchenDisplay} />

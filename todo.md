@@ -266,3 +266,11 @@
 - [ ] Test end-to-end payroll workflows (casual and permanent)
 - [ ] Add Staff Management menu item to navigation
 - [ ] Add Payroll Management menu item to navigation
+
+
+## Phase 26: Role-Based Access Control Enhancements
+- [x] Implement Role-Based UI Enforcement: hide/disable menu items based on user role
+- [x] Add Permission Validation on Backend: enforce role permissions in tRPC procedures
+- [x] Create Custom Role Builder: allow admins to create and manage custom roles
+- [x] Test role-based access control across all features
+- [x] Verify users cannot access restricted features via direct API calls

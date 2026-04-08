@@ -32,6 +32,7 @@ import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
+import { canAccessFeature } from "@/lib/rolePermissions";
 
 interface NavItem {
   label: string;
@@ -90,6 +91,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "User Management", href: "/users", icon: <Users size={14} /> },
       { label: "Role Permissions", href: "/role-permissions", icon: <Shield size={14} /> },
+      { label: "Custom Roles", href: "/custom-roles", icon: <Shield size={14} /> },
       { label: "Staff Activity", href: "/staff-activity", icon: <Activity size={14} /> },
       { label: "Staff Management", href: "/staff-management", icon: <Users size={14} /> },
       { label: "Payroll", href: "/payroll", icon: <DollarSign size={14} /> },
@@ -145,6 +147,53 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [openGroups, setOpenGroups] = useState<string[]>(["Sales"]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Filter navigation items based on user role
+  const filterNavItems = (items: NavItem[]): NavItem[] => {
+    if (!user?.role) return [];
+    
+    return items.filter(item => {
+      // Check if user can access this item
+      if (item.label === "Dashboard" && !canAccessFeature(user.role as any, 'canAccessDashboard')) return false;
+      if (item.label === "Sales" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
+      if (item.label === "Inventory" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
+      if (item.label === "Customers" && !canAccessFeature(user.role as any, 'canManageCustomers')) return false;
+      if (item.label === "Reports" && !canAccessFeature(user.role as any, 'canViewReports')) return false;
+      if (item.label === "Customer Wallet" && !canAccessFeature(user.role as any, 'canAccessWallet')) return false;
+      if (item.label === "Operations" && !canAccessFeature(user.role as any, 'canAccessForms')) return false;
+      if (item.label === "Audit Trail" && !canAccessFeature(user.role as any, 'canAccessAuditLogs')) return false;
+      if (item.label === "Administration" && !canAccessFeature(user.role as any, 'canAccessUserManagement')) return false;
+      if (item.label === "Kitchen Display" && !canAccessFeature(user.role as any, 'canAccessKitchenDisplay')) return false;
+      if (item.label === "Serving Display" && !canAccessFeature(user.role as any, 'canAccessServingDisplay')) return false;
+      if (item.label === "Settings" && !canAccessFeature(user.role as any, 'canAccessSettings')) return false;
+      
+      // Filter children items
+      if (item.children) {
+        item.children = item.children.filter(child => {
+          if (child.label === "Products" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
+          if (child.label === "Categories" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
+          if (child.label === "Alerts" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
+          if (child.label === "Sales Transaction" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
+          if (child.label === "Sales Orders" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
+          if (child.label === "Invoices" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
+          if (child.label === "Sales Reports" && !canAccessFeature(user.role as any, 'canViewReports')) return false;
+          if (child.label === "Inventory Reports" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
+          if (child.label === "Branches" && !canAccessFeature(user.role as any, 'canAccessBranches')) return false;
+          if (child.label === "Suppliers" && !canAccessFeature(user.role as any, 'canAccessSuppliers')) return false;
+          if (child.label === "User Management" && !canAccessFeature(user.role as any, 'canAccessUserManagement')) return false;
+          if (child.label === "Role Permissions" && !canAccessFeature(user.role as any, 'canAccessRolePermissions')) return false;
+          if (child.label === "Staff Activity" && !canAccessFeature(user.role as any, 'canAccessStaffManagement')) return false;
+          if (child.label === "Staff Management" && !canAccessFeature(user.role as any, 'canAccessStaffManagement')) return false;
+          if (child.label === "Payroll" && !canAccessFeature(user.role as any, 'canAccessPayroll')) return false;
+          return true;
+        });
+        return item.children.length > 0;
+      }
+      return true;
+    });
+  };
+
+  const visibleNavItems = filterNavItems(navItems);
 
   const { data: dashboard } = trpc.reports.dashboard.useQuery(undefined, {
     refetchInterval: 60000,
@@ -230,7 +279,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
         {/* Nav */}
         <nav className="flex-1 px-3 space-y-0.5 pb-4">
           <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider px-3 py-2">Menu</p>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             if (item.children) {
               return (
                 <NavGroup
