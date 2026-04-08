@@ -1318,7 +1318,7 @@ const userRouter = router({
     .input(z.object({
       name: z.string().min(1),
       email: z.string().email(),
-      role: z.enum(["admin", "user"]),
+      role: z.enum(["admin", "manager", "supervisor", "cashier", "waiter", "inventory_manager", "kitchen_staff"]),
     }))
     .mutation(async ({ input }) => {
       await createUser(input);
@@ -1328,7 +1328,7 @@ const userRouter = router({
   updateRole: protectedProcedure
     .input(z.object({
       id: z.number(),
-      role: z.enum(["admin", "user"]),
+      role: z.enum(["admin", "manager", "supervisor", "cashier", "waiter", "inventory_manager", "kitchen_staff"]),
     }))
     .mutation(async ({ input }) => {
       await updateUserRole(input.id, input.role);

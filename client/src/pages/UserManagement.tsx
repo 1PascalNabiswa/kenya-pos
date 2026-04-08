@@ -21,10 +21,32 @@ import {
 } from "@/components/ui/select";
 import { Plus, Search, Shield, Trash2, AlertCircle } from "lucide-react";
 
+type UserRole = "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff";
+
+const ROLES: { value: UserRole; label: string; description: string }[] = [
+  { value: "admin", label: "Admin", description: "Full system access" },
+  { value: "manager", label: "Manager", description: "Operational oversight" },
+  { value: "supervisor", label: "Supervisor", description: "Team lead" },
+  { value: "cashier", label: "Cashier", description: "Payment processing" },
+  { value: "waiter", label: "Waiter", description: "Order taking & service" },
+  { value: "inventory_manager", label: "Inventory Manager", description: "Stock management" },
+  { value: "kitchen_staff", label: "Kitchen Staff", description: "Food preparation" },
+];
+
+const roleColors: Record<UserRole, string> = {
+  admin: "bg-red-100 text-red-800",
+  manager: "bg-purple-100 text-purple-800",
+  supervisor: "bg-blue-100 text-blue-800",
+  cashier: "bg-green-100 text-green-800",
+  waiter: "bg-yellow-100 text-yellow-800",
+  inventory_manager: "bg-orange-100 text-orange-800",
+  kitchen_staff: "bg-pink-100 text-pink-800",
+};
+
 export function UserManagement() {
   const [search, setSearch] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<"admin" | "user">("user");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("waiter");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -40,7 +62,7 @@ export function UserManagement() {
     onSuccess: () => {
       setIsCreateDialogOpen(false);
       setFormData({ name: "", email: "" });
-      setSelectedRole("user");
+      setSelectedRole("waiter");
       refetch();
     },
     onError: (error) => {
@@ -87,13 +109,12 @@ export function UserManagement() {
     }
   };
 
-  const handleChangeRole = (userId: number, newRole: "admin" | "user") => {
+  const handleChangeRole = (userId: number, newRole: UserRole) => {
     updateRoleMutation.mutate({ id: userId, role: newRole });
   };
 
-  const roleColors: Record<string, string> = {
-    admin: "bg-red-100 text-red-800",
-    user: "bg-blue-100 text-blue-800",
+  const getRoleLabel = (role: UserRole) => {
+    return ROLES.find(r => r.value === role)?.label || role;
   };
 
   return (
@@ -101,7 +122,7 @@ export function UserManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-gray-600 mt-1">Create users and manage their roles</p>
+          <p className="text-gray-600 mt-1">Create users and manage their roles and permissions</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -134,8 +155,14 @@ export function UserManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    {ROLES.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        <div>
+                          <div className="font-medium">{role.label}</div>
+                          <div className="text-xs text-gray-500">{role.description}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -162,6 +189,23 @@ export function UserManagement() {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Role Legend */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Role Permissions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ROLES.map((role) => (
+              <div key={role.value} className="border rounded-lg p-3">
+                <Badge className={roleColors[role.value]}>{role.label}</Badge>
+                <p className="text-sm text-gray-600 mt-2">{role.description}</p>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -204,16 +248,19 @@ export function UserManagement() {
                       <td className="py-3 px-4">
                         <Select 
                           value={user.role} 
-                          onValueChange={(newRole) => handleChangeRole(user.id, newRole as "admin" | "user")}
+                          onValueChange={(newRole) => handleChangeRole(user.id, newRole as UserRole)}
                         >
-                          <SelectTrigger className="w-32">
-                            <Badge className={roleColors[user.role]}>
-                              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          <SelectTrigger className="w-40">
+                            <Badge className={roleColors[user.role as UserRole]}>
+                              {getRoleLabel(user.role as UserRole)}
                             </Badge>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="user">User</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
+                            {ROLES.map((role) => (
+                              <SelectItem key={role.value} value={role.value}>
+                                {role.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </td>

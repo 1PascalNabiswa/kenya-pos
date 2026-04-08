@@ -2000,7 +2000,7 @@ export async function getUserById(id: number) {
 export async function createUser(data: {
   name: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff";
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
@@ -2019,7 +2019,7 @@ export async function createUser(data: {
   return result;
 }
 
-export async function updateUserRole(id: number, role: "admin" | "user") {
+export async function updateUserRole(id: number, role: "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff") {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
