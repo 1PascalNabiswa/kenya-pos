@@ -25,6 +25,7 @@ import {
   UserCheck,
   Activity,
   DollarSign,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -88,6 +89,7 @@ const navItems: NavItem[] = [
     icon: <UserCheck size={18} />,
     children: [
       { label: "User Management", href: "/users", icon: <Users size={14} /> },
+      { label: "Role Permissions", href: "/role-permissions", icon: <Shield size={14} /> },
       { label: "Staff Activity", href: "/staff-activity", icon: <Activity size={14} /> },
       { label: "Staff Management", href: "/staff-management", icon: <Users size={14} /> },
       { label: "Payroll", href: "/payroll", icon: <DollarSign size={14} /> },
