@@ -92,6 +92,7 @@ const navItems: NavItem[] = [
       { label: "User Management", href: "/users", icon: <Users size={14} /> },
       { label: "Role Permissions", href: "/role-permissions", icon: <Shield size={14} /> },
       { label: "Custom Roles", href: "/custom-roles", icon: <Shield size={14} /> },
+      { label: "Audit Logs", href: "/audit-logs", icon: <LogIn size={14} /> },
       { label: "Staff Activity", href: "/staff-activity", icon: <Activity size={14} /> },
       { label: "Staff Management", href: "/staff-management", icon: <Users size={14} /> },
       { label: "Payroll", href: "/payroll", icon: <DollarSign size={14} /> },

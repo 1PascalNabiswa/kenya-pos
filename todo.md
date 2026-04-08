@@ -274,3 +274,13 @@
 - [x] Create Custom Role Builder: allow admins to create and manage custom roles
 - [x] Test role-based access control across all features
 - [x] Verify users cannot access restricted features via direct API calls
+
+
+## Phase 27: Role-Based Data Filtering & Audit Logging
+- [x] Implement role-based data filtering for reports and dashboards
+- [x] Add audit logging for role assignments and permission changes
+- [x] Update dashboard to apply role-based filters
+- [x] Update reports to apply role-based filters
+- [x] Create role audit log viewer page
+- [x] Test role-based data filtering across all features
+- [x] Test audit logging for role changes

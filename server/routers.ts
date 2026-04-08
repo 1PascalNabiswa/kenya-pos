@@ -7,6 +7,7 @@ import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { logRoleAssignment, logUserCreation, logUserDeletion } from "./auditLogger";
 import {
   adjustStock,
   createCategory,
@@ -1320,8 +1321,18 @@ const userRouter = router({
       email: z.string().email(),
       role: z.enum(["admin", "manager", "supervisor", "cashier", "waiter", "inventory_manager", "kitchen_staff"]),
     }))
-    .mutation(async ({ input }) => {
-      await createUser(input);
+    .mutation(async ({ input, ctx }) => {
+      const result = await createUser(input);
+      
+      if (ctx.user && result) {
+        await logUserCreation(
+          ctx.user.id,
+          result.id || 0,
+          input,
+          ctx.req?.ip
+        );
+      }
+      
       return { success: true };
     }),
 
@@ -1330,15 +1341,39 @@ const userRouter = router({
       id: z.number(),
       role: z.enum(["admin", "manager", "supervisor", "cashier", "waiter", "inventory_manager", "kitchen_staff"]),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const user = await getUserById(input.id);
+      const previousRole = user?.role || 'unknown';
       await updateUserRole(input.id, input.role);
+      
+      if (ctx.user) {
+        await logRoleAssignment(
+          ctx.user.id,
+          input.id,
+          previousRole,
+          input.role,
+          ctx.req?.ip
+        );
+      }
+      
       return { success: true };
     }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const user = await getUserById(input.id);
       await deleteUser(input.id);
+      
+      if (ctx.user && user) {
+        await logUserDeletion(
+          ctx.user.id,
+          input.id,
+          user,
+          ctx.req?.ip
+        );
+      }
+      
       return { success: true };
     }),
 });
