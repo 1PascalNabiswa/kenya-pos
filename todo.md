@@ -284,3 +284,11 @@
 - [x] Create role audit log viewer page
 - [x] Test role-based data filtering across all features
 - [x] Test audit logging for role changes
+
+
+## Phase 28: Sales Transaction Page Revamp
+- [x] Review current Sales Transaction page design
+- [x] Redesign layout with fixed Finish button at bottom
+- [x] Improve visual design and UX
+- [x] Test responsive design and button visibility
+- [x] Ensure no scrolling needed for Finish button
