@@ -56,6 +56,16 @@ import {
   StaffProfile,
   InsertStaffProfile,
   InsertStaffActivityLog,
+  employmentTypes,
+  staffEmployment,
+  deductionTypes,
+  payrollDeductions,
+  bonusTypes,
+  payrollBonuses,
+  attendanceRecords,
+  payrollRecords,
+  payslips,
+  payrollSettings,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1462,12 +1472,12 @@ export async function getCustomerSpendingComparison(customerId: number) {
 
 // ─── PAYROLL MANAGEMENT FUNCTIONS ──────────────────────────────────────────
 
-export async function createStaffEmployment(data: {
+export async function createEmploymentRecord(data: {
   staffProfileId: number;
   employmentTypeId: number;
-  baseSalary?: number;
-  hourlyRate?: number;
-  dailyRate?: number;
+  baseSalary: number;
+  hourlyRate: number;
+  dailyRate: number;
   bankAccount?: string;
   bankName?: string;
   nssf?: string;
@@ -1478,25 +1488,19 @@ export async function createStaffEmployment(data: {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    INSERT INTO staff_employment (
-      staffProfileId, employmentTypeId, baseSalary, hourlyRate, dailyRate,
-      bankAccount, bankName, nssf, nhif, kra, startDate
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    data.staffProfileId,
-    data.employmentTypeId,
-    data.baseSalary || 0,
-    data.hourlyRate || 0,
-    data.dailyRate || 0,
-    data.bankAccount || null,
-    data.bankName || null,
-    data.nssf || null,
-    data.nhif || null,
-    data.kra || null,
-    data.startDate
-  ]);
-
+  const result = await db.insert(staffEmployment).values({
+    staffProfileId: data.staffProfileId,
+    employmentTypeId: data.employmentTypeId,
+    baseSalary: data.baseSalary,
+    hourlyRate: data.hourlyRate,
+    dailyRate: data.dailyRate,
+    bankAccount: data.bankAccount || null,
+    bankName: data.bankName || null,
+    nssf: data.nssf || null,
+    nhif: data.nhif || null,
+    kra: data.kra || null,
+    startDate: data.startDate,
+  });
   return result;
 }
 
@@ -1504,30 +1508,39 @@ export async function getStaffEmployment(staffProfileId: number) {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    SELECT se.*, et.name as employmentTypeName
-    FROM staff_employment se
-    LEFT JOIN employment_types et ON se.employmentTypeId = et.id
-    WHERE se.staffProfileId = ? AND se.isActive = true
-  `, [staffProfileId]);
-
-  return result[0] as any;
+  const result = await db.select().from(staffEmployment)
+    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+    .where(and(
+      eq(staffEmployment.staffProfileId, staffProfileId),
+      eq(staffEmployment.isActive, true)
+    ))
+    .limit(1);
+  
+  if (result.length === 0) return null;
+  
+  const row = result[0] as any;
+  return {
+    ...row.staff_employment,
+    employmentTypeName: row.employment_types?.name,
+  };
 }
 
 export async function getAllStaffEmployment() {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.execute(sql`
-    SELECT se.*, sp.firstName, sp.lastName, et.name as employmentTypeName
-    FROM staff_employment se
-    LEFT JOIN staff_profiles sp ON se.staffProfileId = sp.id
-    LEFT JOIN employment_types et ON se.employmentTypeId = et.id
-    WHERE se.isActive = true
-    ORDER BY sp.firstName, sp.lastName
-  `);
-
-  return result as any[];
+  const result = await db.select().from(staffEmployment)
+    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
+    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+    .where(eq(staffEmployment.isActive, true))
+    .orderBy(staffProfiles.firstName, staffProfiles.lastName);
+  
+  return result.map((row: any) => ({
+    ...row.staff_employment,
+    firstName: row.staff_profiles?.firstName,
+    lastName: row.staff_profiles?.lastName,
+    employmentTypeName: row.employment_types?.name,
+  }));
 }
 
 export async function recordAttendance(data: {
@@ -1540,17 +1553,13 @@ export async function recordAttendance(data: {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    INSERT INTO attendance_records (staffProfileId, date, hoursWorked, status, notes)
-    VALUES (?, ?, ?, ?, ?)
-  `, [
-    data.staffProfileId,
-    data.date,
-    data.hoursWorked,
-    data.status,
-    data.notes || null
-  ]);
-
+  const result = await db.insert(attendanceRecords).values({
+    staffProfileId: data.staffProfileId,
+    date: data.date,
+    hoursWorked: data.hoursWorked,
+    status: data.status,
+    notes: data.notes || null,
+  });
   return result;
 }
 
@@ -1558,15 +1567,19 @@ export async function getAttendanceRecords(staffProfileId: number, startDate: Da
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.execute(sql`
-    SELECT ar.*, sp.firstName, sp.lastName
-    FROM attendance_records ar
-    LEFT JOIN staff_profiles sp ON ar.staffProfileId = sp.id
-    WHERE ar.staffProfileId = ? AND ar.date BETWEEN ? AND ?
-    ORDER BY ar.date DESC
-  `, [staffProfileId, startDate, endDate]);
-
-  return result as any[];
+  const result = await db.select().from(attendanceRecords)
+    .leftJoin(staffProfiles, eq(attendanceRecords.staffProfileId, staffProfiles.id))
+    .where(and(
+      eq(attendanceRecords.staffProfileId, staffProfileId),
+      between(attendanceRecords.date, startDate, endDate)
+    ))
+    .orderBy(sql`${attendanceRecords.date} DESC`);
+  
+  return result.map((row: any) => ({
+    ...row.attendance_records,
+    firstName: row.staff_profiles?.firstName,
+    lastName: row.staff_profiles?.lastName,
+  }));
 }
 
 export async function addPayrollDeduction(data: {
@@ -1580,19 +1593,14 @@ export async function addPayrollDeduction(data: {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    INSERT INTO payroll_deductions (
-      staffEmploymentId, deductionTypeId, amount, percentage, startDate, endDate
-    ) VALUES (?, ?, ?, ?, ?, ?)
-  `, [
-    data.staffEmploymentId,
-    data.deductionTypeId,
-    data.amount || null,
-    data.percentage || null,
-    data.startDate,
-    data.endDate || null
-  ]);
-
+  const result = await db.insert(payrollDeductions).values({
+    staffEmploymentId: data.staffEmploymentId,
+    deductionTypeId: data.deductionTypeId,
+    amount: data.amount || null,
+    percentage: data.percentage || null,
+    startDate: data.startDate,
+    endDate: data.endDate || null,
+  });
   return result;
 }
 
@@ -1600,15 +1608,19 @@ export async function getPayrollDeductions(staffEmploymentId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.execute(sql`
-    SELECT pd.*, dt.name as deductionTypeName, dt.isStatutory
-    FROM payroll_deductions pd
-    LEFT JOIN deduction_types dt ON pd.deductionTypeId = dt.id
-    WHERE pd.staffEmploymentId = ? AND pd.isActive = true
-    ORDER BY dt.name
-  `, [staffEmploymentId]);
-
-  return result as any[];
+  const result = await db.select().from(payrollDeductions)
+    .leftJoin(deductionTypes, eq(payrollDeductions.deductionTypeId, deductionTypes.id))
+    .where(and(
+      eq(payrollDeductions.staffEmploymentId, staffEmploymentId),
+      eq(payrollDeductions.isActive, true)
+    ))
+    .orderBy(deductionTypes.name);
+  
+  return result.map((row: any) => ({
+    ...row.payroll_deductions,
+    deductionTypeName: row.deduction_types?.name,
+    isStatutory: row.deduction_types?.isStatutory,
+  }));
 }
 
 export async function addPayrollBonus(data: {
@@ -1622,19 +1634,14 @@ export async function addPayrollBonus(data: {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    INSERT INTO payroll_bonuses (
-      staffEmploymentId, bonusTypeId, amount, paymentDate, reason, approvedBy
-    ) VALUES (?, ?, ?, ?, ?, ?)
-  `, [
-    data.staffEmploymentId,
-    data.bonusTypeId,
-    data.amount,
-    data.paymentDate,
-    data.reason || null,
-    data.approvedBy || null
-  ]);
-
+  const result = await db.insert(payrollBonuses).values({
+    staffEmploymentId: data.staffEmploymentId,
+    bonusTypeId: data.bonusTypeId,
+    amount: data.amount,
+    paymentDate: data.paymentDate,
+    reason: data.reason || null,
+    approvedBy: data.approvedBy || null,
+  });
   return result;
 }
 
@@ -1642,29 +1649,20 @@ export async function getPayrollBonuses(staffEmploymentId: number, startDate?: D
   const db = await getDb();
   if (!db) return [];
 
-  let query = sql`
-    SELECT pb.*, bt.name as bonusTypeName
-    FROM payroll_bonuses pb
-    LEFT JOIN bonus_types bt ON pb.bonusTypeId = bt.id
-    WHERE pb.staffEmploymentId = ?
-  `;
+  let query = db.select().from(payrollBonuses)
+    .leftJoin(bonusTypes, eq(payrollBonuses.bonusTypeId, bonusTypes.id))
+    .where(eq(payrollBonuses.staffEmploymentId, staffEmploymentId));
   
-  const params: any[] = [staffEmploymentId];
-
   if (startDate && endDate) {
-    query = sql`
-      SELECT pb.*, bt.name as bonusTypeName
-      FROM payroll_bonuses pb
-      LEFT JOIN bonus_types bt ON pb.bonusTypeId = bt.id
-      WHERE pb.staffEmploymentId = ? AND pb.paymentDate BETWEEN ? AND ?
-    `;
-    params.push(startDate, endDate);
+    query = query.where(between(payrollBonuses.paymentDate, startDate, endDate));
   }
-
-  query = sql`${query} ORDER BY pb.paymentDate DESC`;
-  const result = await db.execute(query, params);
-
-  return result as any[];
+  
+  const result = await query.orderBy(sql`${payrollBonuses.paymentDate} DESC`);
+  
+  return result.map((row: any) => ({
+    ...row.payroll_bonuses,
+    bonusTypeName: row.bonus_types?.name,
+  }));
 }
 
 export async function createPayrollRecord(data: {
@@ -1681,24 +1679,17 @@ export async function createPayrollRecord(data: {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    INSERT INTO payroll_records (
-      staffEmploymentId, payrollPeriodStart, payrollPeriodEnd,
-      grossSalary, totalDeductions, totalBonuses, netPay,
-      paymentMethod, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    data.staffEmploymentId,
-    data.payrollPeriodStart,
-    data.payrollPeriodEnd,
-    data.grossSalary,
-    data.totalDeductions,
-    data.totalBonuses,
-    data.netPay,
-    data.paymentMethod || 'bank_transfer',
-    data.notes || null
-  ]);
-
+  const result = await db.insert(payrollRecords).values({
+    staffEmploymentId: data.staffEmploymentId,
+    payrollPeriodStart: data.payrollPeriodStart,
+    payrollPeriodEnd: data.payrollPeriodEnd,
+    grossSalary: data.grossSalary,
+    totalDeductions: data.totalDeductions,
+    totalBonuses: data.totalBonuses,
+    netPay: data.netPay,
+    paymentMethod: data.paymentMethod || 'bank_transfer',
+    notes: data.notes || null,
+  });
   return result;
 }
 
@@ -1706,30 +1697,33 @@ export async function getPayrollRecords(staffEmploymentId: number, limit: number
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.execute(sql`
-    SELECT pr.*, sp.firstName, sp.lastName, et.name as employmentTypeName
-    FROM payroll_records pr
-    LEFT JOIN staff_employment se ON pr.staffEmploymentId = se.id
-    LEFT JOIN staff_profiles sp ON se.staffProfileId = sp.id
-    LEFT JOIN employment_types et ON se.employmentTypeId = et.id
-    WHERE pr.staffEmploymentId = ?
-    ORDER BY pr.payrollPeriodEnd DESC
-    LIMIT ?
-  `, [staffEmploymentId, limit]);
-
-  return result as any[];
+  const result = await db.select().from(payrollRecords)
+    .leftJoin(staffEmployment, eq(payrollRecords.staffEmploymentId, staffEmployment.id))
+    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
+    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+    .where(eq(payrollRecords.staffEmploymentId, staffEmploymentId))
+    .orderBy(sql`${payrollRecords.payrollPeriodEnd} DESC`)
+    .limit(limit);
+  
+  return result.map((row: any) => ({
+    ...row.payroll_records,
+    firstName: row.staff_profiles?.firstName,
+    lastName: row.staff_profiles?.lastName,
+    employmentTypeName: row.employment_types?.name,
+  }));
 }
 
 export async function updatePayrollRecordStatus(payrollRecordId: number, status: 'pending' | 'paid' | 'failed' | 'cancelled', paymentDate?: Date) {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    UPDATE payroll_records
-    SET paymentStatus = ?, paymentDate = ?
-    WHERE id = ?
-  `, [status, paymentDate || null, payrollRecordId]);
-
+  const result = await db.update(payrollRecords)
+    .set({
+      paymentStatus: status,
+      paymentDate: paymentDate || null,
+    })
+    .where(eq(payrollRecords.id, payrollRecordId));
+  
   return result;
 }
 
@@ -1737,34 +1731,27 @@ export async function generatePayslip(payrollRecordId: number, payslipNumber: st
   const db = await getDb();
   if (!db) return null;
 
-  const payrollRecord = await db.execute(sql`
-    SELECT * FROM payroll_records WHERE id = ?
-  `, [payrollRecordId]);
-
-  if (!payrollRecord[0]) return null;
-
-  const pr = payrollRecord[0] as any;
-
-  const result = await db.execute(sql`
-    INSERT INTO payslips (
-      payrollRecordId, staffEmploymentId, payslipNumber,
-      payrollPeriodStart, payrollPeriodEnd,
-      grossSalary, totalDeductions, totalBonuses, netPay,
-      payslipUrl
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    payrollRecordId,
-    pr.staffEmploymentId,
+  const payrollRecord = await db.select().from(payrollRecords)
+    .where(eq(payrollRecords.id, payrollRecordId))
+    .limit(1);
+  
+  if (payrollRecord.length === 0) return null;
+  
+  const pr = payrollRecord[0];
+  
+  const result = await db.insert(payslips).values({
+    payrollRecordId: pr.id,
+    staffEmploymentId: pr.staffEmploymentId,
     payslipNumber,
-    pr.payrollPeriodStart,
-    pr.payrollPeriodEnd,
-    pr.grossSalary,
-    pr.totalDeductions,
-    pr.totalBonuses,
-    pr.netPay,
-    payslipUrl || null
-  ]);
-
+    payrollPeriodStart: pr.payrollPeriodStart,
+    payrollPeriodEnd: pr.payrollPeriodEnd,
+    grossSalary: pr.grossSalary,
+    totalDeductions: pr.totalDeductions,
+    totalBonuses: pr.totalBonuses,
+    netPay: pr.netPay,
+    payslipUrl: payslipUrl || null,
+  });
+  
   return result;
 }
 
@@ -1772,54 +1759,63 @@ export async function getPayslips(staffEmploymentId: number, limit: number = 12)
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.execute(sql`
-    SELECT p.*, sp.firstName, sp.lastName
-    FROM payslips p
-    LEFT JOIN staff_employment se ON p.staffEmploymentId = se.id
-    LEFT JOIN staff_profiles sp ON se.staffProfileId = sp.id
-    WHERE p.staffEmploymentId = ?
-    ORDER BY p.payrollPeriodEnd DESC
-    LIMIT ?
-  `, [staffEmploymentId, limit]);
-
-  return result as any[];
+  const result = await db.select().from(payslips)
+    .leftJoin(staffEmployment, eq(payslips.staffEmploymentId, staffEmployment.id))
+    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
+    .where(eq(payslips.staffEmploymentId, staffEmploymentId))
+    .orderBy(sql`${payslips.payrollPeriodEnd} DESC`)
+    .limit(limit);
+  
+  return result.map((row: any) => ({
+    ...row.payslips,
+    firstName: row.staff_profiles?.firstName,
+    lastName: row.staff_profiles?.lastName,
+  }));
 }
 
 export async function getPayslipById(payslipId: number) {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.execute(sql`
-    SELECT p.*, sp.firstName, sp.lastName, sp.phoneNumber, sp.employeeId,
-           se.baseSalary, se.hourlyRate, se.dailyRate, se.bankAccount, se.bankName,
-           et.name as employmentTypeName
-    FROM payslips p
-    LEFT JOIN staff_employment se ON p.staffEmploymentId = se.id
-    LEFT JOIN staff_profiles sp ON se.staffProfileId = sp.id
-    LEFT JOIN employment_types et ON se.employmentTypeId = et.id
-    WHERE p.id = ?
-  `, [payslipId]);
-
-  return result[0] as any;
+  const result = await db.select().from(payslips)
+    .leftJoin(staffEmployment, eq(payslips.staffEmploymentId, staffEmployment.id))
+    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
+    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+    .where(eq(payslips.id, payslipId))
+    .limit(1);
+  
+  if (result.length === 0) return null;
+  
+  const row = result[0] as any;
+  return {
+    ...row.payslips,
+    firstName: row.staff_profiles?.firstName,
+    lastName: row.staff_profiles?.lastName,
+    phoneNumber: row.staff_profiles?.phoneNumber,
+    employeeId: row.staff_profiles?.employeeId,
+    baseSalary: row.staff_employment?.baseSalary,
+    hourlyRate: row.staff_employment?.hourlyRate,
+    dailyRate: row.staff_employment?.dailyRate,
+    bankAccount: row.staff_employment?.bankAccount,
+    bankName: row.staff_employment?.bankName,
+    employmentTypeName: row.employment_types?.name,
+  };
 }
 
 export async function getPayrollSettings(branchId?: number) {
   const db = await getDb();
   if (!db) return null;
 
-  let query = sql`SELECT * FROM payroll_settings`;
-  const params: any[] = [];
-
+  let query = db.select().from(payrollSettings);
+  
   if (branchId) {
-    query = sql`${query} WHERE branchId = ?`;
-    params.push(branchId);
+    query = query.where(eq(payrollSettings.branchId, branchId));
   } else {
-    query = sql`${query} WHERE branchId IS NULL`;
+    query = query.where(isNull(payrollSettings.branchId));
   }
-
-  const result = await db.execute(query, params);
-
-  return result[0] as any;
+  
+  const result = await query.limit(1);
+  return result.length > 0 ? result[0] : null;
 }
 
 export async function updatePayrollSettings(data: {
@@ -1835,43 +1831,32 @@ export async function updatePayrollSettings(data: {
   if (!db) return null;
 
   const existing = await getPayrollSettings(data.branchId);
-
+  
   if (existing) {
-    const result = await db.execute(sql`
-      UPDATE payroll_settings
-      SET nssfRate = COALESCE(?, nssfRate),
-          nhifRate = COALESCE(?, nhifRate),
-          payeTaxThreshold = COALESCE(?, payeTaxThreshold),
-          payeRate = COALESCE(?, payeRate),
-          payrollCycle = COALESCE(?, payrollCycle),
-          paymentDay = COALESCE(?, paymentDay)
-      WHERE branchId ${data.branchId ? sql`= ?` : sql`IS NULL`}
-    `, [
-      data.nssfRate || null,
-      data.nhifRate || null,
-      data.payeTaxThreshold || null,
-      data.payeRate || null,
-      data.payrollCycle || null,
-      data.paymentDay || null,
-      data.branchId || null
-    ]);
-
+    const updateData: any = {};
+    if (data.nssfRate !== undefined) updateData.nssfRate = data.nssfRate;
+    if (data.nhifRate !== undefined) updateData.nhifRate = data.nhifRate;
+    if (data.payeTaxThreshold !== undefined) updateData.payeTaxThreshold = data.payeTaxThreshold;
+    if (data.payeRate !== undefined) updateData.payeRate = data.payeRate;
+    if (data.payrollCycle !== undefined) updateData.payrollCycle = data.payrollCycle;
+    if (data.paymentDay !== undefined) updateData.paymentDay = data.paymentDay;
+    
+    const result = await db.update(payrollSettings)
+      .set(updateData)
+      .where(data.branchId ? eq(payrollSettings.branchId, data.branchId) : isNull(payrollSettings.branchId));
+    
     return result;
   } else {
-    const result = await db.execute(sql`
-      INSERT INTO payroll_settings (
-        branchId, nssfRate, nhifRate, payeTaxThreshold, payeRate, payrollCycle, paymentDay
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [
-      data.branchId || null,
-      data.nssfRate || 6,
-      data.nhifRate || 2.75,
-      data.payeTaxThreshold || 24000,
-      data.payeRate || 30,
-      data.payrollCycle || 'monthly',
-      data.paymentDay || 28
-    ]);
-
+    const result = await db.insert(payrollSettings).values({
+      branchId: data.branchId || null,
+      nssfRate: data.nssfRate || 6,
+      nhifRate: data.nhifRate || 2.75,
+      payeTaxThreshold: data.payeTaxThreshold || 24000,
+      payeRate: data.payeRate || 30,
+      payrollCycle: data.payrollCycle || 'monthly',
+      paymentDay: data.paymentDay || 28,
+    });
+    
     return result;
   }
 }
@@ -1880,37 +1865,38 @@ export async function calculateCasualLaborerPay(staffEmploymentId: number, start
   const db = await getDb();
   if (!db) return null;
 
-  // Get employment details
-  const employment = await db.execute(sql`
-    SELECT se.*, et.name as employmentTypeName
-    FROM staff_employment se
-    LEFT JOIN employment_types et ON se.employmentTypeId = et.id
-    WHERE se.id = ?
-  `, [staffEmploymentId]);
-
-  if (!employment[0]) return null;
-
-  const emp = employment[0] as any;
-
+  const employment = await db.select().from(staffEmployment)
+    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+    .where(eq(staffEmployment.id, staffEmploymentId))
+    .limit(1);
+  
+  if (employment.length === 0) return null;
+  
+  const emp = employment[0].staff_employment;
+  
   // Get attendance records
-  const attendance = await db.execute(sql`
-    SELECT SUM(hoursWorked) as totalHours, COUNT(*) as daysWorked
-    FROM attendance_records
-    WHERE staffProfileId = ? AND date BETWEEN ? AND ? AND status IN ('present', 'late', 'half_day')
-  `, [emp.staffProfileId, startDate, endDate]);
-
-  const att = attendance[0] as any;
-  const totalHours = att.totalHours || 0;
-  const daysWorked = att.daysWorked || 0;
-
+  const attendance = await db.select({
+    totalHours: sql<number>`SUM(${attendanceRecords.hoursWorked})`,
+    daysWorked: sql<number>`COUNT(*)`,
+  }).from(attendanceRecords)
+    .where(and(
+      eq(attendanceRecords.staffProfileId, emp.staffProfileId),
+      between(attendanceRecords.date, startDate, endDate),
+      sql`${attendanceRecords.status} IN ('present', 'late', 'half_day')`
+    ));
+  
+  const att = attendance[0] || { totalHours: 0, daysWorked: 0 };
+  const totalHours = Number(att.totalHours) || 0;
+  const daysWorked = Number(att.daysWorked) || 0;
+  
   // Calculate gross salary based on hourly or daily rate
   let grossSalary = 0;
   if (emp.hourlyRate > 0) {
-    grossSalary = totalHours * emp.hourlyRate;
+    grossSalary = totalHours * Number(emp.hourlyRate);
   } else if (emp.dailyRate > 0) {
-    grossSalary = daysWorked * emp.dailyRate;
+    grossSalary = daysWorked * Number(emp.dailyRate);
   }
-
+  
   return {
     staffEmploymentId,
     grossSalary,
@@ -1925,48 +1911,46 @@ export async function calculatePermanentEmployeePay(staffEmploymentId: number, p
   const db = await getDb();
   if (!db) return null;
 
-  // Get employment details
-  const employment = await db.execute(sql`
-    SELECT se.*, et.name as employmentTypeName
-    FROM staff_employment se
-    LEFT JOIN employment_types et ON se.employmentTypeId = et.id
-    WHERE se.id = ?
-  `, [staffEmploymentId]);
-
-  if (!employment[0]) return null;
-
-  const emp = employment[0] as any;
-
+  const employment = await db.select().from(staffEmployment)
+    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+    .where(eq(staffEmployment.id, staffEmploymentId))
+    .limit(1);
+  
+  if (employment.length === 0) return null;
+  
+  const emp = employment[0].staff_employment;
+  
   // Get active deductions
-  const deductions = await db.execute(sql`
-    SELECT pd.*, dt.name as deductionTypeName, dt.isStatutory
-    FROM payroll_deductions pd
-    LEFT JOIN deduction_types dt ON pd.deductionTypeId = dt.id
-    WHERE pd.staffEmploymentId = ? AND pd.isActive = true
-  `, [staffEmploymentId]);
-
+  const deductions = await db.select().from(payrollDeductions)
+    .leftJoin(deductionTypes, eq(payrollDeductions.deductionTypeId, deductionTypes.id))
+    .where(and(
+      eq(payrollDeductions.staffEmploymentId, staffEmploymentId),
+      eq(payrollDeductions.isActive, true)
+    ));
+  
   // Calculate total deductions
   let totalDeductions = 0;
   const deductionDetails: any[] = [];
-
-  for (const ded of deductions as any[]) {
+  
+  for (const row of deductions) {
+    const ded = row.payroll_deductions;
     let deductionAmount = 0;
     if (ded.amount) {
-      deductionAmount = ded.amount;
+      deductionAmount = Number(ded.amount);
     } else if (ded.percentage) {
-      deductionAmount = (emp.baseSalary * ded.percentage) / 100;
+      deductionAmount = (Number(emp.baseSalary) * Number(ded.percentage)) / 100;
     }
     totalDeductions += deductionAmount;
     deductionDetails.push({
-      name: ded.deductionTypeName,
+      name: row.deduction_types?.name,
       amount: deductionAmount,
-      isStatutory: ded.isStatutory
+      isStatutory: row.deduction_types?.isStatutory
     });
   }
-
+  
   // Calculate PAYE if applicable
-  if (emp.baseSalary > payrollSettings.payeTaxThreshold) {
-    const taxableIncome = emp.baseSalary - totalDeductions;
+  if (Number(emp.baseSalary) > payrollSettings.payeTaxThreshold) {
+    const taxableIncome = Number(emp.baseSalary) - totalDeductions;
     const payeAmount = (taxableIncome * payrollSettings.payeRate) / 100;
     totalDeductions += payeAmount;
     deductionDetails.push({
@@ -1975,12 +1959,12 @@ export async function calculatePermanentEmployeePay(staffEmploymentId: number, p
       isStatutory: true
     });
   }
-
+  
   return {
     staffEmploymentId,
-    grossSalary: emp.baseSalary,
+    grossSalary: Number(emp.baseSalary),
     totalDeductions,
     deductionDetails,
-    netPay: emp.baseSalary - totalDeductions
+    netPay: Number(emp.baseSalary) - totalDeductions
   };
 }

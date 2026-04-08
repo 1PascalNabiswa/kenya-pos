@@ -1070,7 +1070,7 @@ const payrollRouter = router({
       startDate: z.date(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const result = await createStaffEmployment(input);
+      const result = await createEmploymentRecord(input);
       await recordStaffActivity({
         userId: ctx.user?.id,
         activityType: "manage_user",
