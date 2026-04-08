@@ -97,6 +97,25 @@ import {
   recordStaffActivity,
   getStaffActivityLogs,
   getUserActivitySummary,
+  createStaffEmployment,
+  getStaffEmployment,
+  getAllStaffEmployment,
+  recordAttendance,
+  getAttendanceRecords,
+  addPayrollDeduction,
+  getPayrollDeductions,
+  addPayrollBonus,
+  getPayrollBonuses,
+  createPayrollRecord,
+  getPayrollRecords,
+  updatePayrollRecordStatus,
+  generatePayslip,
+  getPayslips,
+  getPayslipById,
+  getPayrollSettings,
+  updatePayrollSettings,
+  calculateCasualLaborerPay,
+  calculatePermanentEmployeePay,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -1034,6 +1053,252 @@ const staffRouter = router({
     }),
 });
 
+// ─── Payroll Router ──────────────────────────────────────────────────────────
+const payrollRouter = router({
+  createEmployment: protectedProcedure
+    .input(z.object({
+      staffProfileId: z.number(),
+      employmentTypeId: z.number(),
+      baseSalary: z.number().optional(),
+      hourlyRate: z.number().optional(),
+      dailyRate: z.number().optional(),
+      bankAccount: z.string().optional(),
+      bankName: z.string().optional(),
+      nssf: z.string().optional(),
+      nhif: z.string().optional(),
+      kra: z.string().optional(),
+      startDate: z.date(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await createStaffEmployment(input);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Created employment record for staff ${input.staffProfileId}`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  getEmployment: protectedProcedure
+    .input(z.object({ staffProfileId: z.number() }))
+    .query(async ({ input }) => {
+      return getStaffEmployment(input.staffProfileId);
+    }),
+
+  listEmployment: protectedProcedure.query(async () => {
+    return getAllStaffEmployment();
+  }),
+
+  recordAttendance: protectedProcedure
+    .input(z.object({
+      staffProfileId: z.number(),
+      date: z.date(),
+      hoursWorked: z.number(),
+      status: z.enum(["present", "absent", "late", "half_day", "leave"]),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await recordAttendance(input);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Recorded attendance for staff ${input.staffProfileId}`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  getAttendance: protectedProcedure
+    .input(z.object({
+      staffProfileId: z.number(),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .query(async ({ input }) => {
+      return getAttendanceRecords(input.staffProfileId, input.startDate, input.endDate);
+    }),
+
+  addDeduction: protectedProcedure
+    .input(z.object({
+      staffEmploymentId: z.number(),
+      deductionTypeId: z.number(),
+      amount: z.number().optional(),
+      percentage: z.number().optional(),
+      startDate: z.date(),
+      endDate: z.date().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await addPayrollDeduction(input);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Added payroll deduction for employment ${input.staffEmploymentId}`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  getDeductions: protectedProcedure
+    .input(z.object({ staffEmploymentId: z.number() }))
+    .query(async ({ input }) => {
+      return getPayrollDeductions(input.staffEmploymentId);
+    }),
+
+  addBonus: protectedProcedure
+    .input(z.object({
+      staffEmploymentId: z.number(),
+      bonusTypeId: z.number(),
+      amount: z.number(),
+      paymentDate: z.date(),
+      reason: z.string().optional(),
+      approvedBy: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await addPayrollBonus(input);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Added bonus for employment ${input.staffEmploymentId}`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  getBonuses: protectedProcedure
+    .input(z.object({
+      staffEmploymentId: z.number(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }))
+    .query(async ({ input }) => {
+      return getPayrollBonuses(input.staffEmploymentId, input.startDate, input.endDate);
+    }),
+
+  createPayroll: protectedProcedure
+    .input(z.object({
+      staffEmploymentId: z.number(),
+      payrollPeriodStart: z.date(),
+      payrollPeriodEnd: z.date(),
+      grossSalary: z.number(),
+      totalDeductions: z.number(),
+      totalBonuses: z.number(),
+      netPay: z.number(),
+      paymentMethod: z.enum(["bank_transfer", "cash", "mpesa", "check"]).optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await createPayrollRecord(input);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Created payroll record for employment ${input.staffEmploymentId}`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  getPayroll: protectedProcedure
+    .input(z.object({ staffEmploymentId: z.number(), limit: z.number().optional() }))
+    .query(async ({ input }) => {
+      return getPayrollRecords(input.staffEmploymentId, input.limit);
+    }),
+
+  updatePayrollStatus: protectedProcedure
+    .input(z.object({
+      payrollRecordId: z.number(),
+      status: z.enum(["pending", "paid", "failed", "cancelled"]),
+      paymentDate: z.date().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await updatePayrollRecordStatus(input.payrollRecordId, input.status, input.paymentDate);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Updated payroll status to ${input.status}`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  generatePayslip: protectedProcedure
+    .input(z.object({
+      payrollRecordId: z.number(),
+      payslipNumber: z.string(),
+      payslipUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await generatePayslip(input.payrollRecordId, input.payslipNumber, input.payslipUrl);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Generated payslip ${input.payslipNumber}`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  getPayslips: protectedProcedure
+    .input(z.object({ staffEmploymentId: z.number(), limit: z.number().optional() }))
+    .query(async ({ input }) => {
+      return getPayslips(input.staffEmploymentId, input.limit);
+    }),
+
+  getPayslipById: protectedProcedure
+    .input(z.object({ payslipId: z.number() }))
+    .query(async ({ input }) => {
+      return getPayslipById(input.payslipId);
+    }),
+
+  getSettings: protectedProcedure
+    .input(z.object({ branchId: z.number().optional() }))
+    .query(async ({ input }) => {
+      return getPayrollSettings(input.branchId);
+    }),
+
+  updateSettings: protectedProcedure
+    .input(z.object({
+      branchId: z.number().optional(),
+      nssfRate: z.number().optional(),
+      nhifRate: z.number().optional(),
+      payeTaxThreshold: z.number().optional(),
+      payeRate: z.number().optional(),
+      payrollCycle: z.enum(["weekly", "biweekly", "monthly"]).optional(),
+      paymentDay: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await updatePayrollSettings(input);
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "manage_user",
+        description: `Updated payroll settings`,
+        status: "success",
+      });
+      return result;
+    }),
+
+  calculateCasualPay: protectedProcedure
+    .input(z.object({
+      staffEmploymentId: z.number(),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .query(async ({ input }) => {
+      return calculateCasualLaborerPay(input.staffEmploymentId, input.startDate, input.endDate);
+    }),
+
+  calculatePermanentPay: protectedProcedure
+    .input(z.object({
+      staffEmploymentId: z.number(),
+      branchId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const settings = await getPayrollSettings(input.branchId);
+      if (!settings) return null;
+      return calculatePermanentEmployeePay(input.staffEmploymentId, settings);
+    }),
+});
+
 // ─── App Router ────────────────────────────────────────────────────────────
 export const appRouter = router({
   system: systemRouter,
@@ -1062,6 +1327,7 @@ export const appRouter = router({
   suppliers: suppliersRouter,
   kds: kdsRouter,
   staff: staffRouter,
+  payroll: payrollRouter,
 });
 
 export type AppRouter = typeof appRouter;

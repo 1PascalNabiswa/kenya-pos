@@ -247,3 +247,22 @@
 - [ ] Add export functionality (PDF, CSV)
 - [ ] Test report with actual sales data
 - [ ] Write comprehensive tests for daily sales queries
+
+
+## Phase 25: Staff & Payroll Management System
+- [ ] Update schema: add staff_profiles, employment_types, payroll_records, deductions, bonuses, payslips, attendance tables
+- [ ] Create database migration for payroll tables
+- [ ] Create Staff Management backend routers: CRUD staff profiles, manage roles and status
+- [ ] Create Payroll backend routers: salary tracking, deduction management, bonus tracking
+- [ ] Implement casual laborer payment logic: hourly/daily rate, attendance-based calculation
+- [ ] Implement permanent employee payment logic: monthly salary, statutory deductions (NSSF, NHIF, PAYE)
+- [ ] Create payslip generation logic: calculate gross, deductions, net pay
+- [ ] Create payment processing logic: track payment status and history
+- [ ] Build Staff Management UI page: add/edit/delete employees, manage roles and status
+- [ ] Build Payroll Management UI page: view payroll records, manage deductions and bonuses
+- [ ] Build Payslip generation and viewing UI: generate payslips, view payment history
+- [ ] Add attendance tracking integration for casual laborer payments
+- [ ] Write comprehensive payroll system tests
+- [ ] Test end-to-end payroll workflows (casual and permanent)
+- [ ] Add Staff Management menu item to navigation
+- [ ] Add Payroll Management menu item to navigation

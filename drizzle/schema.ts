@@ -441,3 +441,171 @@ export const staffActivityLogs = mysqlTable("staff_activity_logs", {
 
 export type StaffActivityLog = typeof staffActivityLogs.$inferSelect;
 export type InsertStaffActivityLog = typeof staffActivityLogs.$inferInsert;
+
+
+// ─── Employment Types ──────────────────────────────────────────────────────
+export const employmentTypes = mysqlTable("employment_types", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(), // "Permanent", "Casual", "Contract"
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmploymentType = typeof employmentTypes.$inferSelect;
+export type InsertEmploymentType = typeof employmentTypes.$inferInsert;
+
+// ─── Staff Employment Records ──────────────────────────────────────────────
+export const staffEmployment = mysqlTable("staff_employment", {
+  id: int("id").autoincrement().primaryKey(),
+  staffProfileId: int("staffProfileId").notNull().references(() => staffProfiles.id),
+  employmentTypeId: int("employmentTypeId").notNull().references(() => employmentTypes.id),
+  baseSalary: decimal("baseSalary", { precision: 12, scale: 2 }).default("0").notNull(), // For permanent employees
+  hourlyRate: decimal("hourlyRate", { precision: 12, scale: 2 }).default("0").notNull(), // For casual laborers
+  dailyRate: decimal("dailyRate", { precision: 12, scale: 2 }).default("0").notNull(), // For casual laborers
+  bankAccount: varchar("bankAccount", { length: 50 }),
+  bankName: varchar("bankName", { length: 100 }),
+  nssf: varchar("nssf", { length: 20 }), // NSSF number for statutory deductions
+  nhif: varchar("nhif", { length: 20 }), // NHIF number for statutory deductions
+  kra: varchar("kra", { length: 20 }), // KRA PIN for tax purposes
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StaffEmployment = typeof staffEmployment.$inferSelect;
+export type InsertStaffEmployment = typeof staffEmployment.$inferInsert;
+
+// ─── Deduction Types ───────────────────────────────────────────────────────
+export const deductionTypes = mysqlTable("deduction_types", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(), // "NSSF", "NHIF", "PAYE", "Loan", "Advance"
+  description: text("description"),
+  isStatutory: boolean("isStatutory").default(false).notNull(), // True for NSSF, NHIF, PAYE
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DeductionType = typeof deductionTypes.$inferSelect;
+export type InsertDeductionType = typeof deductionTypes.$inferInsert;
+
+// ─── Payroll Deductions ────────────────────────────────────────────────────
+export const payrollDeductions = mysqlTable("payroll_deductions", {
+  id: int("id").autoincrement().primaryKey(),
+  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
+  deductionTypeId: int("deductionTypeId").notNull().references(() => deductionTypes.id),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  percentage: decimal("percentage", { precision: 5, scale: 2 }), // For percentage-based deductions
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PayrollDeduction = typeof payrollDeductions.$inferSelect;
+export type InsertPayrollDeduction = typeof payrollDeductions.$inferInsert;
+
+// ─── Bonus Types ───────────────────────────────────────────────────────────
+export const bonusTypes = mysqlTable("bonus_types", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(), // "Performance", "Holiday", "Annual", "Attendance"
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BonusType = typeof bonusTypes.$inferSelect;
+export type InsertBonusType = typeof bonusTypes.$inferInsert;
+
+// ─── Payroll Bonuses ───────────────────────────────────────────────────────
+export const payrollBonuses = mysqlTable("payroll_bonuses", {
+  id: int("id").autoincrement().primaryKey(),
+  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
+  bonusTypeId: int("bonusTypeId").notNull().references(() => bonusTypes.id),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentDate: timestamp("paymentDate").notNull(),
+  reason: text("reason"),
+  approvedBy: int("approvedBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PayrollBonus = typeof payrollBonuses.$inferSelect;
+export type InsertPayrollBonus = typeof payrollBonuses.$inferInsert;
+
+// ─── Attendance Records ────────────────────────────────────────────────────
+export const attendanceRecords = mysqlTable("attendance_records", {
+  id: int("id").autoincrement().primaryKey(),
+  staffProfileId: int("staffProfileId").notNull().references(() => staffProfiles.id),
+  date: timestamp("date").notNull(),
+  hoursWorked: decimal("hoursWorked", { precision: 5, scale: 2 }).default("0").notNull(),
+  status: mysqlEnum("status", ["present", "absent", "late", "half_day", "leave"]).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AttendanceRecord = typeof attendanceRecords.$inferSelect;
+export type InsertAttendanceRecord = typeof attendanceRecords.$inferInsert;
+
+// ─── Payroll Records ───────────────────────────────────────────────────────
+export const payrollRecords = mysqlTable("payroll_records", {
+  id: int("id").autoincrement().primaryKey(),
+  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
+  payrollPeriodStart: timestamp("payrollPeriodStart").notNull(),
+  payrollPeriodEnd: timestamp("payrollPeriodEnd").notNull(),
+  grossSalary: decimal("grossSalary", { precision: 12, scale: 2 }).default("0").notNull(),
+  totalDeductions: decimal("totalDeductions", { precision: 12, scale: 2 }).default("0").notNull(),
+  totalBonuses: decimal("totalBonuses", { precision: 12, scale: 2 }).default("0").notNull(),
+  netPay: decimal("netPay", { precision: 12, scale: 2 }).default("0").notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "failed", "cancelled"]).default("pending").notNull(),
+  paymentDate: timestamp("paymentDate"),
+  paymentMethod: mysqlEnum("paymentMethod", ["bank_transfer", "cash", "mpesa", "check"]).default("bank_transfer").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PayrollRecord = typeof payrollRecords.$inferSelect;
+export type InsertPayrollRecord = typeof payrollRecords.$inferInsert;
+
+// ─── Payslips ──────────────────────────────────────────────────────────────
+export const payslips = mysqlTable("payslips", {
+  id: int("id").autoincrement().primaryKey(),
+  payrollRecordId: int("payrollRecordId").notNull().references(() => payrollRecords.id),
+  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
+  payslipNumber: varchar("payslipNumber", { length: 50 }).notNull().unique(),
+  payrollPeriodStart: timestamp("payrollPeriodStart").notNull(),
+  payrollPeriodEnd: timestamp("payrollPeriodEnd").notNull(),
+  grossSalary: decimal("grossSalary", { precision: 12, scale: 2 }).default("0").notNull(),
+  totalDeductions: decimal("totalDeductions", { precision: 12, scale: 2 }).default("0").notNull(),
+  totalBonuses: decimal("totalBonuses", { precision: 12, scale: 2 }).default("0").notNull(),
+  netPay: decimal("netPay", { precision: 12, scale: 2 }).default("0").notNull(),
+  payslipUrl: text("payslipUrl"), // URL to generated PDF payslip
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Payslip = typeof payslips.$inferSelect;
+export type InsertPayslip = typeof payslips.$inferInsert;
+
+// ─── Payroll Settings ──────────────────────────────────────────────────────
+export const payrollSettings = mysqlTable("payroll_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").references(() => branches.id),
+  nssfRate: decimal("nssfRate", { precision: 5, scale: 2 }).default("6").notNull(), // NSSF contribution rate
+  nhifRate: decimal("nhifRate", { precision: 5, scale: 2 }).default("2.75").notNull(), // NHIF contribution rate
+  payeTaxThreshold: decimal("payeTaxThreshold", { precision: 12, scale: 2 }).default("24000").notNull(), // Monthly tax threshold
+  payeRate: decimal("payeRate", { precision: 5, scale: 2 }).default("30").notNull(), // PAYE tax rate
+  payrollCycle: mysqlEnum("payrollCycle", ["weekly", "biweekly", "monthly"]).default("monthly").notNull(),
+  paymentDay: int("paymentDay").default(28).notNull(), // Day of month for salary payment
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PayrollSettings = typeof payrollSettings.$inferSelect;
+export type InsertPayrollSettings = typeof payrollSettings.$inferInsert;
