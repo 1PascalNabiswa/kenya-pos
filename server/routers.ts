@@ -116,6 +116,11 @@ import {
   updatePayrollSettings,
   calculateCasualLaborerPay,
   calculatePermanentEmployeePay,
+  listUsers,
+  getUserById,
+  createUser,
+  updateUserRole,
+  deleteUser,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -1299,6 +1304,45 @@ const payrollRouter = router({
     }),
 });
 
+// ─── User Router ──────────────────────────────────────────────────────────
+const userRouter = router({
+  list: protectedProcedure
+    .input(z.object({ search: z.string().optional() }).optional())
+    .query(({ input }) => listUsers(input ?? {})),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(({ input }) => getUserById(input.id)),
+
+  create: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      email: z.string().email(),
+      role: z.enum(["admin", "user"]),
+    }))
+    .mutation(async ({ input }) => {
+      await createUser(input);
+      return { success: true };
+    }),
+
+  updateRole: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      role: z.enum(["admin", "user"]),
+    }))
+    .mutation(async ({ input }) => {
+      await updateUserRole(input.id, input.role);
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteUser(input.id);
+      return { success: true };
+    }),
+});
+
 // ─── App Router ────────────────────────────────────────────────────────────
 export const appRouter = router({
   system: systemRouter,
@@ -1328,6 +1372,7 @@ export const appRouter = router({
   kds: kdsRouter,
   staff: staffRouter,
   payroll: payrollRouter,
+  user: userRouter,
 });
 
 export type AppRouter = typeof appRouter;

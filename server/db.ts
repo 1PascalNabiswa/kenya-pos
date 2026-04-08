@@ -1968,3 +1968,67 @@ export async function calculatePermanentEmployeePay(staffEmploymentId: number, p
     netPay: Number(emp.baseSalary) - totalDeductions
   };
 }
+
+
+// ─── User Management ───────────────────────────────────────────────────────
+export async function listUsers(opts?: { search?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db.select().from(users);
+  
+  if (opts?.search) {
+    query = query.where(
+      or(
+        like(users.name, `%${opts.search}%`),
+        like(users.email, `%${opts.search}%`)
+      )
+    );
+  }
+  
+  return query.orderBy(users.name);
+}
+
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createUser(data: {
+  name: string;
+  email: string;
+  role: "admin" | "user";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // Generate a unique openId for the new user
+  const openId = `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  const result = await db.insert(users).values({
+    openId,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+    loginMethod: "manual",
+  });
+  
+  return result;
+}
+
+export async function updateUserRole(id: number, role: "admin" | "user") {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(users).set({ role }).where(eq(users.id, id));
+}
+
+export async function deleteUser(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.delete(users).where(eq(users.id, id));
+}
