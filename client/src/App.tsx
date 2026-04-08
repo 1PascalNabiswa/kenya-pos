@@ -24,6 +24,8 @@ import ServingDisplay from "@/pages/ServingDisplay";
 import { UserManagement } from "@/pages/UserManagement";
 import { StaffActivityLogs } from "@/pages/StaffActivityLogs";
 import CustomerSpendingReports from "@/pages/CustomerSpendingReports";
+import StaffManagement from "@/pages/StaffManagement";
+import PayrollManagement from "@/pages/PayrollManagement";
 
 function Router() {
   return (
@@ -161,6 +163,16 @@ function Router() {
       <Route path="/staff-activity" component={() => (
         <POSLayout>
           <StaffActivityLogs />
+        </POSLayout>
+      )} />
+      <Route path="/staff-management" component={() => (
+        <POSLayout>
+          <StaffManagement />
+        </POSLayout>
+      )} />
+      <Route path="/payroll" component={() => (
+        <POSLayout>
+          <PayrollManagement />
         </POSLayout>
       )} />
       <Route path="/kitchen" component={KitchenDisplay} />

@@ -24,6 +24,7 @@ import {
   UtensilsCrossed,
   UserCheck,
   Activity,
+  DollarSign,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -88,6 +89,8 @@ const navItems: NavItem[] = [
     children: [
       { label: "User Management", href: "/users", icon: <Users size={14} /> },
       { label: "Staff Activity", href: "/staff-activity", icon: <Activity size={14} /> },
+      { label: "Staff Management", href: "/staff-management", icon: <Users size={14} /> },
+      { label: "Payroll", href: "/payroll", icon: <DollarSign size={14} /> },
     ],
   },
   { label: "Kitchen Display", icon: <UtensilsCrossed size={18} />, href: "/kitchen" },
