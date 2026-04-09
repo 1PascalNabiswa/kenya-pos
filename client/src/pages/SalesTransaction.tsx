@@ -167,14 +167,14 @@ export default function SalesTransaction() {
       {/* Main Content Area */}
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-0">
         {/* Left: Product Grid */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Product Grid */}
-          <ScrollArea className="flex-1 w-full">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 p-2 w-full">
+          <ScrollArea className="flex-1 w-full overflow-x-hidden">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-2 w-full">
               {/* Add New Product Card */}
               <button
                 onClick={() => setAddProductOpen(true)}
-                className="product-card flex flex-col items-center justify-center p-2 border border-dashed border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/50 transition-all rounded-lg min-h-[100px]"
+                className="product-card flex flex-col items-center justify-center p-2 border border-dashed border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/50 transition-all rounded-lg min-h-[100px] w-full"
               >
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-1">
                   <Plus size={16} className="text-primary" />
@@ -202,7 +202,7 @@ export default function SalesTransaction() {
                   return (
                     <div
                       key={product.id}
-                      className={`product-card flex flex-col rounded-lg border transition-all cursor-pointer p-1.5 ${
+                      className={`product-card flex flex-col rounded-lg border transition-all cursor-pointer p-1.5 w-full min-w-0 ${
                         cartItem
                           ? "border-primary bg-primary/5 shadow-md"
                           : "border-border bg-card hover:shadow-md"
