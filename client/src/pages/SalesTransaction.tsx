@@ -170,16 +170,16 @@ export default function SalesTransaction() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Product Grid */}
           <ScrollArea className="flex-1">
-            <div className="p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="p-2 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
               {/* Add New Product Card */}
               <button
                 onClick={() => setAddProductOpen(true)}
-                className="product-card flex flex-col items-center justify-center p-2.5 border border-dashed border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/50 transition-all rounded-lg"
+                className="product-card flex flex-col items-center justify-center p-2 border border-dashed border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/50 transition-all rounded-lg min-h-[100px]"
               >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <Plus size={20} className="text-primary" />
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+                  <Plus size={16} className="text-primary" />
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">Add Product</span>
+                <span className="text-xs font-medium text-muted-foreground text-center">Add</span>
               </button>
 
               {productsLoading ? (
@@ -202,7 +202,7 @@ export default function SalesTransaction() {
                   return (
                     <div
                       key={product.id}
-                      className={`product-card flex flex-col rounded-lg border transition-all cursor-pointer p-2.5 ${
+                      className={`product-card flex flex-col rounded-lg border transition-all cursor-pointer p-1.5 ${
                         cartItem
                           ? "border-primary bg-primary/5 shadow-md"
                           : "border-border bg-card hover:shadow-md"
