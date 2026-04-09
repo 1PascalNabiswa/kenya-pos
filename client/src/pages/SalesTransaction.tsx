@@ -122,14 +122,14 @@ export default function SalesTransaction() {
     <div className="flex flex-col h-full bg-background">
       {/* Fixed Header & Categories */}
       <div className="sticky top-0 z-40 bg-card border-b border-border">
-        {/* Top Bar - Ultra Compact */}
-        <div className="flex items-center gap-3 px-4 py-2">
-          <h1 className="text-sm font-bold text-foreground whitespace-nowrap">Sales Transaction</h1>
+        {/* Top Bar - Simplified */}
+        <div className="flex items-center justify-between px-4 py-2.5 gap-3">
+          <h1 className="text-lg font-bold text-foreground whitespace-nowrap">Sales Transaction</h1>
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               placeholder="Search..."
-              className="pl-8 h-7 text-xs"
+              className="pl-9 h-8 text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -137,22 +137,22 @@ export default function SalesTransaction() {
         </div>
 
         {/* Category Tabs - Compact */}
-        <div className="flex gap-1 px-4 py-1.5 overflow-x-auto border-t border-border bg-card/50 scrollbar-thin">
+        <div className="flex gap-1.5 px-4 py-2 overflow-x-auto border-t border-border bg-card/50 scrollbar-thin">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`flex-shrink-0 px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-all whitespace-nowrap ${
+            className={`flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
               selectedCategory === null
                 ? "bg-primary text-white"
                 : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
             }`}
           >
-            All ({totalProductCount})
+            All Product ({totalProductCount})
           </button>
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`flex-shrink-0 px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-all whitespace-nowrap ${
+              className={`flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
                 selectedCategory === cat.id
                   ? "bg-primary text-white"
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
