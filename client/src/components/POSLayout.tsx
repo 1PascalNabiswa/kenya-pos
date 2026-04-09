@@ -26,6 +26,7 @@ import {
   Activity,
   DollarSign,
   Shield,
+  PanelLeft,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -148,6 +149,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [openGroups, setOpenGroups] = useState<string[]>(["Sales"]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Filter navigation items based on user role
   const filterNavItems = (items: NavItem[]): NavItem[] => {
@@ -244,8 +246,12 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside
-        className={`sidebar fixed lg:static w-60 flex-shrink-0 flex flex-col h-full overflow-y-auto z-50 transform transition-transform duration-300 ${
+        className={`sidebar fixed lg:static flex-shrink-0 flex flex-col h-full overflow-y-auto z-50 transform transition-all duration-300 ${
+          sidebarCollapsed ? "hidden lg:hidden" : ""
+        } ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } ${
+          sidebarCollapsed ? "lg:w-0" : "w-60"
         }`}
       >
         {/* Logo */}
@@ -350,12 +356,21 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden text-muted-foreground hover:text-foreground"
-          >
-            <Menu size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="lg:hidden text-muted-foreground hover:text-foreground"
+            >
+              <Menu size={24} />
+            </button>
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:block text-muted-foreground hover:text-foreground transition-colors"
+              title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+            >
+              <PanelLeft size={20} />
+            </button>
+          </div>
           <div className="flex-1" />
           <div className="text-sm text-muted-foreground">
             {new Date().toLocaleDateString("en-KE", {
