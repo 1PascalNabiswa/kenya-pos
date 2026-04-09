@@ -202,45 +202,16 @@ export default function SalesTransaction() {
                   return (
                     <div
                       key={product.id}
-                      className={`product-card flex flex-col rounded-lg border transition-all cursor-pointer ${
+                      className={`product-card flex flex-col rounded-lg border transition-all cursor-pointer p-2.5 ${
                         cartItem
                           ? "border-primary bg-primary/5 shadow-md"
                           : "border-border bg-card hover:shadow-md"
                       }`}
                       onClick={() => addToCart(product)}
                     >
-                      {/* Product Image */}
-                      <div className="relative h-28 bg-secondary/50 overflow-hidden rounded-t-lg">
-                        {product.imageUrl ? (
-                          <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package size={32} className="text-muted-foreground/30" />
-                          </div>
-                        )}
-                        {hasDiscount && (
-                          <div className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                            -{discountPct}%
-                          </div>
-                        )}
-                        {product.stockQuantity <= 0 && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-lg">
-                            <span className="text-white text-[10px] font-bold">Out of Stock</span>
-                          </div>
-                        )}
-                        {cartItem && (
-                          <div className="absolute bottom-1.5 right-1.5 bg-primary text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg">
-                            {cartItem.quantity}
-                          </div>
-                        )}
-                      </div>
-                      {/* Product Info */}
-                      <div className="p-2.5 flex-1 flex flex-col">
-                        <p className="text-[11px] font-medium text-foreground line-clamp-2 leading-tight mb-1.5">
+                      {/* Product Info - Name & Price Only */}
+                      <div className="flex-1 flex flex-col">
+                        <p className="text-xs font-medium text-foreground line-clamp-2 leading-tight mb-2">
                           {product.name}
                         </p>
                         <div className="flex items-center gap-1 flex-wrap mt-auto">
@@ -249,10 +220,15 @@ export default function SalesTransaction() {
                               KES {Number(product.originalPrice).toLocaleString()}
                             </span>
                           )}
-                          <span className="text-xs font-bold text-primary">
+                          <span className="text-sm font-bold text-primary">
                             KES {Number(product.price).toLocaleString()}
                           </span>
                         </div>
+                        {cartItem && (
+                          <div className="text-[10px] text-muted-foreground mt-1.5 font-medium">
+                            In cart: {cartItem.quantity}
+                          </div>
+                        )}
                       </div>
                       {/* Qty Controls (if in cart) */}
                       {cartItem && (
