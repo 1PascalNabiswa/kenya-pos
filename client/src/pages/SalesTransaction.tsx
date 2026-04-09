@@ -358,21 +358,10 @@ export default function SalesTransaction() {
 
           {/* Order Summary - Fixed at Bottom */}
           <div className="border-t border-border bg-card/50 p-3 space-y-2">
-            {/* Totals */}
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">KES {subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">VAT (16%)</span>
-                <span className="font-medium">KES {taxAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              </div>
-              <Separator className="my-1" />
-              <div className="flex justify-between text-sm font-bold bg-primary/10 p-1.5 rounded">
-                <span>Total</span>
-                <span className="text-primary">KES {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              </div>
+            {/* Total Only */}
+            <div className="flex justify-between text-sm font-bold bg-primary/10 p-1.5 rounded">
+              <span>Total</span>
+              <span className="text-primary">KES {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </div>
 
             {/* Action Buttons */}
