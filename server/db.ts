@@ -406,10 +406,11 @@ export async function getOrderById(id: number) {
 
 export async function updateOrderStatus(
   id: number,
+  data: Partial<InsertOrder>,
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  await db.update(orders).set(data as any).where(eq(orders.id, id));
+  await db.update(orders).set(data).where(eq(orders.id, id));
 }
 
 // ─── Reports ───────────────────────────────────────────────────────────────
