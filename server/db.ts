@@ -454,7 +454,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       totalRevenue: sql<number>`sum(${orderItems.totalPrice})`,
     })
     .from(orderItems)
-    .innerJoin(orders, eq(orderItems.id, orders.id))
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
         gte(orders.createdAt, fromDate),

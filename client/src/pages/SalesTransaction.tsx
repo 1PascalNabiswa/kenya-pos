@@ -266,7 +266,7 @@ export default function SalesTransaction() {
           <div className="px-4 py-2.5 border-b border-border">
             <p className="text-xs font-medium text-muted-foreground mb-1.5">Customer</p>
             <Select
-              value={selectedCustomerId ? String(selectedCustomerId) : ""}
+              value={selectedCustomerId ? String(selectedCustomerId) : undefined}
               onValueChange={(val) => {
                 if (val === "walk-in") {
                   setSelectedCustomerId(null);
