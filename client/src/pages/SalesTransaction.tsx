@@ -174,7 +174,7 @@ export default function SalesTransaction() {
               {/* Add New Product Card */}
               <button
                 onClick={() => setAddProductOpen(true)}
-                className="product-card flex flex-col items-center justify-center p-6 min-h-[160px] border-2 border-dashed border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/50 transition-all rounded-lg"
+                className="product-card flex flex-col items-center justify-center p-2.5 border border-dashed border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/50 transition-all rounded-lg"
               >
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                   <Plus size={20} className="text-primary" />
@@ -224,11 +224,7 @@ export default function SalesTransaction() {
                             KES {Number(product.price).toLocaleString()}
                           </span>
                         </div>
-                        {cartItem && (
-                          <div className="text-[10px] text-muted-foreground mt-1.5 font-medium">
-                            In cart: {cartItem.quantity}
-                          </div>
-                        )}
+
                       </div>
                       {/* Qty Controls (if in cart) */}
                       {cartItem && (
