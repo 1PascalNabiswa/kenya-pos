@@ -263,8 +263,8 @@ export default function CustomerSpendingReports() {
                     </tr>
                   </thead>
                   <tbody>
-                    {topCustomers.map((customer: any) => (
-                      <tr key={customer.id} className="border-b hover:bg-secondary/50">
+                    {topCustomers.map((customer: any, index: number) => (
+                      <tr key={customer.id ?? `customer-${index}`} className="border-b hover:bg-secondary/50">
                         <td className="py-2 px-4">{customer.name}</td>
                         <td className="text-right py-2 px-4 font-bold">KES {Number(customer.totalSpent ?? 0).toLocaleString()}</td>
                         <td className="text-right py-2 px-4">{customer.orderCount}</td>
