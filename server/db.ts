@@ -389,7 +389,17 @@ export async function getOrders(opts?: {
   if (opts?.search) conditions.push(like(orders.orderNumber, `%${opts.search}%`));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult] = await Promise.all([
-    db.select().from(orders).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
+    db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      customerId: orders.customerId,
+      customerName: customers.name,
+      paymentMethod: orders.paymentMethod,
+      paymentStatus: orders.paymentStatus,
+      orderStatus: orders.orderStatus,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+    }).from(orders).leftJoin(customers, eq(orders.customerId, customers.id)).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(orders).where(whereClause),
   ]);
   return { items, total: Number(countResult[0]?.count ?? 0) };

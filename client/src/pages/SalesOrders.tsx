@@ -116,7 +116,7 @@ export default function SalesOrders() {
             ) : orders.map((order) => (
               <tr key={order.id} className="border-t border-border/50 hover:bg-secondary/20 transition-colors">
                 <td className="p-3 font-mono text-xs text-primary font-medium">{order.orderNumber}</td>
-                <td className="p-3 text-xs">{order.customerId ?? "Walk-in"}</td>
+                <td className="p-3 text-xs">{order.customerName ?? "Walk-in"}</td>
                 <td className="p-3">-</td>
                 <td className="p-3 text-center">
                   <span className={`status-${order.paymentStatus}`}>{order.paymentStatus}</span>
