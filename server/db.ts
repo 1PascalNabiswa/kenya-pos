@@ -1514,17 +1514,48 @@ export async function getCustomerSpendingComparison(customerId: number) {
   const db = await getDb();
   if (!db) return null;
   
-  const result = await db.execute(sql`
-    SELECT 
-      (SELECT SUM(totalAmount) FROM orders WHERE customerId = ? AND orderStatus = 'completed') as customerTotal,
-      (SELECT AVG(customerTotal) FROM (
-        SELECT SUM(totalAmount) as customerTotal FROM orders WHERE orderStatus = 'completed' GROUP BY customerId
-      ) as avgTable) as averageCustomerSpending,
-      (SELECT COUNT(DISTINCT customerId) FROM orders WHERE orderStatus = 'completed') as totalCustomers,
-      (SELECT SUM(totalAmount) FROM orders WHERE orderStatus = 'completed') as totalSystemRevenue
-  `, [customerId]);
+  // Get customer's total spending
+  const customerOrders = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.customerId, customerId),
+        eq(orders.orderStatus, 'completed')
+      )
+    );
   
-  return result[0] as any;
+  const customerTotal = customerOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+  
+  // Get all completed orders for system-wide calculations
+  const allOrders = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.orderStatus, 'completed'));
+  
+  // Calculate system-wide metrics
+  const totalSystemRevenue = allOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+  const totalCustomers = new Set(allOrders.map(o => o.customerId)).size;
+  
+  // Calculate average customer spending
+  const customerSpending: Record<number, number> = {};
+  for (const order of allOrders) {
+    if (!customerSpending[order.customerId]) {
+      customerSpending[order.customerId] = 0;
+    }
+    customerSpending[order.customerId] += Number(order.totalAmount);
+  }
+  
+  const averageCustomerSpending = totalCustomers > 0 
+    ? Object.values(customerSpending).reduce((a, b) => a + b, 0) / totalCustomers 
+    : 0;
+  
+  return {
+    customerTotal,
+    averageCustomerSpending,
+    totalCustomers,
+    totalSystemRevenue,
+  };
 }
 
 
