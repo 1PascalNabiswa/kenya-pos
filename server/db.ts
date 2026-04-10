@@ -683,8 +683,18 @@ export async function getWalletTransactions(customerId: number, limit = 50) {
   const db = await getDb();
   if (!db) return [];
   return db
-    .select()
+    .select({
+      id: walletTransactions.id,
+      walletId: walletTransactions.walletId,
+      customerId: walletTransactions.customerId,
+      customerName: customers.name,
+      type: walletTransactions.type,
+      amount: walletTransactions.amount,
+      description: walletTransactions.description,
+      createdAt: walletTransactions.createdAt,
+    })
     .from(walletTransactions)
+    .leftJoin(customers, eq(walletTransactions.customerId, customers.id))
     .where(eq(walletTransactions.customerId, customerId))
     .orderBy(desc(walletTransactions.createdAt))
     .limit(limit);
