@@ -1441,24 +1441,71 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack: 
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - monthsBack);
   
-  const result = await db.execute(sql`
-    SELECT 
-      c.id,
-      c.name,
-      c.phone,
-      c.email,
-      COUNT(o.id) as orderCount,
-      SUM(o.totalAmount) as totalSpent,
-      AVG(o.totalAmount) as avgOrderValue,
-      MAX(o.createdAt) as lastOrderDate,
-      DATEDIFF(NOW(), MAX(o.createdAt)) as daysSinceLastOrder
-    FROM customers c
-    LEFT JOIN orders o ON c.id = o.customerId AND o.createdAt >= ? AND o.orderStatus = 'completed'
-    GROUP BY c.id, c.name, c.phone, c.email
-    HAVING totalSpent > 0
-    ORDER BY totalSpent DESC
-    LIMIT ?
-  `, [startDate, limit]);
+  // Get all completed orders from the last N months
+  const allOrders = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, startDate),
+        eq(orders.orderStatus, 'completed')
+      )
+    );
+  
+  // Group by customer and calculate totals
+  const customerSpending: Record<number, any> = {};
+  
+  for (const order of allOrders) {
+    if (!customerSpending[order.customerId]) {
+      customerSpending[order.customerId] = {
+        customerId: order.customerId,
+        orderCount: 0,
+        totalSpent: 0,
+        lastOrderDate: order.createdAt,
+      };
+    }
+    customerSpending[order.customerId].orderCount += 1;
+    customerSpending[order.customerId].totalSpent += Number(order.totalAmount);
+    if (order.createdAt > customerSpending[order.customerId].lastOrderDate) {
+      customerSpending[order.customerId].lastOrderDate = order.createdAt;
+    }
+  }
+  
+  // Filter out customers with zero spending
+  const spendingCustomers = Object.entries(customerSpending)
+    .filter(([_, data]) => data.totalSpent > 0)
+    .map(([customerId, data]) => ({ customerId: Number(customerId), ...data }));
+  
+  if (spendingCustomers.length === 0) return [];
+  
+  // Get customer details
+  const customerIds = spendingCustomers.map(c => c.customerId);
+  const customerDetails = await db
+    .select()
+    .from(customers)
+    .where(sql`${customers.id} IN (${customerIds.join(',')})`);
+  
+  // Create a map of customer details
+  const customerMap = new Map(customerDetails.map(c => [c.id, c]));
+  
+  // Merge and sort
+  const result = spendingCustomers
+    .map(spending => {
+      const customer = customerMap.get(spending.customerId);
+      return {
+        id: customer?.id,
+        name: customer?.name,
+        phone: customer?.phone,
+        email: customer?.email,
+        orderCount: spending.orderCount,
+        totalSpent: spending.totalSpent,
+        avgOrderValue: spending.totalSpent / spending.orderCount,
+        lastOrderDate: spending.lastOrderDate,
+        daysSinceLastOrder: Math.floor((Date.now() - spending.lastOrderDate.getTime()) / (1000 * 60 * 60 * 24)),
+      };
+    })
+    .sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))
+    .slice(0, limit);
   
   return result as any[];
 }
