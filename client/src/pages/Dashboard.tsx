@@ -227,7 +227,7 @@ export default function Dashboard() {
                   {stats.recentOrders.map((order) => (
                     <tr key={order.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                       <td className="py-2 font-mono text-xs text-primary">{order.orderNumber}</td>
-                      <td className="py-2 text-xs">{order.customerId ?? "Walk-in"}</td>
+                      <td className="py-2 text-xs">{order.customerName ?? "Walk-in"}</td>
                       <td className="py-2">
                         <span className="text-xs uppercase font-medium">{order.paymentMethod}</span>
                       </td>

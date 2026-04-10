@@ -531,8 +531,19 @@ export async function getDashboardStats() {
     .orderBy(sql`DATE(orders.createdAt)`);
 
   const recentOrders = await db
-    .select()
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      customerId: orders.customerId,
+      customerName: customers.name,
+      paymentMethod: orders.paymentMethod,
+      paymentStatus: orders.paymentStatus,
+      orderStatus: orders.orderStatus,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+    })
     .from(orders)
+    .leftJoin(customers, eq(orders.customerId, customers.id))
     .orderBy(desc(orders.createdAt))
     .limit(5);
 
