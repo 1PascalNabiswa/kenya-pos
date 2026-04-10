@@ -14,6 +14,7 @@ export default function SalesOrders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("");
   const [page, setPage] = useState(1);
   const [viewOrder, setViewOrder] = useState<any>(null);
   const [receiptOrderId, setReceiptOrderId] = useState<number | null>(null);
@@ -24,6 +25,7 @@ export default function SalesOrders() {
     search: search || undefined,
     status: statusFilter || undefined,
     paymentStatus: paymentFilter || undefined,
+    paymentMethod: paymentMethodFilter || undefined,
     page,
     limit: 20,
   });
@@ -84,6 +86,18 @@ export default function SalesOrders() {
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
             <SelectItem value="refunded">Refunded</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={paymentMethodFilter} onValueChange={(v) => { setPaymentMethodFilter(v === "all" ? "" : v); setPage(1); }}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Payment Method" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Methods</SelectItem>
+            <SelectItem value="cash">Cash</SelectItem>
+            <SelectItem value="wallet">Wallet</SelectItem>
+            <SelectItem value="stripe">Card (Stripe)</SelectItem>
+            <SelectItem value="mixed">Mixed</SelectItem>
           </SelectContent>
         </Select>
       </div>

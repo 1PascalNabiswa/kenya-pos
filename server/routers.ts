@@ -306,6 +306,7 @@ const ordersRouter = router({
     .input(z.object({
       status: z.string().optional(),
       paymentStatus: z.string().optional(),
+      paymentMethod: z.string().optional(),
       customerId: z.number().optional(),
       fromDate: z.date().optional(),
       toDate: z.date().optional(),

@@ -369,6 +369,8 @@ export async function createOrder(
 
 export async function getOrders(opts?: {
   status?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
   customerId?: number;
   fromDate?: Date;
   toDate?: Date;
@@ -383,6 +385,8 @@ export async function getOrders(opts?: {
   const offset = (page - 1) * limit;
   const conditions = [];
   if (opts?.status) conditions.push(eq(orders.orderStatus, opts.status as any));
+  if (opts?.paymentStatus) conditions.push(eq(orders.paymentStatus, opts.paymentStatus as any));
+  if (opts?.paymentMethod) conditions.push(eq(orders.paymentMethod, opts.paymentMethod as any));
   if (opts?.customerId) conditions.push(eq(orders.customerId, opts.customerId));
   if (opts?.fromDate) conditions.push(gte(orders.createdAt, opts.fromDate));
   if (opts?.toDate) conditions.push(lte(orders.createdAt, opts.toDate));
@@ -557,6 +561,22 @@ export async function getDashboardStats() {
     .orderBy(desc(orders.createdAt))
     .limit(5);
 
+  const paymentBreakdown = await db
+    .select({
+      paymentMethod: orders.paymentMethod,
+      total: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
+      count: sql<number>`count(*)`,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.orderStatus, 'completed'),
+        gte(orders.createdAt, today),
+        lt(orders.createdAt, tomorrow)
+      )
+    )
+    .groupBy(orders.paymentMethod);
+
   return {
     todayOrders: Number(todayStats?.orders ?? 0),
     todayRevenue: Number(todayStats?.revenue ?? 0),
@@ -568,6 +588,7 @@ export async function getDashboardStats() {
     weeklyRevenue,
     recentOrders,
     lowStockProducts: lowStock.slice(0, 5),
+    paymentBreakdown,
   };
 }
 
@@ -2141,4 +2162,29 @@ export async function deleteUser(id: number) {
   if (!db) throw new Error("DB unavailable");
   
   await db.delete(users).where(eq(users.id, id));
+}
+
+
+// ─── Payment Breakdown ───────────────────────────────────────────────────────
+export async function getPaymentMethodBreakdown(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const results = await db
+    .select({
+      paymentMethod: orders.paymentMethod,
+      total: sql<number>`sum(${orders.totalAmount})`,
+      count: sql<number>`count(*)`,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.orderStatus, "completed"),
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate)
+      )
+    )
+    .groupBy(orders.paymentMethod);
+  
+  return results;
 }

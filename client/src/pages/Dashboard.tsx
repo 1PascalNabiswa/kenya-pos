@@ -197,6 +197,49 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Payment Breakdown */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Payment Breakdown (Today)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats?.paymentBreakdown && stats.paymentBreakdown.length > 0 ? (
+            <div className="space-y-3">
+              {stats.paymentBreakdown.map((payment: any) => {
+                const paymentLabel = payment.paymentMethod === 'wallet' ? 'Wallet' : 
+                                    payment.paymentMethod === 'cash' ? 'Cash' : 
+                                    payment.paymentMethod === 'stripe' ? 'Card (Stripe)' : 'Mixed';
+                const colors: Record<string, string> = {
+                  'wallet': 'bg-purple-100 text-purple-700',
+                  'cash': 'bg-green-100 text-green-700',
+                  'stripe': 'bg-blue-100 text-blue-700',
+                  'mixed': 'bg-gray-100 text-gray-700',
+                };
+                const color = colors[payment.paymentMethod] || 'bg-gray-100 text-gray-700';
+                
+                return (
+                  <div key={payment.paymentMethod} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div className="flex items-center gap-3">
+                      <Badge className={`${color} text-xs`}>{paymentLabel}</Badge>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{payment.count} transactions</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">KES {Number(payment.total).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="h-24 flex items-center justify-center text-muted-foreground">
+              <p className="text-sm">No payments today</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Recent Orders */}
       <Card>
         <CardHeader className="pb-2">
