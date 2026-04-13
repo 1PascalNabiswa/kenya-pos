@@ -68,12 +68,12 @@ export default function AuditLogs() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className="text-sm font-medium mb-2 block">Module</label>
-          <Select value={filters.module} onValueChange={(val) => setFilters({ ...filters, module: val })}>
+          <Select value={filters.module || "all"} onValueChange={(val) => setFilters({ ...filters, module: val === "all" ? "" : val })}>
             <SelectTrigger>
               <SelectValue placeholder="All Modules" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Modules</SelectItem>
+              <SelectItem value="all">All Modules</SelectItem>
               <SelectItem value="Sales">Sales</SelectItem>
               <SelectItem value="Inventory">Inventory</SelectItem>
               <SelectItem value="Forms">Forms</SelectItem>
@@ -84,12 +84,12 @@ export default function AuditLogs() {
         </div>
         <div>
           <label className="text-sm font-medium mb-2 block">Action</label>
-          <Select value={filters.action} onValueChange={(val) => setFilters({ ...filters, action: val })}>
+          <Select value={filters.action || "all"} onValueChange={(val) => setFilters({ ...filters, action: val === "all" ? "" : val })}>
             <SelectTrigger>
               <SelectValue placeholder="All Actions" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Actions</SelectItem>
+              <SelectItem value="all">All Actions</SelectItem>
               <SelectItem value="CREATE">Create</SelectItem>
               <SelectItem value="UPDATE">Update</SelectItem>
               <SelectItem value="DELETE">Delete</SelectItem>
