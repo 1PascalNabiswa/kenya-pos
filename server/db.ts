@@ -982,8 +982,9 @@ export async function getAuditLogs(filters?: {
   userId?: number;
   action?: string;
   module?: string;
-  startDate?: Date;
-  endDate?: Date;
+  startDate?: number;
+  endDate?: number;
+  search?: string;
   limit?: number;
 }) {
   const db = await getDb();
@@ -993,16 +994,72 @@ export async function getAuditLogs(filters?: {
   if (filters?.userId) conditions.push(eq(auditLogs.userId, filters.userId));
   if (filters?.action) conditions.push(eq(auditLogs.action, filters.action));
   if (filters?.module) conditions.push(eq(auditLogs.module, filters.module));
-  if (filters?.startDate) conditions.push(gte(auditLogs.timestamp, filters.startDate));
-  if (filters?.endDate) conditions.push(lte(auditLogs.timestamp, filters.endDate));
+  if (filters?.startDate) conditions.push(gte(auditLogs.timestamp, new Date(filters.startDate)));
+  if (filters?.endDate) conditions.push(lte(auditLogs.timestamp, new Date(filters.endDate)));
   
-  return db
-    .select()
+  let query = db
+    .select({
+      id: auditLogs.id,
+      timestamp: auditLogs.timestamp,
+      userId: auditLogs.userId,
+      userName: users.name,
+      action: auditLogs.action,
+      module: auditLogs.module,
+      entityType: auditLogs.entityType,
+      entityId: auditLogs.entityId,
+      beforeValue: auditLogs.beforeValue,
+      afterValue: auditLogs.afterValue,
+    })
     .from(auditLogs)
+    .leftJoin(users, eq(auditLogs.userId, users.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(auditLogs.timestamp))
     .limit(filters?.limit || 1000);
+  
+  const results = await query;
+  
+  // Client-side search filtering
+  if (filters?.search) {
+    const searchLower = filters.search.toLowerCase();
+    return results.filter((log: any) => 
+      (log.userName || '').toLowerCase().includes(searchLower) ||
+      (log.userId?.toString() || '').includes(searchLower) ||
+      (log.action || '').toLowerCase().includes(searchLower) ||
+      (log.module || '').toLowerCase().includes(searchLower) ||
+      (log.entityType || '').toLowerCase().includes(searchLower) ||
+      (log.entityId?.toString() || '').includes(searchLower)
+    );
+  }
+  
+  return results;
 }
+
+export async function getTopActiveUsers(filters?: {
+  limit?: number;
+  startDate?: number;
+  endDate?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (filters?.startDate) conditions.push(gte(auditLogs.timestamp, new Date(filters.startDate)));
+  if (filters?.endDate) conditions.push(lte(auditLogs.timestamp, new Date(filters.endDate)));
+  
+  const results = await db
+    .select({
+      userId: auditLogs.userId,
+      actionCount: sql<number>`COUNT(*) as actionCount`,
+    })
+    .from(auditLogs)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(auditLogs.userId)
+    .orderBy(desc(sql<number>`COUNT(*)`));
+  
+  return results.slice(0, filters?.limit || 5);
+}
+
+// ─── Top Active Users ──────────────────────────────────────────────────────
 
 // ─── Branches ──────────────────────────────────────────────────────────────
 export async function createBranch(data: any) {
@@ -2187,4 +2244,107 @@ export async function getPaymentMethodBreakdown(fromDate: Date, toDate: Date) {
     .groupBy(orders.paymentMethod);
   
   return results;
+}
+
+
+// ─── Daily Sales Itemized Report ──────────────────────────────────────────────
+export async function getDailySalesItemized(date: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Parse the date
+  const startDate = new Date(date);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(date);
+  endDate.setHours(23, 59, 59, 999);
+
+  // Get daily summary
+  const [summary] = await db
+    .select({
+      totalOrders: sql<number>`count(distinct ${orders.id})`,
+      totalRevenue: sql<number>`sum(${orders.totalAmount})`,
+      totalTax: sql<number>`sum(${orders.taxAmount})`,
+      totalDiscount: sql<number>`sum(${orders.discountAmount})`,
+      avgOrderValue: sql<number>`avg(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, startDate),
+        lte(orders.createdAt, endDate),
+      )
+    );
+
+  // Get payment method breakdown
+  const paymentBreakdown = await db
+    .select({
+      method: orders.paymentMethod,
+      count: sql<number>`count(*)`,
+      total: sql<number>`sum(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, startDate),
+        lte(orders.createdAt, endDate),
+      )
+    )
+    .groupBy(orders.paymentMethod);
+
+  // Get itemized sales (all order items for the day)
+  const itemizedSales = await db
+    .select({
+      orderId: orders.id,
+      orderNumber: orders.orderNumber,
+      customerName: customers.name,
+      productName: orderItems.productName,
+      quantity: orderItems.quantity,
+      unitPrice: orderItems.unitPrice,
+      totalPrice: orderItems.totalPrice,
+      paymentMethod: orders.paymentMethod,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
+    .leftJoin(customers, eq(orders.customerId, customers.id))
+    .where(
+      and(
+        gte(orders.createdAt, startDate),
+        lte(orders.createdAt, endDate),
+      )
+    )
+    .orderBy(orders.createdAt, orders.id);
+
+  // Get top products by quantity
+  const topProducts = await db
+    .select({
+      productName: orderItems.productName,
+      totalQuantity: sql<number>`sum(${orderItems.quantity})`,
+      totalRevenue: sql<number>`sum(${orderItems.totalPrice})`,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .where(
+      and(
+        gte(orders.createdAt, startDate),
+        lte(orders.createdAt, endDate),
+      )
+    )
+    .groupBy(orderItems.productName)
+    .orderBy(desc(sql<number>`sum(${orderItems.totalPrice})`))
+    .limit(20);
+
+  return {
+    date,
+    summary: summary || {
+      totalOrders: 0,
+      totalRevenue: 0,
+      totalTax: 0,
+      totalDiscount: 0,
+      avgOrderValue: 0,
+    },
+    paymentBreakdown,
+    itemizedSales,
+    topProducts,
+  };
 }

@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { getDailySalesItemized } from "../db";
+import { generateDailySalesPDF } from "../pdf-generator";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +37,31 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  
+  // PDF Report Route
+  app.get("/api/reports/daily-pdf", async (req, res) => {
+    try {
+      const { date } = req.query;
+      if (!date || typeof date !== "string") {
+        return res.status(400).json({ error: "Date parameter required" });
+      }
+      
+      const data = await getDailySalesItemized(date);
+      if (!data) {
+        return res.status(404).json({ error: "No data found for this date" });
+      }
+      
+      const doc = generateDailySalesPDF(data);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="daily-sales-${date}.pdf"`);
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+  
   // tRPC API
   app.use(
     "/api/trpc",

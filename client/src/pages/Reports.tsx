@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from "recharts";
-import { Download, TrendingUp, ShoppingCart, Users, Package } from "lucide-react";
+import { Download, TrendingUp, ShoppingCart, Users, Package, FileText } from "lucide-react";
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
@@ -80,6 +80,23 @@ export default function Reports() {
     toast.success("Report exported as CSV");
   };
 
+  const handleExportDailyPDF = async (date: string) => {
+    try {
+      const response = await fetch(`/api/reports/daily-pdf?date=${date}`);
+      if (!response.ok) throw new Error("Failed to generate PDF");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `daily-sales-${date}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Daily report downloaded as PDF");
+    } catch (error) {
+      toast.error("Failed to generate PDF");
+    }
+  };
+
   const timelineData = report?.timeline?.map((d: { date: string; revenue: number | string; orderCount: number | string; tax: number | string }) => ({
     date: d.date,
     revenue: Number(d.revenue),
@@ -100,9 +117,14 @@ export default function Reports() {
           <h1 className="text-2xl font-bold">Sales Reports</h1>
           <p className="text-sm text-muted-foreground">Analyze your business performance</p>
         </div>
-        <Button onClick={handleExport} variant="outline" disabled={!report}>
-          <Download size={16} className="mr-2" /> Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => handleExportDailyPDF(endDate)} variant="outline" disabled={!report}>
+            <FileText size={16} className="mr-2" /> Daily PDF
+          </Button>
+          <Button onClick={handleExport} variant="outline" disabled={!report}>
+            <Download size={16} className="mr-2" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

@@ -69,6 +69,7 @@ import {
   getCreditTransactionHistory,
   recordAuditLog,
   getAuditLogs,
+  getTopActiveUsers,
   createBranch,
   listBranches,
   createServingPoint,
@@ -627,6 +628,13 @@ const reportsRouter = router({
       const { getCustomerSpendingComparison } = await import("./db");
       return getCustomerSpendingComparison(input.customerId);
     }),
+
+  dailySalesItemized: protectedProcedure
+    .input(z.object({ date: z.string() }))
+    .query(async ({ input }) => {
+      const { getDailySalesItemized } = await import("./db");
+      return getDailySalesItemized(input.date);
+    }),
 });
 
 // ─── Settings Router ───────────────────────────────────────────────────────
@@ -871,9 +879,22 @@ const auditRouter = router({
       action: z.string().optional(),
       module: z.string().optional(),
       limit: z.number().optional(),
+      startDate: z.number().optional(),
+      endDate: z.number().optional(),
+      search: z.string().optional(),
     }))
     .query(async ({ input }) => {
       return getAuditLogs(input);
+    }),
+
+  topUsers: protectedProcedure
+    .input(z.object({
+      limit: z.number().default(5),
+      startDate: z.number().optional(),
+      endDate: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      return getTopActiveUsers(input);
     }),
 });
 

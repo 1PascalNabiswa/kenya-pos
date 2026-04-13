@@ -292,3 +292,14 @@
 - [x] Improve visual design and UX
 - [x] Test responsive design and button visibility
 - [x] Ensure no scrolling needed for Finish button
+
+
+## Phase 29: Audit Trail Enhancements
+- [ ] Add date range picker to AuditLogs filter
+- [ ] Create server query for top 5 most active users
+- [ ] Add User Activity Dashboard widget to Dashboard page
+- [ ] Implement full-text search for audit logs
+- [ ] Add search field to AuditLogs page
+- [ ] Test date range filtering
+- [ ] Test user activity dashboard widget
+- [ ] Test full-text search functionality
