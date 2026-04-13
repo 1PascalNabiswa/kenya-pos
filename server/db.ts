@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, like, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   Category,
