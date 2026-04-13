@@ -103,8 +103,8 @@ export default function Reports() {
     orders: Number(d.orderCount),
   })) ?? [];
 
-  const pieData = paymentBreakdown?.map((p: { method: string; revenue: number | string; count: number | string }) => ({
-    name: p.method.toUpperCase(),
+  const pieData = paymentBreakdown?.map((p: { method?: string; revenue: number | string; count: number | string }) => ({
+    name: (p.method || 'UNKNOWN').toUpperCase(),
     value: Number(p.revenue),
     count: Number(p.count),
   })) ?? [];
