@@ -7,10 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell, LineChart, Line
 } from "recharts";
-import { Download, TrendingUp, ShoppingCart, Users, Package, FileText } from "lucide-react";
+import { Download, TrendingUp, ShoppingCart, Users, Package, FileText, CreditCard } from "lucide-react";
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
@@ -29,6 +29,8 @@ export default function Reports() {
 
   const { data: paymentBreakdown } = trpc.reports.paymentBreakdown.useQuery({ startDate, endDate });
   const { data: topProducts } = trpc.reports.topProducts.useQuery({ startDate, endDate, limit: 10 });
+  const { data: paymentMethodComparison } = trpc.reports.paymentMethodComparison.useQuery({ fromDate: startDate, toDate: endDate });
+  const { data: dailySalesByPaymentMethod } = trpc.reports.dailySalesByPaymentMethod.useQuery({ fromDate: startDate, toDate: endDate });
 
   const setPreset = (preset: string) => {
     const now = new Date();
@@ -189,6 +191,29 @@ export default function Reports() {
         </div>
       )}
 
+      {/* Payment Method Trends */}
+      {dailySalesByPaymentMethod && dailySalesByPaymentMethod.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Payment Method Trends</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={dailySalesByPaymentMethod}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
+                <Legend />
+                {Array.from(new Set(dailySalesByPaymentMethod.map((d: any) => d.method))).map((method: any, idx: number) => (
+                  <Bar key={`bar-${method}`} dataKey={method} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Revenue Timeline */}
         <Card className="lg:col-span-2">
@@ -258,6 +283,45 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Method Detailed Breakdown */}
+      {paymentMethodComparison && paymentMethodComparison.breakdown.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard size={18} /> Payment Method Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-muted-foreground border-b border-border">
+                    <th className="text-left py-2 font-medium">Payment Method</th>
+                    <th className="text-right py-2 font-medium">Orders</th>
+                    <th className="text-right py-2 font-medium">Revenue</th>
+                    <th className="text-right py-2 font-medium">% of Total</th>
+                    <th className="text-right py-2 font-medium">Avg Order</th>
+                    <th className="text-right py-2 font-medium">Min/Max</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentMethodComparison.breakdown.map((method: any, i: number) => (
+                    <tr key={`method-${method.method}-${i}`} className="border-b border-border/50 hover:bg-secondary/20">
+                      <td className="py-2 font-medium">{method.method}</td>
+                      <td className="py-2 text-right">{method.orderCount.toLocaleString()}</td>
+                      <td className="py-2 text-right font-medium text-primary">KES {Number(method.totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                      <td className="py-2 text-right text-muted-foreground">{method.percentageOfTotal.toFixed(1)}%</td>
+                      <td className="py-2 text-right">KES {Number(method.avgOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                      <td className="py-2 text-right text-xs text-muted-foreground">KES {Number(method.minOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })} / KES {Number(method.maxOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top Products */}
       <Card>

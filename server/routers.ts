@@ -635,6 +635,27 @@ const reportsRouter = router({
       const { getDailySalesItemized } = await import("./db");
       return getDailySalesItemized(input.date);
     }),
+
+  salesByPaymentMethod: protectedProcedure
+    .input(z.object({ fromDate: z.string(), toDate: z.string() }))
+    .query(async ({ input }) => {
+      const { getSalesByPaymentMethod } = await import("./db");
+      return getSalesByPaymentMethod(new Date(input.fromDate), new Date(input.toDate));
+    }),
+
+  dailySalesByPaymentMethod: protectedProcedure
+    .input(z.object({ fromDate: z.string(), toDate: z.string() }))
+    .query(async ({ input }) => {
+      const { getDailySalesByPaymentMethod } = await import("./db");
+      return getDailySalesByPaymentMethod(new Date(input.fromDate), new Date(input.toDate));
+    }),
+
+  paymentMethodComparison: protectedProcedure
+    .input(z.object({ fromDate: z.string(), toDate: z.string() }))
+    .query(async ({ input }) => {
+      const { getPaymentMethodComparison } = await import("./db");
+      return getPaymentMethodComparison(new Date(input.fromDate), new Date(input.toDate));
+    }),
 });
 
 // ─── Settings Router ───────────────────────────────────────────────────────

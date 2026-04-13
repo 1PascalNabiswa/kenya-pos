@@ -2348,3 +2348,84 @@ export async function getDailySalesItemized(date: string) {
     topProducts,
   };
 }
+
+
+// ─── Sales by Payment Method ──────────────────────────────────────────────────
+export async function getSalesByPaymentMethod(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const results = await db
+    .select({
+      method: orders.paymentMethod,
+      orderCount: sql<number>`count(distinct ${orders.id})`,
+      totalRevenue: sql<number>`sum(${orders.totalAmount})`,
+      totalTax: sql<number>`sum(${orders.taxAmount})`,
+      avgOrderValue: sql<number>`avg(${orders.totalAmount})`,
+      minOrderValue: sql<number>`min(${orders.totalAmount})`,
+      maxOrderValue: sql<number>`max(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
+      )
+    )
+    .groupBy(orders.paymentMethod)
+    .orderBy(desc(sql<number>`sum(${orders.totalAmount})`));
+
+  return results;
+}
+
+// ─── Daily Sales by Payment Method ────────────────────────────────────────────
+export async function getDailySalesByPaymentMethod(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const results = await db
+    .select({
+      date: sql<string>`DATE(${orders.createdAt})`,
+      method: orders.paymentMethod,
+      orderCount: sql<number>`count(*)`,
+      totalRevenue: sql<number>`sum(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(
+      and(
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
+      )
+    )
+    .groupBy(sql`DATE(${orders.createdAt})`, orders.paymentMethod)
+    .orderBy(sql`DATE(${orders.createdAt})`, orders.paymentMethod);
+
+  return results;
+}
+
+// ─── Payment Method Comparison ────────────────────────────────────────────────
+export async function getPaymentMethodComparison(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const byMethod = await getSalesByPaymentMethod(fromDate, toDate);
+  const totalSales = byMethod.reduce((sum, m: any) => sum + (Number(m.totalRevenue) || 0), 0);
+  const totalOrders = byMethod.reduce((sum, m: any) => sum + (Number(m.orderCount) || 0), 0);
+
+  const breakdown = byMethod.map((m: any) => ({
+    method: m.method || "UNKNOWN",
+    orderCount: Number(m.orderCount) || 0,
+    totalRevenue: Number(m.totalRevenue) || 0,
+    totalTax: Number(m.totalTax) || 0,
+    avgOrderValue: Number(m.avgOrderValue) || 0,
+    minOrderValue: Number(m.minOrderValue) || 0,
+    maxOrderValue: Number(m.maxOrderValue) || 0,
+    percentageOfTotal: totalSales > 0 ? ((Number(m.totalRevenue) || 0) / totalSales) * 100 : 0,
+  }));
+
+  return {
+    totalRevenue: totalSales,
+    totalOrders,
+    breakdown,
+  };
+}
