@@ -231,8 +231,8 @@ export default function Reports() {
                 <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value">
-                      {pieData.map((_: unknown, i: number) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      {pieData.map((p: { name: string; value: number; count: number }, i: number) => (
+                        <Cell key={`cell-${p.name}-${i}`} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(v: number) => `KES ${v.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
@@ -240,7 +240,7 @@ export default function Reports() {
                 </ResponsiveContainer>
                 <div className="space-y-1.5 mt-2">
                   {pieData.map((p: { name: string; value: number; count: number }, i: number) => (
-                    <div key={p.name} className="flex items-center justify-between text-xs">
+                    <div key={`payment-${p.name}-${i}`} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                         <span>{p.name}</span>
@@ -278,7 +278,7 @@ export default function Reports() {
                 </thead>
                 <tbody>
                   {topProducts.map((p: { productId: number; productName: string; totalQuantity: number; totalRevenue: number }, i: number) => (
-                    <tr key={p.productId} className="border-b border-border/50 hover:bg-secondary/20">
+                    <tr key={`product-${p.productId}-${p.productName}-${i}`} className="border-b border-border/50 hover:bg-secondary/20">
                       <td className="py-2 text-muted-foreground">{i + 1}</td>
                       <td className="py-2 font-medium">{p.productName}</td>
                       <td className="py-2 text-right">{Number(p.totalQuantity).toLocaleString()}</td>
