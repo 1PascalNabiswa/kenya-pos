@@ -2397,8 +2397,8 @@ export async function getDailySalesByPaymentMethod(fromDate: Date, toDate: Date)
         lte(orders.createdAt, toDate),
       )
     )
-    .groupBy(sql`DATE(${orders.createdAt})`, orders.paymentMethod)
-    .orderBy(sql`DATE(${orders.createdAt})`, orders.paymentMethod);
+    .groupBy(sql`DATE(${orders.createdAt})`, sql`${orders.paymentMethod}`)
+    .orderBy(sql`DATE(${orders.createdAt})`, sql`${orders.paymentMethod}`);
 
   return results;
 }
