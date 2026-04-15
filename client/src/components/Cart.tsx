@@ -34,7 +34,7 @@ export default function Cart({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
             <ShoppingBag className="w-8 h-8 mb-2 opacity-30" />
@@ -44,10 +44,10 @@ export default function Cart({
           items.map((item) => (
             <div
               key={item.product_id}
-              className="flex items-center gap-3 bg-muted/50 rounded-lg p-3"
+              className="flex items-center gap-2 bg-muted/50 rounded-lg p-2"
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{item.product_name}</p>
+                <p className="text-xs font-medium truncate">{item.product_name}</p>
                 <p className="text-xs text-muted-foreground">
                   KES {item.price.toLocaleString()} × {item.quantity}
                 </p>
