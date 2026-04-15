@@ -161,7 +161,7 @@ export default function SalesTransaction() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-4 p-4">
+    <div className="h-screen flex flex-col lg:flex-row gap-4 p-4 min-h-0">
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Customer Selector */}
@@ -184,7 +184,7 @@ export default function SalesTransaction() {
       </div>
 
       {/* Cart Sidebar */}
-      <div className="w-full lg:w-auto">
+      <div className="w-full lg:w-96 flex flex-col min-h-0">
         <Cart
           items={cart}
           total={total}
