@@ -34,7 +34,7 @@ export default function Cart({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
             <ShoppingBag className="w-8 h-8 mb-2 opacity-30" />
