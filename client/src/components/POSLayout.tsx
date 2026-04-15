@@ -317,7 +317,6 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-
         {/* Alerts */}
         {dashboard?.lowStockCount && dashboard.lowStockCount > 0 && (
           <div className="px-3 py-2 mx-3 mb-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
