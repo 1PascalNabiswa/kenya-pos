@@ -25,8 +25,8 @@ export default function Cart({
   onCheckout,
 }: CartProps) {
   return (
-    <div className="w-full lg:w-96 bg-card border border-border rounded-xl flex flex-col">
-      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+    <div className="w-full lg:w-96 bg-card border border-border rounded-xl flex flex-col h-screen lg:h-auto lg:max-h-[calc(100vh-2rem)]">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2 flex-shrink-0">
         <ShoppingBag className="w-5 h-5 text-primary" />
         <h3 className="font-semibold">Cart</h3>
         <span className="ml-auto bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
@@ -34,7 +34,7 @@ export default function Cart({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
             <ShoppingBag className="w-8 h-8 mb-2 opacity-30" />
@@ -85,7 +85,7 @@ export default function Cart({
         )}
       </div>
 
-      <div className="border-t border-border p-4 space-y-3">
+      <div className="border-t border-border p-4 space-y-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Subtotal</span>
           <span className="font-semibold">KES {total.toLocaleString()}</span>

@@ -197,14 +197,20 @@ export default function SalesTransaction() {
       {/* Payment Dialog */}
       {paymentDialogOpen && (
         <PaymentDialog
-          orderId={null}
+          open={true}
           customerId={selectedCustomer?.id}
-          amount={total}
+          customerName={selectedCustomer?.name}
+          total={total}
           subtotal={subtotal}
-          tax={taxAmount}
-          items={cart}
+          taxAmount={taxAmount}
+          cart={cart.map(item => ({
+            productId: item.product_id,
+            productName: item.product_name,
+            unitPrice: item.price,
+            quantity: item.quantity,
+          }))}
           onClose={() => setPaymentDialogOpen(false)}
-          onSuccess={handlePaymentSuccess}
+          onComplete={handlePaymentSuccess}
         />
       )}
 
