@@ -1,52 +1,45 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import {
-  Search, Plus, Minus, Trash2, ShoppingCart, Package,
-  X, Check
-} from "lucide-react";
+import Cart from "@/components/Cart";
+import CustomerSelector from "@/components/CustomerSelector";
+import ProductGrid from "@/components/ProductGrid";
 import PaymentDialog from "@/components/PaymentDialog";
 import ReceiptDialog from "@/components/ReceiptDialog";
-import AddProductDialog from "@/components/AddProductDialog";
 
 interface CartItem {
-  productId: number;
-  productName: string;
-  productSku?: string;
-  unitPrice: number;
-  originalPrice?: number;
+  product_id: number;
+  product_name: string;
+  price: number;
   quantity: number;
-  imageUrl?: string;
+  subtotal: number;
+}
+
+interface Customer {
+  id: number;
+  name: string;
+  phone?: string;
+  wallet_balance?: number;
 }
 
 const TAX_RATE = 0.16; // 16% VAT Kenya
 
 export default function SalesTransaction() {
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
-  const [selectedCustomerName, setSelectedCustomerName] = useState<string>("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-
-  const [lastOrderId, setLastOrderId] = useState<number | null>(null);
-  const [lastOrderNumber, setLastOrderNumber] = useState<string>("");
-  const [addProductOpen, setAddProductOpen] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState("");
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [receiptOrderId, setReceiptOrderId] = useState<number | null>(null);
   const [receiptOrderNumber, setReceiptOrderNumber] = useState<string>("");
+  const [customerSearch, setCustomerSearch] = useState("");
 
+  // Fetch data
   const { data: categoriesData } = trpc.categories.list.useQuery();
-  const { data: productsData, isLoading: productsLoading } = trpc.products.list.useQuery({
-    categoryId: selectedCategory ?? undefined,
-    search: search || undefined,
+  const { data: productsData } = trpc.products.list.useQuery({
+    categoryId: selectedCategory ? parseInt(selectedCategory) : undefined,
+    search: searchQuery || undefined,
     isActive: true,
     limit: 100,
   });
@@ -55,360 +48,174 @@ export default function SalesTransaction() {
     limit: 20,
   });
 
-  const categories = categoriesData ?? [];
-  const products = productsData?.items ?? [];
-  const customers = customersData?.items ?? [];
+  const createOrderMutation = trpc.orders.create.useMutation();
+
+  // Transform data
+  const categories = useMemo(
+    () =>
+      categoriesData?.map((c) => c.name).filter((name): name is string => !!name) || [],
+    [categoriesData]
+  );
+
+  const products = useMemo(
+    () =>
+      productsData?.items?.map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price),
+        stock: p.stock ?? 0,
+        image_url: p.imageUrl,
+        category: p.category?.name,
+      })) || [],
+    [productsData]
+  );
+
+  const customers = useMemo(
+    () =>
+      customersData?.items?.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        wallet_balance: c.walletBalance,
+      })) || [],
+    [customersData]
+  );
 
   // Cart calculations
-  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0), [cart]);
+  const subtotal = useMemo(
+    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cart]
+  );
   const taxAmount = useMemo(() => subtotal * TAX_RATE, [subtotal]);
   const total = useMemo(() => subtotal + taxAmount, [subtotal, taxAmount]);
 
-  const addToCart = useCallback((product: typeof products[0]) => {
+  // Cart operations
+  const addToCart = useCallback((product: (typeof products)[0]) => {
     setCart((prev) => {
-      const existing = prev.find((i) => i.productId === product.id);
+      const existing = prev.find((i) => i.product_id === product.id);
       if (existing) {
         return prev.map((i) =>
-          i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.product_id === product.id
+            ? { ...i, quantity: i.quantity + 1, subtotal: i.price * (i.quantity + 1) }
+            : i
         );
       }
       return [
         ...prev,
         {
-          productId: product.id,
-          productName: product.name,
-          productSku: product.sku ?? undefined,
-          unitPrice: Number(product.price),
-          originalPrice: product.originalPrice ? Number(product.originalPrice) : undefined,
+          product_id: product.id,
+          product_name: product.name,
+          price: product.price,
           quantity: 1,
-          imageUrl: product.imageUrl ?? undefined,
+          subtotal: product.price,
         },
       ];
     });
+    toast.success(`${product.name} added to cart`);
   }, []);
 
-  const updateQty = useCallback((productId: number, delta: number) => {
+  const updateQuantity = useCallback((productId: number, change: number) => {
     setCart((prev) =>
       prev
-        .map((i) => (i.productId === productId ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i))
+        .map((i) =>
+          i.product_id === productId
+            ? {
+                ...i,
+                quantity: Math.max(0, i.quantity + change),
+                subtotal: i.price * Math.max(0, i.quantity + change),
+              }
+            : i
+        )
         .filter((i) => i.quantity > 0)
     );
   }, []);
 
   const removeFromCart = useCallback((productId: number) => {
-    setCart((prev) => prev.filter((i) => i.productId !== productId));
+    setCart((prev) => prev.filter((i) => i.product_id !== productId));
   }, []);
 
-  const clearCart = useCallback(() => {
-    setCart([]);
-    setSelectedCustomerId(null);
-    setSelectedCustomerName("");
+  const handleCheckout = useCallback(() => {
+    if (cart.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+    setPaymentDialogOpen(true);
+  }, [cart.length]);
+
+  const handlePaymentSuccess = useCallback(
+    (orderId: number, orderNumber: string) => {
+      setPaymentDialogOpen(false);
+      setReceiptOrderId(orderId);
+      setReceiptOrderNumber(orderNumber);
+      setShowReceiptDialog(true);
+      setCart([]);
+      setSelectedCustomer(null);
+    },
+    []
+  );
+
+  const handleReceiptClose = useCallback(() => {
+    setShowReceiptDialog(false);
+    setReceiptOrderId(null);
+    setReceiptOrderNumber("");
   }, []);
-
-  const handleOrderComplete = (orderId: number, orderNumber: string) => {
-    setLastOrderId(orderId);
-    setLastOrderNumber(orderNumber);
-    setReceiptOrderId(orderId);
-    setReceiptOrderNumber(orderNumber);
-    setShowReceiptDialog(true);
-    setPaymentDialogOpen(false);
-    clearCart();
-  };
-
-  const cartItemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
-  const totalProductCount = productsData?.total ?? 0;
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Fixed Header & Categories */}
-      <div className="sticky top-0 z-40 bg-card border-b border-border">
-        {/* Top Bar - Compact */}
-        <div className="flex items-center gap-2 px-4 py-1.5">
-          <h1 className="text-sm font-bold text-foreground whitespace-nowrap">Sales Transaction</h1>
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
-            <Input
-              placeholder="Search..."
-              className="pl-7 h-7 text-xs"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
+    <div className="h-full flex flex-col lg:flex-row gap-4 p-4">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Customer Selector */}
+        <CustomerSelector
+          customers={customers}
+          selectedCustomer={selectedCustomer}
+          onSelect={setSelectedCustomer}
+        />
 
-        {/* Category Tabs - Compact */}
-        <div className="flex gap-1 px-4 py-1 overflow-x-auto border-t border-border bg-card/50 scrollbar-thin">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={`flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
-              selectedCategory === null
-                ? "bg-primary text-white"
-                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-            }`}
-          >
-            All Product ({totalProductCount})
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
-                selectedCategory === cat.id
-                  ? "bg-primary text-white"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
+        {/* Product Grid */}
+        <ProductGrid
+          products={products}
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAddToCart={addToCart}
+        />
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-0">
-        {/* Left: Product Grid */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Product Grid */}
-          <ScrollArea className="flex-1 w-full overflow-x-hidden">
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-2 w-full">
-              {/* Add New Product Card */}
-              <button
-                onClick={() => setAddProductOpen(true)}
-                className="product-card flex flex-col items-center justify-center p-2 border border-dashed border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/50 transition-all rounded-lg min-h-[100px] w-full"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-1">
-                  <Plus size={16} className="text-primary" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground text-center">Add</span>
-              </button>
-
-              {productsLoading ? (
-                Array.from({ length: 7 }).map((_, i) => (
-                  <div key={i} className="product-card h-[160px] animate-pulse bg-secondary/50 rounded-lg" />
-                ))
-              ) : products.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <Package size={48} className="mb-3 opacity-30" />
-                  <p className="text-sm font-medium">No products found</p>
-                </div>
-              ) : (
-                products.map((product) => {
-                  const cartItem = cart.find((i) => i.productId === product.id);
-                  const hasDiscount = product.originalPrice && Number(product.originalPrice) > Number(product.price);
-                  const discountPct = hasDiscount
-                    ? Math.round((1 - Number(product.price) / Number(product.originalPrice!)) * 100)
-                    : 0;
-
-                  return (
-                    <div
-                      key={product.id}
-                      className={`product-card flex flex-col rounded-lg border transition-all cursor-pointer p-1.5 w-full min-w-0 ${
-                        cartItem
-                          ? "border-primary bg-primary/5 shadow-md"
-                          : "border-border bg-card hover:shadow-md"
-                      }`}
-                      onClick={() => addToCart(product)}
-                    >
-                      {/* Product Info - Name & Price Only */}
-                      <div className="flex-1 flex flex-col">
-                        <p className="text-xs font-medium text-foreground line-clamp-2 leading-tight mb-2">
-                          {product.name}
-                        </p>
-                        <div className="flex items-center gap-1 flex-wrap mt-auto">
-                          {hasDiscount && (
-                            <span className="text-[9px] text-muted-foreground line-through">
-                              KES {Number(product.originalPrice).toLocaleString()}
-                            </span>
-                          )}
-                          <span className="text-sm font-bold text-primary">
-                            KES {Number(product.price).toLocaleString()}
-                          </span>
-                        </div>
-
-                      </div>
-                      {/* Qty Controls (if in cart) */}
-                      {cartItem && (
-                        <div
-                          className="flex items-center justify-center gap-1.5 px-2 pb-2 border-t border-border"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
-                            onClick={() => updateQty(product.id, -1)}
-                          >
-                            <Minus size={10} />
-                          </button>
-                          <span className="text-xs font-bold w-5 text-center">{cartItem.quantity}</span>
-                          <button
-                            className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
-                            onClick={() => updateQty(product.id, 1)}
-                          >
-                            <Plus size={10} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* Right: Order Summary Panel - Fixed Height */}
-        <div className="w-full lg:w-80 flex-shrink-0 flex flex-col bg-card border-t lg:border-t-0 lg:border-l border-border">
-          {/* Header */}
-          <div className="px-4 py-2.5 border-b border-border">
-            <h2 className="font-bold text-sm text-foreground">Order Summary</h2>
-          </div>
-
-          {/* Customer Selector */}
-          <div className="px-4 py-2.5 border-b border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">Customer</p>
-            <Select
-              value={selectedCustomerId ? String(selectedCustomerId) : undefined}
-              onValueChange={(val) => {
-                if (val === "walk-in") {
-                  setSelectedCustomerId(null);
-                  setSelectedCustomerName("Walk-in Customer");
-                } else {
-                  const cust = customers.find((c) => String(c.id) === val);
-                  setSelectedCustomerId(cust?.id ?? null);
-                  setSelectedCustomerName(cust?.name ?? "");
-                }
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Select Customer" />
-              </SelectTrigger>
-              <SelectContent>
-                <div className="p-2">
-                  <Input
-                    placeholder="Search..."
-                    className="h-7 text-xs mb-1"
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-                <SelectItem value="walk-in">Walk-in Customer</SelectItem>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name} {c.phone ? `(${c.phone})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Cart Items - Scrollable */}
-          <ScrollArea className="flex-1 px-4 py-2">
-            {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                <ShoppingCart size={32} className="mb-2 opacity-30" />
-                <p className="text-xs font-medium">Cart is empty</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5 pr-3">
-                {cart.map((item) => (
-                  <div key={item.productId} className="flex gap-2 p-2 bg-secondary/30 rounded-lg">
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.productName} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                        <Package size={14} className="text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-1 mb-0.5">
-                        <p className="text-[11px] font-medium text-foreground line-clamp-2">{item.productName}</p>
-                        <button
-                          onClick={() => removeFromCart(item.productId)}
-                          className="text-muted-foreground hover:text-destructive flex-shrink-0 transition-colors"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <button
-                            className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
-                            onClick={() => updateQty(item.productId, -1)}
-                          >
-                            <Minus size={8} />
-                          </button>
-                          <span className="text-[10px] font-bold w-3 text-center">{item.quantity}</span>
-                          <button
-                            className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
-                            onClick={() => updateQty(item.productId, 1)}
-                          >
-                            <Plus size={8} />
-                          </button>
-                        </div>
-                        <span className="text-[10px] font-bold text-foreground">
-                          KES {(item.unitPrice * item.quantity).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-
-          {/* Order Summary - Fixed at Bottom */}
-          <div className="border-t border-border bg-card/50 p-3 space-y-2">
-            {/* Total Only */}
-            <div className="flex justify-between text-sm font-bold bg-primary/10 p-1.5 rounded">
-              <span>Total</span>
-              <span className="text-primary">KES {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-1.5">
-              <Button
-                className="w-full h-10 text-sm font-semibold"
-                disabled={cart.length === 0}
-                onClick={() => setPaymentDialogOpen(true)}
-              >
-                <Check size={16} className="mr-2" />
-                Finish Order
-              </Button>
-              {cart.length > 0 && (
-                <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={clearCart}>
-                  <X size={14} className="mr-1" />
-                  Clear Cart
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Cart Sidebar */}
+      <div className="w-full lg:w-auto">
+        <Cart
+          items={cart}
+          total={total}
+          onUpdateQuantity={updateQuantity}
+          onRemove={removeFromCart}
+          onCheckout={handleCheckout}
+        />
       </div>
 
-      {/* Dialogs */}
-      <PaymentDialog
-        open={paymentDialogOpen}
-        onClose={() => setPaymentDialogOpen(false)}
-        cart={cart}
-        subtotal={subtotal}
-        taxAmount={taxAmount}
-        total={total}
-        customerId={selectedCustomerId ?? undefined}
-        customerName={selectedCustomerName || undefined}
-        onComplete={handleOrderComplete}
-      />
+      {/* Payment Dialog */}
+      {paymentDialogOpen && (
+        <PaymentDialog
+          orderId={null}
+          customerId={selectedCustomer?.id}
+          amount={total}
+          subtotal={subtotal}
+          tax={taxAmount}
+          items={cart}
+          onClose={() => setPaymentDialogOpen(false)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
 
-      <AddProductDialog
-        open={addProductOpen}
-        onClose={() => setAddProductOpen(false)}
-      />
-
-      <ReceiptDialog
-        open={showReceiptDialog}
-        onClose={() => setShowReceiptDialog(false)}
-        orderId={receiptOrderId || 0}
-        orderNumber={receiptOrderNumber}
-      />
+      {/* Receipt Dialog */}
+      {showReceiptDialog && receiptOrderId && (
+        <ReceiptDialog
+          orderId={receiptOrderId}
+          orderNumber={receiptOrderNumber}
+          onClose={handleReceiptClose}
+        />
+      )}
     </div>
   );
 }
