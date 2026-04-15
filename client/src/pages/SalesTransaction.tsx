@@ -63,7 +63,7 @@ export default function SalesTransaction() {
         id: p.id,
         name: p.name,
         price: Number(p.price),
-        stock: p.stock ?? 0,
+        stock: p.stockQuantity ?? 0,
         image_url: p.imageUrl,
         category: p.category?.name,
       })) || [],
@@ -76,7 +76,7 @@ export default function SalesTransaction() {
         id: c.id,
         name: c.name,
         phone: c.phone,
-        wallet_balance: c.walletBalance,
+        wallet_balance: c.walletBalance ?? 0,
       })) || [],
     [customersData]
   );

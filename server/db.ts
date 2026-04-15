@@ -298,11 +298,15 @@ export async function getCustomers(opts?: { search?: string; page?: number; limi
   // Create a map of customer ID to wallet data for quick lookup
   const walletMap = new Map(walletData.map(w => [w.customerId, w]));
   
-  // Merge wallet totalSpent with customer data
-  const itemsWithWalletData = items.map(customer => ({
-    ...customer,
-    totalSpent: walletMap.get(customer.id)?.totalSpent ?? "0",
-  }));
+  // Merge wallet balance and totalSpent with customer data
+  const itemsWithWalletData = items.map(customer => {
+    const wallet = walletMap.get(customer.id);
+    return {
+      ...customer,
+      walletBalance: wallet?.balance ? Number(wallet.balance) : 0,
+      totalSpent: wallet?.totalSpent ? Number(wallet.totalSpent) : 0,
+    };
+  });
   
   return { items: itemsWithWalletData, total: Number(countResult[0]?.count ?? 0) };
 }
