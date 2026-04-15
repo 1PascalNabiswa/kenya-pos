@@ -328,7 +328,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
           </div>
-        )}
+         )}
 
         {/* Footer */}
         <div className="p-3 border-t border-white/10 space-y-2">
