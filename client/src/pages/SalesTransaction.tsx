@@ -38,7 +38,7 @@ export default function SalesTransaction() {
   // Fetch data
   const { data: categoriesData } = trpc.categories.list.useQuery();
   const { data: productsData } = trpc.products.list.useQuery({
-    categoryId: selectedCategory ? parseInt(selectedCategory) : undefined,
+    categoryId: selectedCategory ? (isNaN(parseInt(selectedCategory)) ? undefined : parseInt(selectedCategory)) : undefined,
     search: searchQuery || undefined,
     isActive: true,
     limit: 100,
