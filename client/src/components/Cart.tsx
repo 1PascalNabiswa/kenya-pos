@@ -85,18 +85,14 @@ export default function Cart({
         )}
       </div>
 
-      <div className="border-t border-border p-3 space-y-2 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Subtotal</span>
-          <span className="text-sm font-semibold">KES {total.toLocaleString()}</span>
-        </div>
-        <div className="flex items-center justify-between font-bold">
-          <span className="text-sm">Total</span>
-          <span className="text-primary text-sm">KES {total.toLocaleString()}</span>
+      <div className="border-t border-border px-3 py-2 flex-shrink-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-muted-foreground">Total:</span>
+          <span className="text-primary font-bold">KES {total.toLocaleString()}</span>
         </div>
         <Button
-          className="w-full mt-1"
-          size="sm"
+          className="w-full"
+          size="xs"
           disabled={items.length === 0}
           onClick={onCheckout}
         >
