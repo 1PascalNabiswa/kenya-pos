@@ -184,7 +184,7 @@ export default function SalesTransaction() {
       </div>
 
       {/* Cart Sidebar */}
-      <div className="w-full lg:w-96 flex flex-col min-h-0">
+      <div className="w-full lg:w-96 flex flex-col min-h-0 h-full">
         <Cart
           items={cart}
           total={total}
