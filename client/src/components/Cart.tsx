@@ -25,7 +25,7 @@ export default function Cart({
   onCheckout,
 }: CartProps) {
   return (
-    <div className="w-full lg:w-96 bg-card border border-border rounded-xl flex flex-col h-full min-h-0">
+    <div className="w-full lg:w-96 bg-card border border-border rounded-xl flex flex-col h-full min-h-0 max-h-screen">
       <div className="px-5 py-4 border-b border-border flex items-center gap-2 flex-shrink-0">
         <ShoppingBag className="w-5 h-5 text-primary" />
         <h3 className="font-semibold">Cart</h3>
