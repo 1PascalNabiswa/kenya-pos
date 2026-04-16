@@ -161,7 +161,7 @@ export default function SalesTransaction() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row gap-4 p-4 min-h-0">
+    <div className="h-screen flex flex-col lg:flex-row gap-2 p-2 min-h-0">
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Customer Selector */}
