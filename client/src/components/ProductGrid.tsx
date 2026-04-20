@@ -20,6 +20,11 @@ interface ProductGridProps {
   onAddToCart: (product: Product) => void;
 }
 
+function getCategoryCount(products: Product[], category: string | null): number {
+  if (category === null) return products.length;
+  return products.filter((p) => p.category === category).length;
+}
+
 export default function ProductGrid({
   products,
   categories,
@@ -39,7 +44,7 @@ export default function ProductGrid({
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-background text-foreground font-medium"
           />
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -51,21 +56,24 @@ export default function ProductGrid({
                 : "bg-card border border-border text-muted-foreground hover:bg-muted"
             }`}
           >
-            All
+            All <span className="text-xs opacity-75">({getCategoryCount(products, null)})</span>
           </button>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => onSelectCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                selectedCategory === cat
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-border text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const count = getCategoryCount(products, cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => onSelectCategory(cat)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  selectedCategory === cat
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card border border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {cat} <span className="text-xs opacity-75">({count})</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
