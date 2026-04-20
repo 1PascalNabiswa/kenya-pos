@@ -171,10 +171,11 @@ export async function getProducts(opts?: {
   if (opts?.isActive !== undefined) conditions.push(eq(products.isActive, opts.isActive));
   if (opts?.search) {
     // Case-insensitive search: find letters anywhere in name or SKU
+    const searchLower = opts.search.toLowerCase();
     conditions.push(
       or(
-        like(products.name, `%${opts.search}%`),
-        like(products.sku, `%${opts.search}%`)
+        sql`LOWER(${products.name}) LIKE ${`%${searchLower}%`}`,
+        sql`LOWER(${products.sku}) LIKE ${`%${searchLower}%`}`
       )
     );
   }
