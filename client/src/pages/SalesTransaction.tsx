@@ -25,7 +25,7 @@ interface Customer {
 const TAX_RATE = 0.16; // 16% VAT Kenya
 
 export default function SalesTransaction() {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -38,7 +38,7 @@ export default function SalesTransaction() {
   // Fetch data
   const { data: categoriesData } = trpc.categories.list.useQuery();
   const { data: productsData } = trpc.products.list.useQuery({
-    categoryId: selectedCategory ? (isNaN(parseInt(selectedCategory)) ? undefined : parseInt(selectedCategory)) : undefined,
+    categoryId: selectedCategory || undefined,
     search: searchQuery || undefined,
     isActive: true,
     limit: 100,
@@ -53,7 +53,10 @@ export default function SalesTransaction() {
   // Transform data
   const categories = useMemo(
     () =>
-      categoriesData?.map((c) => c.name).filter((name): name is string => !!name) || [],
+      categoriesData?.map((c) => ({
+        id: c.id,
+        name: c.name,
+      })) || [],
     [categoriesData]
   );
 
@@ -66,6 +69,7 @@ export default function SalesTransaction() {
         stock: p.stockQuantity ?? 0,
         image_url: p.imageUrl,
         category: p.category?.name,
+        categoryId: p.categoryId,
       })) || [],
     [productsData]
   );
@@ -174,7 +178,10 @@ export default function SalesTransaction() {
         {/* Product Grid */}
         <ProductGrid
           products={products}
-          categories={categories}
+          categories={categories.map((c) => ({
+            id: c.id,
+            name: c.name,
+          }))}
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
           searchQuery={searchQuery}

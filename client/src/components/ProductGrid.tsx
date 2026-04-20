@@ -8,21 +8,27 @@ interface Product {
   stock: number;
   image_url?: string;
   category?: string;
+  categoryId?: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
 }
 
 interface ProductGridProps {
   products: Product[];
-  categories: string[];
-  selectedCategory: string | null;
-  onSelectCategory: (category: string | null) => void;
+  categories: Category[];
+  selectedCategory: number | null;
+  onSelectCategory: (category: number | null) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAddToCart: (product: Product) => void;
 }
 
-function getCategoryCount(products: Product[], category: string | null): number {
-  if (category === null) return products.length;
-  return products.filter((p) => p.category === category).length;
+function getCategoryCount(products: Product[], categoryId: number | null): number {
+  if (categoryId === null) return products.length;
+  return products.filter((p) => p.categoryId === categoryId).length;
 }
 
 export default function ProductGrid({
@@ -44,7 +50,7 @@ export default function ProductGrid({
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-background text-foreground font-medium"
+            className="pl-9 bg-background text-foreground font-medium border border-border focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -59,18 +65,18 @@ export default function ProductGrid({
             All <span className="text-xs opacity-75">({getCategoryCount(products, null)})</span>
           </button>
           {categories.map((cat) => {
-            const count = getCategoryCount(products, cat);
+            const count = getCategoryCount(products, cat.id);
             return (
               <button
-                key={cat}
-                onClick={() => onSelectCategory(cat)}
+                key={cat.id}
+                onClick={() => onSelectCategory(cat.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                  selectedCategory === cat
+                  selectedCategory === cat.id
                     ? "bg-primary text-primary-foreground"
                     : "bg-card border border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                {cat} <span className="text-xs opacity-75">({count})</span>
+                {cat.name} <span className="text-xs opacity-75">({count})</span>
               </button>
             );
           })}
@@ -83,7 +89,7 @@ export default function ProductGrid({
           {products
             .filter((p) => {
               const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-              const matchCat = selectedCategory === null || p.category === selectedCategory;
+              const matchCat = selectedCategory === null || p.categoryId === selectedCategory;
               return matchSearch && matchCat;
             })
             .map((product) => (
