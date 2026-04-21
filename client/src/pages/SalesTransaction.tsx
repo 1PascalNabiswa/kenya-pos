@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import Cart from "@/components/Cart";
@@ -22,8 +22,6 @@ interface Customer {
   wallet_balance?: number;
 }
 
-const TAX_RATE = 0.16; // 16% VAT Kenya
-
 export default function SalesTransaction() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,6 +32,7 @@ export default function SalesTransaction() {
   const [receiptOrderId, setReceiptOrderId] = useState<number | null>(null);
   const [receiptOrderNumber, setReceiptOrderNumber] = useState<string>("");
   const [customerSearch, setCustomerSearch] = useState("");
+  const [taxRate, setTaxRate] = useState(0.16); // Default 16% VAT
 
   // Fetch data
   const { data: categoriesData } = trpc.categories.list.useQuery();
@@ -47,8 +46,18 @@ export default function SalesTransaction() {
     search: customerSearch || undefined,
     limit: 20,
   });
-
+  const { data: settingsData } = trpc.settings.getAll.useQuery();
   const createOrderMutation = trpc.orders.create.useMutation();
+
+  // Update tax rate when settings change
+  useEffect(() => {
+    if (settingsData) {
+      const taxRateSetting = settingsData.find((s: any) => s.key === "tax_rate")?.value;
+      if (taxRateSetting) {
+        setTaxRate(Number(taxRateSetting) / 100);
+      }
+    }
+  }, [settingsData]);;
 
   // Transform data
   const categories = useMemo(
@@ -90,7 +99,7 @@ export default function SalesTransaction() {
     () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [cart]
   );
-  const taxAmount = useMemo(() => subtotal * TAX_RATE, [subtotal]);
+  const taxAmount = useMemo(() => subtotal * taxRate, [subtotal, taxRate]);
   const total = useMemo(() => subtotal + taxAmount, [subtotal, taxAmount]);
 
   // Cart operations
