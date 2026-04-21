@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,18 +29,46 @@ interface AddProductDialogProps {
 }
 
 export default function AddProductDialog({ open, onClose, editProduct }: AddProductDialogProps) {
-  const [name, setName] = useState(editProduct?.name ?? "");
-  const [price, setPrice] = useState(editProduct?.price ?? "");
-  const [originalPrice, setOriginalPrice] = useState(editProduct?.originalPrice ?? "");
-  const [categoryId, setCategoryId] = useState<string>(editProduct?.categoryId ? String(editProduct.categoryId) : "");
-  const [description, setDescription] = useState(editProduct?.description ?? "");
-  const [sku, setSku] = useState(editProduct?.sku ?? "");
-  const [stock, setStock] = useState(String(editProduct?.stockQuantity ?? 0));
-  const [lowStockThreshold, setLowStockThreshold] = useState(String(editProduct?.lowStockThreshold ?? 10));
-  const [imageUrl, setImageUrl] = useState(editProduct?.imageUrl ?? "");
-  const [unit, setUnit] = useState(editProduct?.unit ?? "pcs");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [description, setDescription] = useState("");
+  const [sku, setSku] = useState("");
+  const [stock, setStock] = useState("0");
+  const [lowStockThreshold, setLowStockThreshold] = useState("10");
+  const [imageUrl, setImageUrl] = useState("");
+  const [unit, setUnit] = useState("pcs");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Update form fields when editProduct changes
+  useEffect(() => {
+    if (editProduct) {
+      setName(editProduct.name);
+      setPrice(editProduct.price);
+      setOriginalPrice(editProduct.originalPrice ?? "");
+      setCategoryId(editProduct.categoryId ? String(editProduct.categoryId) : "");
+      setDescription(editProduct.description ?? "");
+      setSku(editProduct.sku ?? "");
+      setStock(String(editProduct.stockQuantity));
+      setLowStockThreshold(String(editProduct.lowStockThreshold));
+      setImageUrl(editProduct.imageUrl ?? "");
+      setUnit(editProduct.unit ?? "pcs");
+    } else {
+      // Reset form when adding new product
+      setName("");
+      setPrice("");
+      setOriginalPrice("");
+      setCategoryId("");
+      setDescription("");
+      setSku("");
+      setStock("0");
+      setLowStockThreshold("10");
+      setImageUrl("");
+      setUnit("pcs");
+    }
+  }, [editProduct, open]);
 
   const utils = trpc.useUtils();
   const { data: categories } = trpc.categories.list.useQuery();
