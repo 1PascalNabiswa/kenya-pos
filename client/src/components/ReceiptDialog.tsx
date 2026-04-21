@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -11,14 +11,27 @@ interface ReceiptDialogProps {
   onClose: () => void;
   orderId: number;
   orderNumber: string;
+  autoPrint?: boolean;
 }
 
-export default function ReceiptDialog({ open, onClose, orderId, orderNumber }: ReceiptDialogProps) {
+export default function ReceiptDialog({ open, onClose, orderId, orderNumber, autoPrint = false }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const { data: order, isLoading } = trpc.orders.get.useQuery(
     { id: orderId },
     { enabled: open && !!orderId }
   );
+
+  // Auto-print when dialog opens and order is loaded
+  useEffect(() => {
+    if (autoPrint && open && order && !isLoading) {
+      // Small delay to ensure dialog is rendered
+      const timer = setTimeout(() => {
+        window.print();
+        toast.success("Printing receipt...");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPrint, open, order, isLoading]);
 
   const handlePrint = () => {
     window.print();

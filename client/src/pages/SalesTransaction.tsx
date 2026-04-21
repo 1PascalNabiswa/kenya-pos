@@ -33,6 +33,7 @@ export default function SalesTransaction() {
   const [receiptOrderNumber, setReceiptOrderNumber] = useState<string>("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [taxRate, setTaxRate] = useState(0.16); // Default 16% VAT
+  const [printAutomatic, setPrintAutomatic] = useState(false);
 
   // Fetch data
   const { data: categoriesData } = trpc.categories.list.useQuery();
@@ -49,15 +50,17 @@ export default function SalesTransaction() {
   const { data: settingsData } = trpc.settings.getAll.useQuery();
   const createOrderMutation = trpc.orders.create.useMutation();
 
-  // Update tax rate when settings change
+  // Update tax rate and print settings when settings change
   useEffect(() => {
     if (settingsData) {
       const taxRateSetting = settingsData.find((s: any) => s.key === "tax_rate")?.value;
       if (taxRateSetting) {
         setTaxRate(Number(taxRateSetting) / 100);
       }
+      const printAutomaticSetting = settingsData.find((s: any) => s.key === "print_automatic")?.value;
+      setPrintAutomatic(printAutomaticSetting === "true");
     }
-  }, [settingsData]);;
+  }, [settingsData]);
 
   // Transform data
   const categories = useMemo(
@@ -236,6 +239,7 @@ export default function SalesTransaction() {
           orderId={receiptOrderId}
           orderNumber={receiptOrderNumber}
           onClose={handleReceiptClose}
+          autoPrint={printAutomatic}
         />
       )}
     </div>
