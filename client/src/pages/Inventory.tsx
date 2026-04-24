@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, Package, AlertTriangle, RefreshCw } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Package, AlertTriangle, RefreshCw, Eye, EyeOff } from "lucide-react";
 import AddProductDialog from "@/components/AddProductDialog";
 
 type Tab = "products" | "categories" | "alerts";
@@ -42,6 +42,14 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
 
   const deleteProduct = trpc.products.delete.useMutation({
     onSuccess: () => { utils.products.list.invalidate(); toast.success("Product deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const toggleProductActive = trpc.products.update.useMutation({
+    onSuccess: (_, { isActive }) => {
+      utils.products.list.invalidate();
+      toast.success(isActive ? "Product activated" : "Product deactivated");
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -167,7 +175,7 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
                   const cat = categories?.find((c) => c.id === p.categoryId);
                   const isLow = p.stockQuantity <= p.lowStockThreshold;
                   return (
-                    <tr key={p.id} className="border-t border-border/50 hover:bg-secondary/20 transition-colors">
+                    <tr key={p.id} className={`border-t border-border/50 hover:bg-secondary/20 transition-colors ${!p.isActive ? "opacity-60" : ""}`}>
                       <td className="p-3">
                         <div className="flex items-center gap-3">
                           {p.imageUrl ? (
@@ -209,20 +217,36 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
-                            size="sm" variant="ghost" className="h-7 w-7 p-0"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            title={p.isActive ? "Deactivate" : "Activate"}
+                            onClick={() => toggleProductActive.mutate({ id: p.id, isActive: !p.isActive })}
+                            disabled={toggleProductActive.isPending}
+                          >
+                            {p.isActive ? <Eye size={13} /> : <EyeOff size={13} />}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
                             title="Adjust Stock"
                             onClick={() => { setAdjustTarget({ id: p.id, name: p.name, qty: p.stockQuantity }); setAdjustStockOpen(true); }}
                           >
                             <RefreshCw size={13} />
                           </Button>
                           <Button
-                            size="sm" variant="ghost" className="h-7 w-7 p-0"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
                             onClick={() => { setEditProduct(p); setAddProductOpen(true); }}
                           >
                             <Edit size={13} />
                           </Button>
                           <Button
-                            size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                             onClick={() => { if (confirm(`Delete "${p.name}"?`)) deleteProduct.mutate({ id: p.id }); }}
                           >
                             <Trash2 size={13} />
@@ -399,13 +423,9 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
               <Button
                 className="flex-1"
                 disabled={!adjustQty || adjustStock.isPending}
-                onClick={() => {
-                  if (!adjustTarget) return;
-                  const qty = adjustType === "damage" ? -Math.abs(Number(adjustQty)) : Number(adjustQty);
-                  adjustStock.mutate({ productId: adjustTarget.id, changeType: adjustType, quantityChange: qty, notes: adjustNotes || undefined });
-                }}
+                onClick={() => adjustStock.mutate({ productId: adjustTarget!.id, changeType: adjustType, quantityChange: Number(adjustQty), notes: adjustNotes })}
               >
-                Apply
+                {adjustStock.isPending ? "Updating..." : "Update Stock"}
               </Button>
             </div>
           </div>

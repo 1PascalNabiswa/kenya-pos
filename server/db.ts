@@ -225,6 +225,12 @@ export async function deleteProduct(id: number) {
   await db.update(products).set({ isActive: false }).where(eq(products.id, id));
 }
 
+export async function toggleProductActive(id: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(products).set({ isActive }).where(eq(products.id, id));
+}
+
 export async function getLowStockProducts(threshold?: number) {
   const db = await getDb();
   if (!db) return [];

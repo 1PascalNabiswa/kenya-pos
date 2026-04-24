@@ -25,6 +25,7 @@ interface AddProductDialogProps {
     imageUrl?: string | null;
     unit?: string | null;
     barcode?: string | null;
+    isActive?: boolean;
   };
 }
 
@@ -39,6 +40,7 @@ export default function AddProductDialog({ open, onClose, editProduct }: AddProd
   const [lowStockThreshold, setLowStockThreshold] = useState("10");
   const [imageUrl, setImageUrl] = useState("");
   const [unit, setUnit] = useState("pcs");
+  const [isActive, setIsActive] = useState(true);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +57,7 @@ export default function AddProductDialog({ open, onClose, editProduct }: AddProd
       setLowStockThreshold(String(editProduct.lowStockThreshold));
       setImageUrl(editProduct.imageUrl ?? "");
       setUnit(editProduct.unit ?? "pcs");
+      setIsActive(editProduct.isActive ?? true);
     } else {
       // Reset form when adding new product
       setName("");
@@ -67,6 +70,7 @@ export default function AddProductDialog({ open, onClose, editProduct }: AddProd
       setLowStockThreshold("10");
       setImageUrl("");
       setUnit("pcs");
+      setIsActive(true);
     }
   }, [editProduct, open]);
 
@@ -133,6 +137,7 @@ export default function AddProductDialog({ open, onClose, editProduct }: AddProd
       lowStockThreshold: Number(lowStockThreshold),
       imageUrl: imageUrl || undefined,
       unit: unit || "pcs",
+      isActive,
     };
     if (editProduct) {
       await updateProduct.mutateAsync({ id: editProduct.id, ...data });
@@ -225,6 +230,18 @@ export default function AddProductDialog({ open, onClose, editProduct }: AddProd
             <div className="col-span-2">
               <Label className="text-sm">Description</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Product description..." className="mt-1 h-20" />
+            </div>
+            <div className="col-span-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="w-4 h-4 rounded border border-border cursor-pointer"
+                />
+                <Label htmlFor="isActive" className="text-sm cursor-pointer">Active (Show in Sales)</Label>
+              </div>
             </div>
           </div>
 

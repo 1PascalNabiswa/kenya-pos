@@ -306,3 +306,13 @@
 - [ ] Test date range filtering
 - [ ] Test user activity dashboard widget
 - [ ] Test full-text search functionality
+
+
+## Phase 30: Product Active/Inactive Status
+- [x] Add isActive toggle button in Inventory management page
+- [x] Add isActive toggle in product edit dialog
+- [x] Implement backend toggleProductActive function
+- [x] Sales Transaction page already filters inactive products (isActive: true)
+- [x] Write tests for active/inactive functionality
+- [x] Inactive products show as disabled in Inventory (opacity-60)
+- [x] New products default to active
