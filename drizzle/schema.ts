@@ -609,3 +609,68 @@ export const payrollSettings = mysqlTable("payroll_settings", {
 
 export type PayrollSettings = typeof payrollSettings.$inferSelect;
 export type InsertPayrollSettings = typeof payrollSettings.$inferInsert;
+
+
+
+// ─── Supplier Deliveries ───────────────────────────────────────────────────
+export const supplierDeliveries = mysqlTable("supplier_deliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  supplierId: int("supplierId").notNull().references(() => suppliers.id),
+  deliveryDate: timestamp("deliveryDate").notNull(),
+  referenceNumber: varchar("referenceNumber", { length: 100 }),
+  totalQuantity: int("totalQuantity").notNull(),
+  totalAmount: decimal("totalAmount", { precision: 14, scale: 2 }),
+  status: mysqlEnum("status", ["pending", "received", "partial", "cancelled"]).default("pending").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SupplierDelivery = typeof supplierDeliveries.$inferSelect;
+export type InsertSupplierDelivery = typeof supplierDeliveries.$inferInsert;
+
+// ─── Delivery Items ────────────────────────────────────────────────────────
+export const deliveryItems = mysqlTable("delivery_items", {
+  id: int("id").autoincrement().primaryKey(),
+  deliveryId: int("deliveryId").notNull().references(() => supplierDeliveries.id),
+  productId: int("productId").notNull().references(() => products.id),
+  quantityOrdered: int("quantityOrdered").notNull(),
+  quantityReceived: int("quantityReceived").notNull().default(0),
+  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }).notNull(),
+  totalPrice: decimal("totalPrice", { precision: 14, scale: 2 }).notNull(),
+  expiryDate: timestamp("expiryDate"),
+  batchNumber: varchar("batchNumber", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type DeliveryItem = typeof deliveryItems.$inferSelect;
+export type InsertDeliveryItem = typeof deliveryItems.$inferInsert;
+
+// ─── Store Inventory ───────────────────────────────────────────────────────
+export const storeInventory = mysqlTable("store_inventory", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull().references(() => products.id),
+  storeQuantity: int("storeQuantity").default(0).notNull(),
+  sellingPointQuantity: int("sellingPointQuantity").default(0).notNull(),
+  lastRestockDate: timestamp("lastRestockDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type StoreInventory = typeof storeInventory.$inferSelect;
+export type InsertStoreInventory = typeof storeInventory.$inferInsert;
+
+// ─── Store Transfers ───────────────────────────────────────────────────────
+export const storeTransfers = mysqlTable("store_transfers", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull().references(() => products.id),
+  quantity: int("quantity").notNull(),
+  transferType: mysqlEnum("transferType", ["store_to_selling_point", "selling_point_to_store", "adjustment"]).notNull(),
+  transferDate: timestamp("transferDate").defaultNow().notNull(),
+  reason: varchar("reason", { length: 200 }),
+  notes: text("notes"),
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type StoreTransfer = typeof storeTransfers.$inferSelect;
+export type InsertStoreTransfer = typeof storeTransfers.$inferInsert;
