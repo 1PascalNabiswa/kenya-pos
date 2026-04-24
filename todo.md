@@ -316,3 +316,10 @@
 - [x] Write tests for active/inactive functionality
 - [x] Inactive products show as disabled in Inventory (opacity-60)
 - [x] New products default to active
+
+
+## Phase 31: Bug Fixes - Delete Functionality
+- [x] Fixed deleteProduct function - was deactivating instead of deleting
+- [x] Verified deleteCategory function was already correct
+- [x] Confirmed products and categories now actually delete from database
+- [x] Added delete functionality tests
