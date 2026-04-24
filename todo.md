@@ -145,6 +145,9 @@
 - [x] Add Store Manager role
 - [x] Create inventory distribution page
 - [x] Track supplier payment status
+- [x] Implement supplier CRUD operations (Create, Read, Update, Delete)
+- [x] Add edit and delete functionality to Suppliers UI
+- [x] Write comprehensive supplier CRUD tests
 
 ## Phase 18: Final Testing & Optimization
 - [x] Test all new features end-to-end

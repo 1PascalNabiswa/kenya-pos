@@ -5,14 +5,28 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Mail, Phone } from "lucide-react";
+import { Plus, Mail, Phone, Edit2, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Suppliers() {
   const [open, setOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: "", phoneNumber: "", email: "" });
 
   const { data: suppliersData, refetch } = trpc.suppliers.list.useQuery();
   const createMutation = trpc.suppliers.create.useMutation();
+  const updateMutation = trpc.suppliers.update.useMutation();
+  const deleteMutation = trpc.suppliers.delete.useMutation();
 
   const suppliers = suppliersData ?? [];
 
@@ -33,6 +47,47 @@ export default function Suppliers() {
     }
   };
 
+  const handleEdit = (supplier: any) => {
+    setEditingId(supplier.id);
+    setFormData({ name: supplier.name, phoneNumber: supplier.phoneNumber || "", email: supplier.email || "" });
+    setOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!formData.name) {
+      toast.error("Please enter supplier name");
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({ id: editingId!, name: formData.name, email: formData.email });
+      toast.success("Supplier updated successfully");
+      setFormData({ name: "", phoneNumber: "", email: "" });
+      setEditingId(null);
+      setOpen(false);
+      refetch();
+    } catch (error) {
+      toast.error("Failed to update supplier");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync({ id: deletingId! });
+      toast.success("Supplier deleted successfully");
+      setDeleteOpen(false);
+      setDeletingId(null);
+      refetch();
+    } catch (error) {
+      toast.error("Failed to delete supplier");
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: "", phoneNumber: "", email: "" });
+    setEditingId(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -40,7 +95,13 @@ export default function Suppliers() {
           <h1 className="text-3xl font-bold">Suppliers</h1>
           <p className="text-muted-foreground">Manage vendor and supplier information</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-2">
+        <Button
+          onClick={() => {
+            resetForm();
+            setOpen(true);
+          }}
+          className="gap-2"
+        >
           <Plus size={16} /> Add Supplier
         </Button>
       </div>
@@ -54,8 +115,8 @@ export default function Suppliers() {
                 <th className="px-6 py-3 text-left text-sm font-semibold">Supplier Name</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Phone</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Payment Status</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Added Date</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -89,13 +150,31 @@ export default function Suppliers() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <Badge variant={supplier.paymentStatus === "paid" ? "secondary" : "outline"}>
-                        {supplier.paymentStatus || "pending"}
-                      </Badge>
-                    </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {new Date(supplier.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(supplier)}
+                          className="gap-1"
+                        >
+                          <Edit2 size={14} /> Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setDeletingId(supplier.id);
+                            setDeleteOpen(true);
+                          }}
+                          className="gap-1 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 size={14} /> Delete
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -105,11 +184,11 @@ export default function Suppliers() {
         </div>
       </div>
 
-      {/* Create Dialog */}
+      {/* Create/Edit Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Supplier</DialogTitle>
+            <DialogTitle>{editingId ? "Edit Supplier" : "Add New Supplier"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -138,16 +217,53 @@ export default function Suppliers() {
               />
             </div>
             <div className="flex gap-2 justify-end pt-4">
-              <Button variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setOpen(false);
+                  resetForm();
+                }}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Adding..." : "Add Supplier"}
+              <Button
+                onClick={editingId ? handleUpdate : handleCreate}
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? editingId
+                    ? "Updating..."
+                    : "Adding..."
+                  : editingId
+                    ? "Update Supplier"
+                    : "Add Supplier"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Supplier</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this supplier? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-2 justify-end">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

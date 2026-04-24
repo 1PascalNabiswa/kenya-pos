@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createSupplier, listSuppliers } from "./db";
+import { createSupplier, listSuppliers, updateSupplier, deleteSupplier } from "./db";
 
 describe("Suppliers Management", () => {
   let supplierId: number;
@@ -53,6 +53,34 @@ describe("Suppliers Management", () => {
         const next = new Date(suppliers[i + 1].createdAt).getTime();
         expect(current).toBeGreaterThanOrEqual(next);
       }
+    }
+  });
+
+  it("should update a supplier", async () => {
+    if (supplierId > 0) {
+      const result = await updateSupplier(supplierId, {
+        name: "Updated Supplier Co.",
+        email: "updated@testsupplier.com"
+      });
+      expect(result).toBeDefined();
+
+      // Verify the update
+      const suppliers = await listSuppliers();
+      const updated = suppliers.find(s => s.id === supplierId);
+      expect(updated?.name).toBe("Updated Supplier Co.");
+      expect(updated?.email).toBe("updated@testsupplier.com");
+    }
+  });
+
+  it("should delete a supplier", async () => {
+    if (supplierId > 0) {
+      const result = await deleteSupplier(supplierId);
+      expect(result).toBeDefined();
+
+      // Verify the deletion
+      const suppliers = await listSuppliers();
+      const deleted = suppliers.find(s => s.id === supplierId);
+      expect(deleted).toBeUndefined();
     }
   });
 });

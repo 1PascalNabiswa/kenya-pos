@@ -958,6 +958,20 @@ const suppliersRouter = router({
   list: protectedProcedure.query(async () => {
     return listSuppliers();
   }),
+
+  update: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string(), email: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const { updateSupplier } = await import("./db");
+      return updateSupplier(input.id, { name: input.name, email: input.email });
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const { deleteSupplier } = await import("./db");
+      return deleteSupplier(input.id);
+    }),
 });
 
 const kdsRouter = router({

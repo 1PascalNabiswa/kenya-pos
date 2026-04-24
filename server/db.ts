@@ -1126,6 +1126,26 @@ export async function listSuppliers() {
   return db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
 }
 
+export async function updateSupplier(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.update(suppliers).set({
+    name: data.name,
+    email: data.email,
+  }).where(eq(suppliers.id, id));
+  
+  return result;
+}
+
+export async function deleteSupplier(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const result = await db.delete(suppliers).where(eq(suppliers.id, id));
+  return result;
+}
+
 // ─── User Roles ────────────────────────────────────────────────────────────
 export async function assignUserRole(userId: number, role: string, branchId?: number) {
   const db = await getDb();
