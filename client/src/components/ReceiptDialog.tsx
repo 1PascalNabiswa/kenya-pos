@@ -130,9 +130,9 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
               <div className="text-xs font-bold mb-1">ITEMS</div>
               {order.items?.map((item, i) => (
                 <div key={i} className="mb-1">
-                  <div className="text-xs">{item.productName}</div>
+                  <div className="text-xs truncate" style={{maxWidth: '100%'}}>{item.productName.substring(0, 20)}</div>
                   <div className="receipt-row text-xs">
-                    <span>{item.quantity} x KES {Number(item.unitPrice).toLocaleString()}</span>
+                    <span>{item.quantity}x KES {Number(item.unitPrice).toLocaleString()}</span>
                     <span>KES {Number(item.totalPrice).toLocaleString()}</span>
                   </div>
                 </div>

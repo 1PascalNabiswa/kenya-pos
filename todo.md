@@ -348,3 +348,14 @@
 - [x] Fixed orderId fallback to 0 when not set
 - [x] Print dialog now properly opens after payment completion
 - [x] Auto-print now triggers correctly when enabled
+
+
+## Phase 35: Fix Thermal Receipt Centering and Overflow
+- [x] Changed receipt width from 78mm to 76mm for proper thermal roll fit
+- [x] Reduced padding and margins for better space utilization
+- [x] Converted flex layout to table layout for fixed-width columns
+- [x] Set product name column to 60% width and price column to 40%
+- [x] Added word-break and overflow-wrap for text wrapping
+- [x] Truncated product names to 20 characters to prevent overflow
+- [x] Adjusted font sizes (9pt header, 8pt items) for thermal roll
+- [x] Prices now properly aligned and no longer cut off on right edge
