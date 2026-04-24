@@ -371,3 +371,12 @@
 - [x] Updated CSS to support flexible receipt width
 - [x] Receipt now centers and adapts to selected roll size
 - [x] Settings properly apply to receipt display
+
+
+## Phase 37: Update Receipt to Display Store Settings
+- [x] Added store settings fetch to ReceiptDialog component
+- [x] Load store_name, store_phone, store_email, store_address from settings
+- [x] Load receipt_header and receipt_footer from settings
+- [x] Updated receipt header to display actual store name and contact info
+- [x] Updated receipt footer to display custom header and footer messages
+- [x] Receipt now reflects all store information configured in Settings

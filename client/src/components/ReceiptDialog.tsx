@@ -17,10 +17,32 @@ interface ReceiptDialogProps {
 
 export default function ReceiptDialog({ open, onClose, orderId, orderNumber, autoPrint = false, rollSize = "76" }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const [storeName, setStoreName] = useState("KenPOS");
+  const [storePhone, setStorePhone] = useState("+254 700 000 000");
+  const [storeEmail, setStoreEmail] = useState("");
+  const [storeAddress, setStoreAddress] = useState("Nairobi, Kenya");
+  const [receiptHeader, setReceiptHeader] = useState("Thank you for your business!");
+  const [receiptFooter, setReceiptFooter] = useState("Powered by KenPOS");
+  
   const { data: order, isLoading } = trpc.orders.get.useQuery(
     { id: orderId },
     { enabled: open && !!orderId }
   );
+  
+  const { data: settingsData } = trpc.settings.getAll.useQuery();
+  
+  // Load store settings
+  useEffect(() => {
+    if (settingsData) {
+      const get = (key: string, def = "") => settingsData.find((s: any) => s.key === key)?.value ?? def;
+      setStoreName(get("store_name", "KenPOS"));
+      setStorePhone(get("store_phone", "+254 700 000 000"));
+      setStoreEmail(get("store_email", ""));
+      setStoreAddress(get("store_address", "Nairobi, Kenya"));
+      setReceiptHeader(get("receipt_header", "Thank you for your business!"));
+      setReceiptFooter(get("receipt_footer", "Powered by KenPOS"));
+    }
+  }, [settingsData]);
 
   // Auto-print when dialog opens and order is loaded
   useEffect(() => {
@@ -199,9 +221,8 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
               {/* Footer */}
               <div className="receipt-divider" />
               <div className="receipt-footer">
-                <div>Thank you for your business!</div>
-                <div>Asante kwa biashara yako!</div>
-                <div className="mt-1">Powered by KenPOS</div>
+                <div>{receiptHeader}</div>
+                <div className="mt-1">{receiptFooter}</div>
                 <div>{new Date().getFullYear()} © All Rights Reserved</div>
               </div>
             </div>
