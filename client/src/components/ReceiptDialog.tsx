@@ -23,6 +23,7 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
   const [storeAddress, setStoreAddress] = useState("Nairobi, Kenya");
   const [receiptHeader, setReceiptHeader] = useState("Thank you for your business!");
   const [receiptFooter, setReceiptFooter] = useState("Powered by KenPOS");
+  const [servedBy, setServedBy] = useState("");
   
   const { data: order, isLoading } = trpc.orders.get.useQuery(
     { id: orderId },
@@ -41,6 +42,7 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
       setStoreAddress(get("store_address", "Nairobi, Kenya"));
       setReceiptHeader(get("receipt_header", "Thank you for your business!"));
       setReceiptFooter(get("receipt_footer", "Powered by KenPOS"));
+      setServedBy(get("served_by", ""));
     }
   }, [settingsData]);
 
@@ -146,6 +148,9 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
               {order.customerId && (
                 <div className="text-xs">Customer ID: {order.customerId}</div>
               )}
+              {servedBy && (
+                <div className="text-xs">Served by: {servedBy}</div>
+              )}
 
               <div className="receipt-divider" />
 
@@ -168,10 +173,7 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
                 <span>Subtotal</span>
                 <span>KES {Number(order.subtotal).toLocaleString()}</span>
               </div>
-              <div className="receipt-row text-xs">
-                <span>VAT (16%)</span>
-                <span>KES {Number(order.taxAmount).toLocaleString()}</span>
-              </div>
+
               {Number(order.discountAmount) > 0 && (
                 <div className="receipt-row text-xs">
                   <span>Discount</span>
@@ -212,11 +214,6 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
               )}
 
               <div className="receipt-divider" />
-
-              {/* Status */}
-              <div className="text-center text-xs font-bold">
-                {order.paymentStatus === "paid" ? "*** PAID ***" : order.paymentStatus.toUpperCase()}
-              </div>
 
               {/* Footer */}
               <div className="receipt-divider" />

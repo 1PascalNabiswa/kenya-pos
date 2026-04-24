@@ -27,7 +27,8 @@ export default function Settings() {
   const [receiptHeader, setReceiptHeader] = useState("");
   const [receiptFooter, setReceiptFooter] = useState("");
   const [printAutomatic, setPrintAutomatic] = useState(false);
-  const [receiptRollSize, setReceiptRollSize] = useState("76");
+  const [receiptRollSize, setReceiptRollSize] = useState("68");
+  const [servedBy, setServedBy] = useState("");
   const [mpesaShortcode, setMpesaShortcode] = useState("");
   const [mpesaPasskey, setMpesaPasskey] = useState("");
   const [mpesaConsumerKey, setMpesaConsumerKey] = useState("");
@@ -51,7 +52,8 @@ export default function Settings() {
     setReceiptHeader(get("receipt_header", "Thank you for your business!"));
     setReceiptFooter(get("receipt_footer", "Powered by KenPOS"));
     setPrintAutomatic(get("print_automatic") === "true");
-    setReceiptRollSize(get("receipt_roll_size", "76"));
+    setReceiptRollSize(get("receipt_roll_size", "68"));
+    setServedBy(get("served_by"));
     setMpesaShortcode(get("mpesa_shortcode"));
     setMpesaPasskey(get("mpesa_passkey"));
     setMpesaConsumerKey(get("mpesa_consumer_key"));
@@ -82,6 +84,7 @@ export default function Settings() {
       { key: "receipt_footer", value: receiptFooter },
       { key: "print_automatic", value: String(printAutomatic) },
       { key: "receipt_roll_size", value: receiptRollSize },
+      { key: "served_by", value: servedBy },
     ]);
   };
 
@@ -209,6 +212,10 @@ export default function Settings() {
             <div>
               <Label>Receipt Footer Message</Label>
               <Input value={receiptFooter} onChange={(e) => setReceiptFooter(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Served By (Staff Name)</Label>
+              <Input value={servedBy} onChange={(e) => setServedBy(e.target.value)} placeholder="e.g. John" className="mt-1" />
             </div>
             <div className="flex items-center justify-between">
               <div>
