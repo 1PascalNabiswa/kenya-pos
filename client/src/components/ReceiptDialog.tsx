@@ -208,12 +208,7 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
                   </div>
                 </>
               )}
-              {order.paymentStatus === "paid" && (
-                <div className="receipt-row text-xs">
-                  <span>Payment</span>
-                  <span>Completed</span>
-                </div>
-              )}
+
 
               <div className="receipt-divider" />
 
