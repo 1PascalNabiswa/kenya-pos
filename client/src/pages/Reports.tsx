@@ -212,18 +212,37 @@ export default function Reports() {
             <CardTitle className="text-base">Payment Method Trends</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={dailySalesByPaymentMethod}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
-                <Legend />
-                {Array.from(new Set(dailySalesByPaymentMethod.map((d: any) => d.method))).map((method: any, idx: number) => (
-                  <Bar key={`bar-${method}`} dataKey={method} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} name={formatPaymentMethod(method)} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
+            {(() => {
+              const groupedByDate = dailySalesByPaymentMethod.reduce((acc: any, item: any) => {
+                const dateKey = item.date || 'Unknown';
+                if (!acc[dateKey]) {
+                  acc[dateKey] = { date: dateKey };
+                }
+                const methodKey = formatPaymentMethod(item.method);
+                acc[dateKey][methodKey] = Number(item.totalRevenue) || 0;
+                return acc;
+              }, {});
+              
+              const chartData = Object.values(groupedByDate);
+              const uniqueMethods = Array.from(new Set(
+                dailySalesByPaymentMethod.map((d: any) => formatPaymentMethod(d.method))
+              ));
+              
+              return (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                    <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
+                    <Legend />
+                    {(uniqueMethods as any[]).map((method: string, idx: number) => (
+                      <Bar key={`bar-${method}`} dataKey={method} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
