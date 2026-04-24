@@ -105,8 +105,22 @@ export default function Reports() {
     orders: Number(d.orderCount),
   })) ?? [];
 
+  const formatPaymentMethod = (method: string | undefined) => {
+    if (!method) return 'UNKNOWN';
+    const methodMap: Record<string, string> = {
+      'cash': 'Cash',
+      'mpesa': 'M-Pesa',
+      'stripe': 'Card (Stripe)',
+      'wallet': 'Wallet',
+      'mixed': 'Mixed Payment',
+      'card': 'Card',
+      'check': 'Check',
+    };
+    return methodMap[method.toLowerCase()] || method.charAt(0).toUpperCase() + method.slice(1);
+  };
+
   const pieData = paymentBreakdown?.map((p: { method?: string; revenue: number | string; count: number | string }) => ({
-    name: (p.method || 'UNKNOWN').toUpperCase(),
+    name: formatPaymentMethod(p.method),
     value: Number(p.revenue),
     count: Number(p.count),
   })) ?? [];
@@ -206,7 +220,7 @@ export default function Reports() {
                 <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
                 <Legend />
                 {Array.from(new Set(dailySalesByPaymentMethod.map((d: any) => d.method))).map((method: any, idx: number) => (
-                  <Bar key={`bar-${method}`} dataKey={method} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} />
+                  <Bar key={`bar-${method}`} dataKey={method} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} name={formatPaymentMethod(method)} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
@@ -308,7 +322,7 @@ export default function Reports() {
                 <tbody>
                   {paymentMethodComparison.breakdown.map((method: any, i: number) => (
                     <tr key={`method-${method.method}-${i}`} className="border-b border-border/50 hover:bg-secondary/20">
-                      <td className="py-2 font-medium">{method.method}</td>
+                      <td className="py-2 font-medium">{formatPaymentMethod(method.method)}</td>
                       <td className="py-2 text-right">{method.orderCount.toLocaleString()}</td>
                       <td className="py-2 text-right font-medium text-primary">KES {Number(method.totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                       <td className="py-2 text-right text-muted-foreground">{method.percentageOfTotal.toFixed(1)}%</td>

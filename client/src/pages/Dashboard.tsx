@@ -206,13 +206,24 @@ export default function Dashboard() {
           {stats?.paymentBreakdown && stats.paymentBreakdown.length > 0 ? (
             <div className="space-y-3">
               {stats.paymentBreakdown.map((payment: any) => {
-                const paymentLabel = payment.paymentMethod === 'wallet' ? 'Wallet' : 
-                                    payment.paymentMethod === 'cash' ? 'Cash' : 
-                                    payment.paymentMethod === 'stripe' ? 'Card (Stripe)' : 'Mixed';
+                const formatPaymentMethod = (method: string) => {
+                  const methodMap: Record<string, string> = {
+                    'cash': 'Cash',
+                    'mpesa': 'M-Pesa',
+                    'stripe': 'Card (Stripe)',
+                    'wallet': 'Wallet',
+                    'mixed': 'Mixed Payment',
+                    'card': 'Card',
+                    'check': 'Check',
+                  };
+                  return methodMap[method.toLowerCase()] || method.charAt(0).toUpperCase() + method.slice(1);
+                };
+                const paymentLabel = formatPaymentMethod(payment.paymentMethod);
                 const colors: Record<string, string> = {
                   'wallet': 'bg-purple-100 text-purple-700',
                   'cash': 'bg-green-100 text-green-700',
                   'stripe': 'bg-blue-100 text-blue-700',
+                  'mpesa': 'bg-yellow-100 text-yellow-700',
                   'mixed': 'bg-gray-100 text-gray-700',
                 };
                 const color = colors[payment.paymentMethod] || 'bg-gray-100 text-gray-700';
@@ -272,7 +283,16 @@ export default function Dashboard() {
                       <td className="py-2 font-mono text-xs text-primary">{order.orderNumber}</td>
                       <td className="py-2 text-xs">{order.customerName ?? "Walk-in"}</td>
                       <td className="py-2">
-                        <span className="text-xs uppercase font-medium">{order.paymentMethod}</span>
+                        <p className="text-xs uppercase font-medium">{(() => {
+                          const methodMap: Record<string, string> = {
+                            'cash': 'Cash',
+                            'mpesa': 'M-Pesa',
+                            'stripe': 'Card',
+                            'wallet': 'Wallet',
+                            'mixed': 'Mixed',
+                          };
+                          return methodMap[order.paymentMethod] || order.paymentMethod;
+                        })()}</p>
                       </td>
                       <td className="py-2">
                         <span className={`status-${order.paymentStatus}`}>{order.paymentStatus}</span>
