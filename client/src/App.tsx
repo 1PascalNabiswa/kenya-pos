@@ -11,6 +11,7 @@ import SalesOrders from "./pages/SalesOrders";
 import Inventory from "./pages/Inventory";
 import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
+import InventoryReport from "./pages/InventoryReport";
 import Settings from "./pages/Settings";
 import Transactions from "./pages/Transactions";
 import Wallet from "./pages/Wallet";
@@ -95,7 +96,7 @@ function Router() {
       )} />
       <Route path="/reports/inventory" component={() => (
         <POSLayout>
-          <Reports />
+          <InventoryReport />
         </POSLayout>
       )} />
       <Route path="/reports" component={() => (
