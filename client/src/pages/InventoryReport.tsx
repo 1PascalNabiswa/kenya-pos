@@ -32,7 +32,7 @@ export default function InventoryReport() {
   // Calculate inventory metrics
   const inventoryMetrics = {
     totalProducts: productsData?.total ?? 0,
-    totalItems: products.reduce((sum, p) => sum + (Number(p.stockQuantity) || 0), 0),
+    totalItems: products.filter((p) => (Number(p.stockQuantity) || 0) > 0).length,
     totalValue: products.reduce((sum, p) => sum + ((Number(p.stockQuantity) || 0) * (Number(p.price) || 0)), 0),
     lowStockCount: lowStock?.length ?? 0,
   };
