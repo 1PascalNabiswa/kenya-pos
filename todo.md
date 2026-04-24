@@ -340,3 +340,11 @@
 - [x] Added receiptRef check before calling window.print()
 - [x] Verified receipt print tests pass
 - [x] Print dialog now appears when auto-print is enabled
+
+
+## Phase 34: Fix Receipt Dialog Not Opening After Payment
+- [x] Identified ReceiptDialog was being conditionally rendered instead of always mounted
+- [x] Changed from conditional rendering to always-mounted with open prop
+- [x] Fixed orderId fallback to 0 when not set
+- [x] Print dialog now properly opens after payment completion
+- [x] Auto-print now triggers correctly when enabled

@@ -234,14 +234,13 @@ export default function SalesTransaction() {
       )}
 
       {/* Receipt Dialog */}
-      {showReceiptDialog && receiptOrderId && (
-        <ReceiptDialog
-          orderId={receiptOrderId}
-          orderNumber={receiptOrderNumber}
-          onClose={handleReceiptClose}
-          autoPrint={printAutomatic}
-        />
-      )}
+      <ReceiptDialog
+        open={showReceiptDialog}
+        orderId={receiptOrderId || 0}
+        orderNumber={receiptOrderNumber}
+        onClose={handleReceiptClose}
+        autoPrint={printAutomatic}
+      />
     </div>
   );
 }
