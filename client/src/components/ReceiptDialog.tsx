@@ -132,10 +132,10 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
             <div id="thermal-receipt" ref={receiptRef} className="mx-auto" style={{width: `${rollSize}mm`, maxWidth: `${rollSize}mm`}}>
               {/* Header */}
               <div className="receipt-header">
-                <div className="font-bold text-base">KenPOS</div>
-                <div className="text-xs">Kenyan Point of Sale</div>
-                <div className="text-xs">Tel: +254 700 000 000</div>
-                <div className="text-xs">Nairobi, Kenya</div>
+                <div className="font-bold text-base">{storeName}</div>
+                {storeEmail && <div className="text-xs">{storeEmail}</div>}
+                {storePhone && <div className="text-xs">Tel: {storePhone}</div>}
+                {storeAddress && <div className="text-xs">{storeAddress}</div>}
               </div>
 
               <div className="receipt-divider" />
