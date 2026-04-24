@@ -18,37 +18,39 @@ export default function InventoryReport() {
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState<"stock" | "value" | "turnover">("stock");
 
-  const { data: products } = trpc.products.list.useQuery({
+  const { data: productsData } = trpc.products.list.useQuery({
     search: search || undefined,
     categoryId: categoryFilter ? Number(categoryFilter) : undefined,
     limit: 1000,
   });
+  
+  const products = productsData?.items ?? [];
 
   const { data: categories } = trpc.categories.list.useQuery();
   const { data: lowStock } = trpc.products.lowStock.useQuery();
 
   // Calculate inventory metrics
   const inventoryMetrics = {
-    totalProducts: products?.total ?? 0,
-    totalItems: products?.items?.reduce((sum, p) => sum + (p.quantity || 0), 0) ?? 0,
-    totalValue: products?.items?.reduce((sum, p) => sum + ((p.quantity || 0) * (p.sellingPrice || 0)), 0) ?? 0,
+    totalProducts: productsData?.total ?? 0,
+    totalItems: products.reduce((sum, p) => sum + (Number(p.stockQuantity) || 0), 0),
+    totalValue: products.reduce((sum, p) => sum + ((Number(p.stockQuantity) || 0) * (Number(p.price) || 0)), 0),
     lowStockCount: lowStock?.length ?? 0,
   };
 
   // Stock level distribution
   const stockDistribution = [
-    { name: "Overstocked (>100)", value: products?.items?.filter((p) => (p.quantity || 0) > 100).length ?? 0 },
-    { name: "Adequate (20-100)", value: products?.items?.filter((p) => (p.quantity || 0) >= 20 && (p.quantity || 0) <= 100).length ?? 0 },
-    { name: "Low (5-19)", value: products?.items?.filter((p) => (p.quantity || 0) >= 5 && (p.quantity || 0) < 20).length ?? 0 },
-    { name: "Critical (<5)", value: products?.items?.filter((p) => (p.quantity || 0) < 5).length ?? 0 },
+    { name: "Overstocked (>100)", value: products.filter((p) => (Number(p.stockQuantity) || 0) > 100).length },
+    { name: "Adequate (20-100)", value: products.filter((p) => (Number(p.stockQuantity) || 0) >= 20 && (Number(p.stockQuantity) || 0) <= 100).length },
+    { name: "Low (5-19)", value: products.filter((p) => (Number(p.stockQuantity) || 0) >= 5 && (Number(p.stockQuantity) || 0) < 20).length },
+    { name: "Critical (<5)", value: products.filter((p) => (Number(p.stockQuantity) || 0) < 5).length },
   ];
 
   // Top products by value
-  const topByValue = (products?.items ?? [])
+  const topByValue = products
     .map((p) => ({
       name: p.name,
-      value: (p.quantity || 0) * (p.sellingPrice || 0),
-      quantity: p.quantity || 0,
+      value: (Number(p.stockQuantity) || 0) * (Number(p.price) || 0),
+      quantity: Number(p.stockQuantity) || 0,
     }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 10);
@@ -57,10 +59,11 @@ export default function InventoryReport() {
   const lowStockProducts = (lowStock ?? []).slice(0, 10);
 
   // Category distribution by value
-  const categoryValue = (products?.items ?? []).reduce((acc: any, p) => {
-    const catName = p.categoryName || "Uncategorized";
+  const categoryValue = products.reduce((acc: any, p) => {
+    const catId = p.categoryId;
+    const catName = categories?.find((c) => c.id === catId)?.name || "Uncategorized";
     const existing = acc.find((c: any) => c.name === catName);
-    const value = (p.quantity || 0) * (p.sellingPrice || 0);
+    const value = (Number(p.stockQuantity) || 0) * (Number(p.price) || 0);
     if (existing) {
       existing.value += value;
     } else {
