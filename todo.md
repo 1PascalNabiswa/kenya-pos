@@ -331,3 +331,12 @@
 - [x] Changed deleteProduct to use isActive: false instead of hard delete
 - [x] Verified tests pass with new implementation
 - [x] Products now deactivate instead of throwing constraint error
+
+
+## Phase 33: Fix Printer Auto-Print Timing
+- [x] Identified print dialog not appearing after order completion
+- [x] Found auto-print logic in ReceiptDialog component
+- [x] Increased delay from 500ms to 1000ms for full DOM rendering
+- [x] Added receiptRef check before calling window.print()
+- [x] Verified receipt print tests pass
+- [x] Print dialog now appears when auto-print is enabled

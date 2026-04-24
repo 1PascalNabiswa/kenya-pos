@@ -24,11 +24,14 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
   // Auto-print when dialog opens and order is loaded
   useEffect(() => {
     if (autoPrint && open && order && !isLoading) {
-      // Small delay to ensure dialog is rendered
+      // Longer delay to ensure all DOM elements are fully rendered
       const timer = setTimeout(() => {
-        window.print();
-        toast.success("Printing receipt...");
-      }, 500);
+        // Ensure receipt element exists before printing
+        if (receiptRef.current) {
+          window.print();
+          toast.success("Printing receipt...");
+        }
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [autoPrint, open, order, isLoading]);
