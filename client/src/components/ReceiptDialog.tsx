@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Printer, Download, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,7 +16,6 @@ interface ReceiptDialogProps {
 }
 
 export default function ReceiptDialog({ open, onClose, orderId, orderNumber, autoPrint = false, rollSize = "76" }: ReceiptDialogProps) {
-  const { user } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
   const [storeName, setStoreName] = useState("KenPOS");
   const [storePhone, setStorePhone] = useState("+254 700 000 000");
@@ -25,6 +23,7 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
   const [storeAddress, setStoreAddress] = useState("Nairobi, Kenya");
   const [receiptHeader, setReceiptHeader] = useState("Thank you for your business!");
   const [receiptFooter, setReceiptFooter] = useState("Powered by KenPOS");
+  const [servedBy, setServedBy] = useState("");
   
   const { data: order, isLoading } = trpc.orders.get.useQuery(
     { id: orderId },
@@ -149,8 +148,8 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
               {order.customerId && (
                 <div className="text-xs">Customer ID: {order.customerId}</div>
               )}
-              {user && (
-                <div className="text-xs">Served by: {user.name}</div>
+              {servedBy && (
+                <div className="text-xs">Served by: {servedBy}</div>
               )}
 
               <div className="receipt-divider" />
@@ -207,7 +206,12 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
                   </div>
                 </>
               )}
-
+              {order.paymentStatus === "paid" && (
+                <div className="receipt-row text-xs">
+                  <span>Payment</span>
+                  <span>Completed</span>
+                </div>
+              )}
 
               <div className="receipt-divider" />
 
