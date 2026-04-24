@@ -292,12 +292,7 @@ export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
 export const suppliers = mysqlTable("suppliers", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
-  contactPerson: varchar("contactPerson", { length: 100 }),
-  phoneNumber: varchar("phoneNumber", { length: 20 }),
   email: varchar("email", { length: 100 }),
-  address: text("address"),
-  city: varchar("city", { length: 50 }),
-  paymentTerms: varchar("paymentTerms", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

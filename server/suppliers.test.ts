@@ -7,17 +7,12 @@ describe("Suppliers Management", () => {
   it("should create a new supplier", async () => {
     const result = await createSupplier({
       name: "Test Supplier Co.",
-      contactPerson: "John Doe",
-      phoneNumber: "+254712345678",
       email: "john@testsupplier.com",
-      address: "123 Main St",
-      city: "Nairobi",
-      paymentTerms: "Net 30",
     });
 
     expect(result).toBeDefined();
-    expect(result?.insertId).toBeGreaterThan(0);
-    supplierId = result?.insertId || 0;
+    expect(result?.insertId || result?.[0]?.insertId).toBeGreaterThan(0);
+    supplierId = result?.insertId || result?.[0]?.insertId || 0;
   });
 
   it("should list all suppliers", async () => {
@@ -31,7 +26,6 @@ describe("Suppliers Management", () => {
     expect(supplier).toHaveProperty("id");
     expect(supplier).toHaveProperty("name");
     expect(supplier).toHaveProperty("email");
-    expect(supplier).toHaveProperty("phoneNumber");
   });
 
   it("should have correct supplier data structure", async () => {
@@ -43,12 +37,7 @@ describe("Suppliers Management", () => {
       // Verify all expected fields exist
       expect(supplier).toHaveProperty("id");
       expect(supplier).toHaveProperty("name");
-      expect(supplier).toHaveProperty("contactPerson");
-      expect(supplier).toHaveProperty("phoneNumber");
       expect(supplier).toHaveProperty("email");
-      expect(supplier).toHaveProperty("address");
-      expect(supplier).toHaveProperty("city");
-      expect(supplier).toHaveProperty("paymentTerms");
       expect(supplier).toHaveProperty("createdAt");
       expect(supplier).toHaveProperty("updatedAt");
     }

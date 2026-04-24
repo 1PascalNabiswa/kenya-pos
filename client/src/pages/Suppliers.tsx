@@ -9,7 +9,7 @@ import { Plus, Mail, Phone } from "lucide-react";
 
 export default function Suppliers() {
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: "", phone: "", email: "" });
+  const [formData, setFormData] = useState({ name: "", phoneNumber: "", email: "" });
 
   const { data: suppliersData, refetch } = trpc.suppliers.list.useQuery();
   const createMutation = trpc.suppliers.create.useMutation();
@@ -25,7 +25,7 @@ export default function Suppliers() {
     try {
       await createMutation.mutateAsync(formData);
       toast.success("Supplier added successfully");
-      setFormData({ name: "", phone: "", email: "" });
+      setFormData({ name: "", phoneNumber: "", email: "" });
       setOpen(false);
       refetch();
     } catch (error) {
@@ -70,10 +70,10 @@ export default function Suppliers() {
                   <tr key={supplier.id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4 font-medium">{supplier.name}</td>
                     <td className="px-6 py-4">
-                      {supplier.phone ? (
-                        <a href={`tel:${supplier.phone}`} className="flex items-center gap-2 text-blue-600 hover:underline">
+                      {supplier.phoneNumber ? (
+                        <a href={`tel:${supplier.phoneNumber}`} className="flex items-center gap-2 text-blue-600 hover:underline">
                           <Phone size={14} />
-                          {supplier.phone}
+                          {supplier.phoneNumber}
                         </a>
                       ) : (
                         <span className="text-muted-foreground">-</span>

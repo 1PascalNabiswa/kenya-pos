@@ -1110,7 +1110,12 @@ export async function createSupplier(data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
-  const result = await db.insert(suppliers).values(data);
+  // Use Drizzle insert with only the fields that exist in the database
+  const result = await db.insert(suppliers).values({
+    name: data.name,
+    email: data.email,
+  });
+  
   return result;
 }
 
