@@ -12,9 +12,10 @@ interface ReceiptDialogProps {
   orderId: number;
   orderNumber: string;
   autoPrint?: boolean;
+  rollSize?: string;
 }
 
-export default function ReceiptDialog({ open, onClose, orderId, orderNumber, autoPrint = false }: ReceiptDialogProps) {
+export default function ReceiptDialog({ open, onClose, orderId, orderNumber, autoPrint = false, rollSize = "76" }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const { data: order, isLoading } = trpc.orders.get.useQuery(
     { id: orderId },
@@ -105,8 +106,8 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
           </div>
         ) : order ? (
           <div className="overflow-auto max-h-[70vh]">
-            {/* 78mm Thermal Receipt */}
-            <div id="thermal-receipt" ref={receiptRef} className="mx-auto">
+            {/* Thermal Receipt */}
+            <div id="thermal-receipt" ref={receiptRef} className="mx-auto" style={{width: `${rollSize}mm`, maxWidth: `${rollSize}mm`}}>
               {/* Header */}
               <div className="receipt-header">
                 <div className="font-bold text-base">KenPOS</div>

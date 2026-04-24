@@ -359,3 +359,15 @@
 - [x] Truncated product names to 20 characters to prevent overflow
 - [x] Adjusted font sizes (9pt header, 8pt items) for thermal roll
 - [x] Prices now properly aligned and no longer cut off on right edge
+
+
+## Phase 36: Add Dynamic Thermal Roll Size Setting
+- [x] Added receipt roll size selector to Settings (73mm, 76mm, 80mm)
+- [x] Added receiptRollSize state to SalesTransaction component
+- [x] Fetch receipt_roll_size setting from database on load
+- [x] Pass rollSize prop to ReceiptDialog component
+- [x] Updated ReceiptDialog to accept and use dynamic rollSize
+- [x] Applied dynamic width to receipt element using inline styles
+- [x] Updated CSS to support flexible receipt width
+- [x] Receipt now centers and adapts to selected roll size
+- [x] Settings properly apply to receipt display

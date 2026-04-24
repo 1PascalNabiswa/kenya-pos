@@ -27,6 +27,7 @@ export default function Settings() {
   const [receiptHeader, setReceiptHeader] = useState("");
   const [receiptFooter, setReceiptFooter] = useState("");
   const [printAutomatic, setPrintAutomatic] = useState(false);
+  const [receiptRollSize, setReceiptRollSize] = useState("76");
   const [mpesaShortcode, setMpesaShortcode] = useState("");
   const [mpesaPasskey, setMpesaPasskey] = useState("");
   const [mpesaConsumerKey, setMpesaConsumerKey] = useState("");
@@ -50,6 +51,7 @@ export default function Settings() {
     setReceiptHeader(get("receipt_header", "Thank you for your business!"));
     setReceiptFooter(get("receipt_footer", "Powered by KenPOS"));
     setPrintAutomatic(get("print_automatic") === "true");
+    setReceiptRollSize(get("receipt_roll_size", "76"));
     setMpesaShortcode(get("mpesa_shortcode"));
     setMpesaPasskey(get("mpesa_passkey"));
     setMpesaConsumerKey(get("mpesa_consumer_key"));
@@ -79,6 +81,7 @@ export default function Settings() {
       { key: "receipt_header", value: receiptHeader },
       { key: "receipt_footer", value: receiptFooter },
       { key: "print_automatic", value: String(printAutomatic) },
+      { key: "receipt_roll_size", value: receiptRollSize },
     ]);
   };
 
@@ -173,9 +176,17 @@ export default function Settings() {
       {/* Receipt Settings */}
       {tab === "receipt" && (
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Receipt size={16} /> Receipt Configuration (78mm Thermal)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Receipt size={16} /> Receipt Configuration</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-secondary/50 rounded-lg p-4 text-xs font-mono space-y-1">
+            <div>
+              <Label>Thermal Roll Size</Label>
+              <select value={receiptRollSize} onChange={(e) => setReceiptRollSize(e.target.value)} className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm mt-1">
+                <option value="73">73mm</option>
+                <option value="76">76mm</option>
+                <option value="80">80mm</option>
+              </select>
+            </div>
+            <div className="bg-secondary/50 rounded-lg p-4 text-xs font-mono space-y-1" style={{width: `${receiptRollSize}mm`, margin: '0 auto'}}>
               <p className="text-center font-bold">{storeName || "KenPOS Store"}</p>
               <p className="text-center text-muted-foreground">{storeAddress || "Nairobi, Kenya"}</p>
               <p className="text-center">Tel: {storePhone || "+254 700 000 000"}</p>

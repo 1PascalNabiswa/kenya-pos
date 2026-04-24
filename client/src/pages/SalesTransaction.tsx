@@ -34,6 +34,7 @@ export default function SalesTransaction() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [taxRate, setTaxRate] = useState(0.16); // Default 16% VAT
   const [printAutomatic, setPrintAutomatic] = useState(false);
+  const [receiptRollSize, setReceiptRollSize] = useState("76");
 
   // Fetch data
   const { data: categoriesData } = trpc.categories.list.useQuery();
@@ -59,6 +60,10 @@ export default function SalesTransaction() {
       }
       const printAutomaticSetting = settingsData.find((s: any) => s.key === "print_automatic")?.value;
       setPrintAutomatic(printAutomaticSetting === "true");
+      const rollSizeSetting = settingsData.find((s: any) => s.key === "receipt_roll_size")?.value;
+      if (rollSizeSetting) {
+        setReceiptRollSize(rollSizeSetting);
+      }
     }
   }, [settingsData]);
 
@@ -240,6 +245,7 @@ export default function SalesTransaction() {
         orderNumber={receiptOrderNumber}
         onClose={handleReceiptClose}
         autoPrint={printAutomatic}
+        rollSize={receiptRollSize}
       />
     </div>
   );
