@@ -20,6 +20,7 @@ export default function Reports() {
   const [startDate, setStartDate] = useState(firstOfMonth.toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
   const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("day");
+  const [showPaymentTrends, setShowPaymentTrends] = useState(false);
 
   const { data: report, isLoading } = trpc.reports.salesReport.useQuery({
     startDate,
@@ -205,46 +206,58 @@ export default function Reports() {
         </div>
       )}
 
-      {/* Payment Method Trends */}
+      {/* Payment Method Trends Toggle */}
       {dailySalesByPaymentMethod && dailySalesByPaymentMethod.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Payment Method Trends</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(() => {
-              const groupedByDate = dailySalesByPaymentMethod.reduce((acc: any, item: any) => {
-                const dateKey = item.date || 'Unknown';
-                if (!acc[dateKey]) {
-                  acc[dateKey] = { date: dateKey };
-                }
-                const methodKey = formatPaymentMethod(item.method);
-                acc[dateKey][methodKey] = Number(item.totalRevenue) || 0;
-                return acc;
-              }, {});
-              
-              const chartData = Object.values(groupedByDate);
-              const uniqueMethods = Array.from(new Set(
-                dailySalesByPaymentMethod.map((d: any) => formatPaymentMethod(d.method))
-              ));
-              
-              return (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                    <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
-                    <Legend />
-                    {(uniqueMethods as any[]).map((method: string, idx: number) => (
-                      <Bar key={`bar-${method}`} dataKey={method} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              );
-            })()}
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPaymentTrends(!showPaymentTrends)}
+            className="w-full"
+          >
+            {showPaymentTrends ? 'Hide' : 'Show'} Payment Method Trends
+          </Button>
+          {showPaymentTrends && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Payment Method Trends</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const groupedByDate = dailySalesByPaymentMethod.reduce((acc: any, item: any) => {
+                    const dateKey = item.date || 'Unknown';
+                    if (!acc[dateKey]) {
+                      acc[dateKey] = { date: dateKey };
+                    }
+                    const methodKey = formatPaymentMethod(item.method);
+                    acc[dateKey][methodKey] = Number(item.totalRevenue) || 0;
+                    return acc;
+                  }, {});
+                  
+                  const chartData = Object.values(groupedByDate);
+                  const uniqueMethods = Array.from(new Set(
+                    dailySalesByPaymentMethod.map((d: any) => formatPaymentMethod(d.method))
+                  ));
+                  
+                  return (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                        <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
+                        <Legend />
+                        {(uniqueMethods as any[]).map((method: string, idx: number) => (
+                          <Line key={`line-${method}`} type="monotone" dataKey={method} stroke={COLORS[idx % COLORS.length]} strokeWidth={2} dot={false} />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
