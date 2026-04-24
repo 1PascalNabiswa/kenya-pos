@@ -2388,24 +2388,23 @@ export async function getDailySalesByPaymentMethod(fromDate: Date, toDate: Date)
   const db = await getDb();
   if (!db) return [];
 
-  const results = await db
-    .select({
-      date: sql<string>`DATE(${orders.createdAt})`,
-      method: orders.paymentMethod,
-      orderCount: sql<number>`count(*)`,
-      totalRevenue: sql<number>`sum(${orders.totalAmount})`,
-    })
-    .from(orders)
-    .where(
-      and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
-      )
-    )
-    .groupBy(sql`DATE(${orders.createdAt})`, orders.paymentMethod)
-    .orderBy(sql`DATE(${orders.createdAt})`, orders.paymentMethod);
-
-  return results;
+  try {
+    const results: any = await db.execute(sql`
+      SELECT 
+        DATE(${orders.createdAt}) as date,
+        ${orders.paymentMethod} as method,
+        COUNT(*) as orderCount,
+        SUM(${orders.totalAmount}) as totalRevenue
+      FROM ${orders}
+      WHERE ${orders.createdAt} >= ${fromDate} AND ${orders.createdAt} <= ${toDate}
+      GROUP BY DATE(${orders.createdAt}), ${orders.paymentMethod}
+      ORDER BY date, method
+    `);
+    return results[0] || [];
+  } catch (error) {
+    console.error('Error fetching daily sales by payment method:', error);
+    return [];
+  }
 }
 
 // ─── Payment Method Comparison ────────────────────────────────────────────────
