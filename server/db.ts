@@ -453,7 +453,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
 
   const paymentBreakdown = await db
     .select({
-      methodType: orders.paymentMethod,
+      paymentMethod: orders.paymentMethod,
       count: sql<number>`count(*)`,
       total: sql<number>`sum(${orders.totalAmount})`,
     })
