@@ -222,7 +222,9 @@ export async function updateProduct(id: number, data: Partial<InsertProduct>) {
 export async function deleteProduct(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  await db.delete(products).where(eq(products.id, id));
+  // Use soft delete (deactivate) to avoid foreign key constraint violations
+  // Products may be referenced in order_items and inventory_logs
+  await db.update(products).set({ isActive: false }).where(eq(products.id, id));
 }
 
 export async function toggleProductActive(id: number, isActive: boolean) {

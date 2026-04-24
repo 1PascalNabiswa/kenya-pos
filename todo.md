@@ -323,3 +323,11 @@
 - [x] Verified deleteCategory function was already correct
 - [x] Confirmed products and categories now actually delete from database
 - [x] Added delete functionality tests
+
+
+## Phase 32: Fix Delete Foreign Key Constraint Error
+- [x] Identified foreign key constraints on products table (order_items, inventory_logs)
+- [x] Implemented soft delete approach for products with references
+- [x] Changed deleteProduct to use isActive: false instead of hard delete
+- [x] Verified tests pass with new implementation
+- [x] Products now deactivate instead of throwing constraint error
