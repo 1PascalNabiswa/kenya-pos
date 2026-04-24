@@ -116,7 +116,7 @@ export default function Suppliers() {
               <label className="text-sm font-medium mb-1 block">Supplier Name *</label>
               <Input
                 placeholder="e.g., Fresh Produce Ltd"
-                value={formData.name}
+                value={formData.name || ""}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
@@ -124,8 +124,8 @@ export default function Suppliers() {
               <label className="text-sm font-medium mb-1 block">Phone Number</label>
               <Input
                 placeholder="+254 712 345 678"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={formData.phoneNumber || ""}
+                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
               />
             </div>
             <div>
@@ -133,7 +133,7 @@ export default function Suppliers() {
               <Input
                 type="email"
                 placeholder="supplier@example.com"
-                value={formData.email}
+                value={formData.email || ""}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
