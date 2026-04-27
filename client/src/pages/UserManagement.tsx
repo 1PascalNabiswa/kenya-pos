@@ -103,6 +103,30 @@ export function UserManagement() {
     },
   });
 
+  // Deactivate user mutation
+  const deactivateUserMutation = trpc.user.deactivate.useMutation({
+    onSuccess: () => {
+      setDeleteError(null);
+      refetch();
+    },
+    onError: (error) => {
+      const errorMessage = error.message || "Failed to deactivate user";
+      setDeleteError(errorMessage);
+    },
+  });
+
+  // Reactivate user mutation
+  const reactivateUserMutation = trpc.user.reactivate.useMutation({
+    onSuccess: () => {
+      setDeleteError(null);
+      refetch();
+    },
+    onError: (error) => {
+      const errorMessage = error.message || "Failed to reactivate user";
+      setDeleteError(errorMessage);
+    },
+  });
+
   const handleCreateSubmit = () => {
     if (!formData.name || !formData.email) {
       setCreateError("Name and email are required");
@@ -308,6 +332,31 @@ export function UserManagement() {
                         >
                           <Bell className="w-4 h-4" />
                         </Button>
+                        {user.isActive ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to deactivate this user?")) {
+                                deactivateUserMutation.mutate({ id: user.id });
+                              }
+                            }}
+                            disabled={deactivateUserMutation.isPending}
+                            title="Deactivate user"
+                          >
+                            <span className="text-xs">Deactivate</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => reactivateUserMutation.mutate({ id: user.id })}
+                            disabled={reactivateUserMutation.isPending}
+                            title="Reactivate user"
+                          >
+                            <span className="text-xs">Reactivate</span>
+                          </Button>
+                        )}
                         <Button
                           variant="destructive"
                           size="sm"

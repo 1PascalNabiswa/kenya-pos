@@ -123,6 +123,8 @@ import {
   createUser,
   updateUserRole,
   deleteUser,
+  deactivateUser,
+  reactivateUser,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -1431,6 +1433,26 @@ const userRouter = router({
         );
       }
       
+      return { success: true };
+    }),
+
+  deactivate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new Error("Only admins can deactivate users");
+      }
+      await deactivateUser(input.id);
+      return { success: true };
+    }),
+
+  reactivate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new Error("Only admins can reactivate users");
+      }
+      await reactivateUser(input.id);
       return { success: true };
     }),
 });

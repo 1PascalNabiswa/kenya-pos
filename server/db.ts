@@ -2336,6 +2336,45 @@ export async function deleteUser(id: number) {
   await db.delete(users).where(eq(users.id, id));
 }
 
+export async function deactivateUser(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // Get the user to check their role
+  const userToDeactivateList = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  
+  if (userToDeactivateList.length === 0) throw new Error("User not found");
+  
+  const userToDeactivate = userToDeactivateList[0];
+  
+  // Prevent deactivation of last admin
+  if (userToDeactivate.role === "admin") {
+    const activeAdmins = await db
+      .select({ count: sql`COUNT(*)` })
+      .from(users)
+      .where(and(eq(users.role, "admin"), eq(users.isActive, true)));
+    
+    const count = (activeAdmins[0]?.count as number) || 0;
+    if (count <= 1) {
+      throw new Error("Cannot deactivate the last active admin. At least one active admin must exist.");
+    }
+  }
+  
+  // Deactivate the user
+  await db.update(users).set({ isActive: false }).where(eq(users.id, id));
+}
+
+export async function reactivateUser(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  const userList = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  if (userList.length === 0) throw new Error("User not found");
+  
+  // Reactivate the user
+  await db.update(users).set({ isActive: true }).where(eq(users.id, id));
+}
+
 
 // ─── Payment Breakdown ───────────────────────────────────────────────────────
 export async function getPaymentMethodBreakdown(fromDate: Date, toDate: Date) {
