@@ -18,7 +18,7 @@ export interface AuditLogEntry {
  */
 export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
   try {
-    const db = getDb();
+    const db = await getDb();
     await db.insert(auditLogs).values({
       userId: entry.userId,
       action: entry.action,
@@ -188,7 +188,7 @@ export async function logAccessDenied(
  * Get audit logs for a specific user
  */
 export async function getUserAuditLogs(userId: number, limit: number = 100) {
-  const db = getDb();
+  const db = await getDb();
   return db
     .select()
     .from(auditLogs)
@@ -201,7 +201,7 @@ export async function getUserAuditLogs(userId: number, limit: number = 100) {
  * Get audit logs for a specific entity (e.g., user role changes)
  */
 export async function getEntityAuditLogs(entityType: string, entityId: number, limit: number = 100) {
-  const db = getDb();
+  const db = await getDb();
   return db
     .select()
     .from(auditLogs)
@@ -217,7 +217,7 @@ export async function getEntityAuditLogs(entityType: string, entityId: number, l
  * Get all role-related audit logs
  */
 export async function getRoleAuditLogs(limit: number = 100) {
-  const db = getDb();
+  const db = await getDb();
   return db
     .select()
     .from(auditLogs)
