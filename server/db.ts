@@ -69,6 +69,7 @@ import {
   notificationPreferences,
   NotificationPreference,
   InsertNotificationPreference,
+  storeTransfers,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2287,10 +2288,51 @@ export async function deleteUser(id: number) {
   }
   
   // Delete related records first (cascade delete)
-  // Delete notification preferences
+  // Delete in order of dependencies to avoid foreign key conflicts
+  
+  // 1. Delete notification preferences
   await db.delete(notificationPreferences).where(eq(notificationPreferences.userId, id));
   
-  // Delete the user
+  // 2. Delete audit logs
+  await db.delete(auditLogs).where(eq(auditLogs.userId, id));
+  
+  // 3. Delete user roles
+  await db.delete(userRoles).where(eq(userRoles.userId, id));
+  
+  // 4. Delete staff activity logs
+  await db.delete(staffActivityLogs).where(eq(staffActivityLogs.userId, id));
+  
+  // 5. Delete kitchen staff records
+  await db.delete(kitchenStaff).where(eq(kitchenStaff.userId, id));
+  
+  // 6. Delete staff profiles and their related records
+  const staffProfilesForUser = await db.select().from(staffProfiles).where(eq(staffProfiles.userId, id));
+  for (const profile of staffProfilesForUser) {
+    // Delete attendance records for this staff profile
+    await db.delete(attendanceRecords).where(eq(attendanceRecords.staffProfileId, profile.id));
+    // Delete staff employment records
+    const employmentRecords = await db.select().from(staffEmployment).where(eq(staffEmployment.staffProfileId, profile.id));
+    for (const employment of employmentRecords) {
+      // Delete payroll deductions
+      await db.delete(payrollDeductions).where(eq(payrollDeductions.staffEmploymentId, employment.id));
+      // Delete payroll bonuses
+      await db.delete(payrollBonuses).where(eq(payrollBonuses.staffEmploymentId, employment.id));
+      // Delete payroll records
+      await db.delete(payrollRecords).where(eq(payrollRecords.staffEmploymentId, employment.id));
+    }
+    // Delete staff employment
+    await db.delete(staffEmployment).where(eq(staffEmployment.staffProfileId, profile.id));
+  }
+  // Delete staff profiles
+  await db.delete(staffProfiles).where(eq(staffProfiles.userId, id));
+  
+  // 7. Delete inventory logs created by this user
+  await db.delete(inventoryLogs).where(eq(inventoryLogs.createdBy, id));
+  
+  // 8. Delete store transfers created by this user
+  await db.delete(storeTransfers).where(eq(storeTransfers.createdBy, id));
+  
+  // Finally, delete the user
   await db.delete(users).where(eq(users.id, id));
 }
 
