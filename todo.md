@@ -424,3 +424,11 @@
 ## Bug Fixes
 - [x] Fixed user deletion error by adding cascade delete for notification_preferences
 - [ ] Test user deletion functionality after cascade delete fix is deployed
+
+
+## Phase 28: Graceful Logout for Deactivated Users
+- [x] Create deactivation notification/event system
+- [x] Implement session invalidation when user is deactivated
+- [x] Create deactivation alert modal component
+- [x] Add frontend logout handler for deactivated users
+- [x] Test automatic logout when user is deactivated

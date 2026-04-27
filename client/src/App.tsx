@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -31,6 +32,9 @@ import { RolePermissionsMatrix } from "@/pages/RolePermissionsMatrix";
 import CustomRoleBuilder from "@/pages/CustomRoleBuilder";
 import AuditLogViewer from "@/pages/AuditLogViewer";
 import { NotificationPreferencesPage } from "@/pages/NotificationPreferences";
+import { DeactivationAlert } from "@/components/DeactivationAlert";
+import { useDeactivationCheck } from "@/hooks/useDeactivationCheck";
+import { useLocation } from "wouter";
 
 function Router() {
   return (
@@ -209,11 +213,37 @@ function Router() {
 }
 
 function App() {
+  const [isDeactivated, setIsDeactivated] = React.useState(false);
+  const [, setLocation] = useLocation();
+
+  useDeactivationCheck(() => {
+    setIsDeactivated(true);
+  });
+
+  const handleDeactivationConfirm = async () => {
+    // Clear session and redirect to login
+    try {
+      await fetch("/api/trpc/auth.logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+    // Redirect to login page
+    setLocation("/");
+    window.location.href = "/";
+  };
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
+          <DeactivationAlert
+            isOpen={isDeactivated}
+            onConfirm={handleDeactivationConfirm}
+          />
           <Router />
         </TooltipProvider>
       </ThemeProvider>
