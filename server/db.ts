@@ -69,7 +69,6 @@ import {
   notificationPreferences,
   NotificationPreference,
   InsertNotificationPreference,
-  storeTransfers,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2330,7 +2329,6 @@ export async function deleteUser(id: number) {
   await db.delete(inventoryLogs).where(eq(inventoryLogs.createdBy, id));
   
   // 8. Delete store transfers created by this user
-  await db.delete(storeTransfers).where(eq(storeTransfers.createdBy, id));
   
   // Finally, delete the user
   await db.delete(users).where(eq(users.id, id));
