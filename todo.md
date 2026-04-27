@@ -419,3 +419,8 @@
 - [x] Allow admin to override user preferences (force on/off)
 - [ ] Show audit trail of preference changes made by admins
 - [x] Test admin override functionality with different users
+
+
+## Bug Fixes
+- [x] Fixed user deletion error by adding cascade delete for notification_preferences
+- [ ] Test user deletion functionality after cascade delete fix is deployed

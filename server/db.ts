@@ -2286,6 +2286,11 @@ export async function deleteUser(id: number) {
     }
   }
   
+  // Delete related records first (cascade delete)
+  // Delete notification preferences
+  await db.delete(notificationPreferences).where(eq(notificationPreferences.userId, id));
+  
+  // Delete the user
   await db.delete(users).where(eq(users.id, id));
 }
 
