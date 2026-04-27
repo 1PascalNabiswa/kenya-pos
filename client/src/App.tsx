@@ -30,6 +30,7 @@ import PayrollManagement from "@/pages/PayrollManagement";
 import { RolePermissionsMatrix } from "@/pages/RolePermissionsMatrix";
 import CustomRoleBuilder from "@/pages/CustomRoleBuilder";
 import AuditLogViewer from "@/pages/AuditLogViewer";
+import { NotificationPreferencesPage } from "@/pages/NotificationPreferences";
 
 function Router() {
   return (
@@ -112,6 +113,11 @@ function Router() {
       <Route path="/settings" component={() => (
         <POSLayout>
           <Settings />
+        </POSLayout>
+      )} />
+      <Route path="/settings/notifications" component={() => (
+        <POSLayout>
+          <NotificationPreferencesPage />
         </POSLayout>
       )} />
       <Route path="/transactions" component={() => (

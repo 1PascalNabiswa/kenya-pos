@@ -1435,6 +1435,41 @@ const userRouter = router({
     }),
 });
 
+// --- Notification Preferences Router ---
+const notificationPreferencesRouter = router({
+  getPreferences: protectedProcedure
+    .query(async ({ ctx }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      const { getUserNotificationPreferences } = await import("./db");
+      return getUserNotificationPreferences(ctx.user.id);
+    }),
+
+  updatePreference: protectedProcedure
+    .input(z.object({
+      notificationType: z.enum([
+        "low_stock_alert",
+        "large_transaction",
+        "new_form_creation",
+        "new_user_login",
+        "payment_failure",
+        "daily_summary"
+      ]),
+      enabled: z.boolean(),
+      frequency: z.enum(["instant", "daily", "weekly"]).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      const { updateNotificationPreference } = await import("./db");
+      await updateNotificationPreference(
+        ctx.user.id,
+        input.notificationType,
+        input.enabled,
+        input.frequency || "instant"
+      );
+      return { success: true };
+    }),
+});
+
 // ─── App Router ────────────────────────────────────────────────────────────
 export const appRouter = router({
   system: systemRouter,
@@ -1465,6 +1500,7 @@ export const appRouter = router({
   staff: staffRouter,
   payroll: payrollRouter,
   user: userRouter,
+  notificationPreferences: notificationPreferencesRouter,
 });
 
 export type AppRouter = typeof appRouter;

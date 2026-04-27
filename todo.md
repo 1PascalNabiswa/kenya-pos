@@ -390,3 +390,17 @@
 - [ ] Prevent deletion of last admin account
 - [ ] Add validation messages to Administration UI
 - [ ] Test user deletion and creation restrictions
+
+
+## Phase 26: Notification Preferences System
+- [x] Update schema: add notification_preferences table with user_id, notification_type, enabled, frequency columns
+- [x] Create database migration for notification_preferences table
+- [x] Create NotificationPreferences backend routers: get user preferences, update preferences, reset to defaults
+- [x] Define notification types: low_stock_alert, large_transaction, new_form_creation, new_user_login, payment_failure, daily_summary
+- [x] Implement role-based notification defaults (Admin, Manager, Supervisor, Cashier, Waiter, etc.)
+- [x] Build Notification Preferences settings page with checkboxes for each notification type
+- [x] Add frequency selector for daily_summary (instant or daily)
+- [ ] Update notification sending logic to check user preferences before sending
+- [ ] Implement notification preference caching for performance
+- [ ] Write comprehensive notification preferences tests
+- [x] Add Notification Preferences link to Settings page

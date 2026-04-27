@@ -669,3 +669,25 @@ export const storeTransfers = mysqlTable("store_transfers", {
 });
 export type StoreTransfer = typeof storeTransfers.$inferSelect;
 export type InsertStoreTransfer = typeof storeTransfers.$inferInsert;
+
+
+// ─── Notification Preferences ──────────────────────────────────────────────────
+export const notificationPreferences = mysqlTable("notification_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  notificationType: mysqlEnum("notificationType", [
+    "low_stock_alert",
+    "large_transaction",
+    "new_form_creation",
+    "new_user_login",
+    "payment_failure",
+    "daily_summary"
+  ]).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  frequency: mysqlEnum("frequency", ["instant", "daily", "weekly"]).default("instant").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;

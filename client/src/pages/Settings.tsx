@@ -338,6 +338,13 @@ export default function Settings() {
             <Button onClick={saveNotifications} disabled={setMany.isPending}>
               <Save size={14} className="mr-2" /> Save Notification Settings
             </Button>
+            <div className="mt-6 pt-6 border-t border-border">
+              <p className="text-sm font-medium mb-2">Personal Notification Preferences</p>
+              <p className="text-xs text-muted-foreground mb-3">Customize which notifications you receive personally</p>
+              <Button variant="outline" onClick={() => window.location.href = '/settings/notifications'}>
+                <Bell size={14} className="mr-2" /> Manage My Preferences
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

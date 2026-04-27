@@ -66,6 +66,9 @@ import {
   payrollRecords,
   payslips,
   payrollSettings,
+  notificationPreferences,
+  NotificationPreference,
+  InsertNotificationPreference,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2492,4 +2495,142 @@ export async function getPaymentMethodComparison(fromDate: Date, toDate: Date) {
     totalOrders,
     breakdown,
   };
+}
+
+
+// ─── Notification Preferences ──────────────────────────────────────────────────
+export async function getUserNotificationPreferences(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select()
+    .from(notificationPreferences)
+    .where(eq(notificationPreferences.userId, userId));
+  
+  return result;
+}
+
+export async function updateNotificationPreference(
+  userId: number,
+  notificationType: string,
+  enabled: boolean,
+  frequency: string = "instant"
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // First try to update existing preference
+  await db
+    .update(notificationPreferences)
+    .set({ enabled, frequency })
+    .where(
+      and(
+        eq(notificationPreferences.userId, userId),
+        eq(notificationPreferences.notificationType, notificationType as any)
+      )
+    );
+  
+  // If no rows were updated, insert a new preference
+  const existing = await db
+    .select()
+    .from(notificationPreferences)
+    .where(
+      and(
+        eq(notificationPreferences.userId, userId),
+        eq(notificationPreferences.notificationType, notificationType as any)
+      )
+    )
+    .limit(1);
+  
+  if (existing.length === 0) {
+    await db.insert(notificationPreferences).values({
+      userId,
+      notificationType: notificationType as any,
+      enabled,
+      frequency: frequency as any,
+    });
+  }
+}
+
+export async function initializeNotificationPreferences(userId: number, userRole: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // Define default preferences based on role
+  const roleDefaults: Record<string, Record<string, { enabled: boolean; frequency: string }>> = {
+    admin: {
+      low_stock_alert: { enabled: true, frequency: "instant" },
+      large_transaction: { enabled: true, frequency: "instant" },
+      new_form_creation: { enabled: true, frequency: "instant" },
+      new_user_login: { enabled: true, frequency: "instant" },
+      payment_failure: { enabled: true, frequency: "instant" },
+      daily_summary: { enabled: true, frequency: "daily" },
+    },
+    manager: {
+      low_stock_alert: { enabled: true, frequency: "instant" },
+      large_transaction: { enabled: true, frequency: "instant" },
+      new_form_creation: { enabled: true, frequency: "instant" },
+      new_user_login: { enabled: false, frequency: "instant" },
+      payment_failure: { enabled: true, frequency: "instant" },
+      daily_summary: { enabled: true, frequency: "daily" },
+    },
+    supervisor: {
+      low_stock_alert: { enabled: true, frequency: "instant" },
+      large_transaction: { enabled: false, frequency: "instant" },
+      new_form_creation: { enabled: true, frequency: "instant" },
+      new_user_login: { enabled: false, frequency: "instant" },
+      payment_failure: { enabled: true, frequency: "instant" },
+      daily_summary: { enabled: false, frequency: "daily" },
+    },
+    cashier: {
+      low_stock_alert: { enabled: false, frequency: "instant" },
+      large_transaction: { enabled: false, frequency: "instant" },
+      new_form_creation: { enabled: false, frequency: "instant" },
+      new_user_login: { enabled: false, frequency: "instant" },
+      payment_failure: { enabled: true, frequency: "instant" },
+      daily_summary: { enabled: false, frequency: "daily" },
+    },
+    waiter: {
+      low_stock_alert: { enabled: false, frequency: "instant" },
+      large_transaction: { enabled: false, frequency: "instant" },
+      new_form_creation: { enabled: false, frequency: "instant" },
+      new_user_login: { enabled: false, frequency: "instant" },
+      payment_failure: { enabled: false, frequency: "instant" },
+      daily_summary: { enabled: false, frequency: "daily" },
+    },
+  };
+  
+  const defaults = roleDefaults[userRole] || roleDefaults.waiter;
+  
+  for (const [notificationType, prefs] of Object.entries(defaults)) {
+    await db.insert(notificationPreferences).values({
+      userId,
+      notificationType: notificationType as any,
+      enabled: prefs.enabled,
+      frequency: prefs.frequency as any,
+    });
+  }
+}
+
+export async function shouldSendNotification(
+  userId: number,
+  notificationType: string
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const result = await db
+    .select()
+    .from(notificationPreferences)
+    .where(
+      and(
+        eq(notificationPreferences.userId, userId),
+        eq(notificationPreferences.notificationType, notificationType as any)
+      )
+    )
+    .limit(1);
+  
+  if (result.length === 0) return false;
+  return result[0].enabled;
 }
