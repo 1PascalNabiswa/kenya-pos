@@ -271,6 +271,10 @@ class SDKServer {
     let user = await db.getUserByOpenId(sessionUserId);
 
     // If user not in DB, sync from OAuth server automatically
+    // Check if user is active
+    if (!user.isActive) {
+      throw ForbiddenError("Your account has been deactivated. Please contact an administrator.");
+    }
     if (!user) {
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
@@ -288,6 +292,10 @@ class SDKServer {
       }
     }
 
+    // Check if user is active
+    if (!user.isActive) {
+      throw ForbiddenError("Your account has been deactivated. Please contact an administrator.");
+    }
     if (!user) {
       throw ForbiddenError("User not found");
     }
