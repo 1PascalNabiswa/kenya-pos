@@ -1468,6 +1468,51 @@ const notificationPreferencesRouter = router({
       );
       return { success: true };
     }),
+
+  // Admin procedures
+  getAllUserPreferences: protectedProcedure
+    .query(async ({ ctx }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      if (ctx.user.role !== "admin") throw new Error("Only admins can view all user preferences");
+      const { getAllUserNotificationPreferences } = await import("./db");
+      return getAllUserNotificationPreferences();
+    }),
+
+  getUserPreferencesById: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      if (ctx.user.role !== "admin") throw new Error("Only admins can view user preferences");
+      const { getUserNotificationPreferences } = await import("./db");
+      return getUserNotificationPreferences(input.userId);
+    }),
+
+  adminUpdateUserPreference: protectedProcedure
+    .input(z.object({
+      userId: z.number(),
+      notificationType: z.enum([
+        "low_stock_alert",
+        "large_transaction",
+        "new_form_creation",
+        "new_user_login",
+        "payment_failure",
+        "daily_summary"
+      ]),
+      enabled: z.boolean(),
+      frequency: z.enum(["instant", "daily", "weekly"]).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      if (ctx.user.role !== "admin") throw new Error("Only admins can update user preferences");
+      const { updateNotificationPreference } = await import("./db");
+      await updateNotificationPreference(
+        input.userId,
+        input.notificationType,
+        input.enabled,
+        input.frequency || "instant"
+      );
+      return { success: true };
+    }),
 });
 
 // ─── App Router ────────────────────────────────────────────────────────────

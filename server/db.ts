@@ -2634,3 +2634,25 @@ export async function shouldSendNotification(
   if (result.length === 0) return false;
   return result[0].enabled;
 }
+
+
+export async function getAllUserNotificationPreferences() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select({
+      userId: notificationPreferences.userId,
+      userName: users.name,
+      userEmail: users.email,
+      userRole: users.role,
+      notificationType: notificationPreferences.notificationType,
+      enabled: notificationPreferences.enabled,
+      frequency: notificationPreferences.frequency,
+    })
+    .from(notificationPreferences)
+    .innerJoin(users, eq(notificationPreferences.userId, users.id))
+    .orderBy(users.name, notificationPreferences.notificationType);
+  
+  return result;
+}

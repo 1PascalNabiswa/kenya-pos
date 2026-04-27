@@ -406,3 +406,16 @@
 - [ ] Implement notification preference caching for performance
 - [ ] Write comprehensive notification preferences tests
 - [x] Add Notification Preferences link to Settings page
+
+
+## Phase 27: Admin Notification Preferences Management
+- [x] Add backend procedure to get all users with their notification preferences
+- [x] Add backend procedure for admin to update user notification preferences
+- [x] Add permission check to ensure only admins can access these procedures
+- [x] Create admin notification preferences management modal/dialog component
+- [x] Integrate admin preferences manager into User Management page
+- [x] Add "Manage Notifications" button/action for each user in the user list
+- [x] Display user's current preferences in a readable format
+- [x] Allow admin to override user preferences (force on/off)
+- [ ] Show audit trail of preference changes made by admins
+- [x] Test admin override functionality with different users

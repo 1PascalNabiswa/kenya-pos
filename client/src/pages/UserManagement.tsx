@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Search, Shield, Trash2, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, Search, Shield, Trash2, AlertCircle, CheckCircle, Bell } from "lucide-react";
+import { AdminNotificationPreferences } from "@/components/AdminNotificationPreferences";
 
 type UserRole = "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff";
 
@@ -55,6 +56,8 @@ export function UserManagement() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [selectedUserForNotifications, setSelectedUserForNotifications] = useState<any | null>(null);
+  const [isNotificationDialogOpen, setIsNotificationDialogOpen] = useState(false);
 
   // Fetch users list
   const { data: users, isLoading, refetch } = trpc.user.list.useQuery({
@@ -293,7 +296,18 @@ export function UserManagement() {
                       <td className="py-3 px-4 text-sm text-gray-600">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right space-x-2 flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUserForNotifications(user);
+                            setIsNotificationDialogOpen(true);
+                          }}
+                          title="Manage notification preferences"
+                        >
+                          <Bell className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="destructive"
                           size="sm"
@@ -311,6 +325,17 @@ export function UserManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Admin Notification Preferences Dialog */}
+      {selectedUserForNotifications && (
+        <AdminNotificationPreferences
+          userId={selectedUserForNotifications.id}
+          userName={selectedUserForNotifications.name}
+          userEmail={selectedUserForNotifications.email}
+          open={isNotificationDialogOpen}
+          onOpenChange={setIsNotificationDialogOpen}
+        />
+      )}
     </div>
   );
 }
