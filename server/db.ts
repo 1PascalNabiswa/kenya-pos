@@ -2231,6 +2231,13 @@ export async function createUser(data: {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
+  // Check if email already exists
+  const existingUsers = await db.select().from(users).where(eq(users.email, data.email)).limit(1);
+  
+  if (existingUsers.length > 0) {
+    throw new Error(`An account with email ${data.email} already exists. Each user can only have one account.`);
+  }
+  
   // Generate a unique openId for the new user
   const openId = `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
@@ -2255,6 +2262,26 @@ export async function updateUserRole(id: number, role: "admin" | "manager" | "su
 export async function deleteUser(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
+  
+  // Get the user to check their role
+  const userToDeleteList = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  
+  if (userToDeleteList.length === 0) throw new Error("User not found");
+  
+  const userToDelete = userToDeleteList[0];
+  
+  // Prevent deletion of last admin
+  if (userToDelete.role === "admin") {
+    const adminCount = await db
+      .select({ count: sql`COUNT(*)` })
+      .from(users)
+      .where(eq(users.role, "admin"));
+    
+    const count = (adminCount[0]?.count as number) || 0;
+    if (count <= 1) {
+      throw new Error("Cannot delete the last admin account. At least one admin must exist.");
+    }
+  }
   
   await db.delete(users).where(eq(users.id, id));
 }

@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Shield, Trash2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Search, Shield, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 
 type UserRole = "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff";
 
@@ -51,6 +52,9 @@ export function UserManagement() {
     name: "",
     email: "",
   });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   // Fetch users list
   const { data: users, isLoading, refetch } = trpc.user.list.useQuery({
@@ -63,36 +67,42 @@ export function UserManagement() {
       setIsCreateDialogOpen(false);
       setFormData({ name: "", email: "" });
       setSelectedRole("waiter");
+      setCreateError(null);
       refetch();
     },
     onError: (error) => {
-      console.error("Error creating user:", error.message);
+      const errorMessage = error.message || "Failed to create user";
+      setCreateError(errorMessage);
     },
   });
 
   // Update user role mutation
   const updateRoleMutation = trpc.user.updateRole.useMutation({
     onSuccess: () => {
+      setUpdateError(null);
       refetch();
     },
     onError: (error) => {
-      console.error("Error updating role:", error.message);
+      const errorMessage = error.message || "Failed to update user role";
+      setUpdateError(errorMessage);
     },
   });
 
   // Delete user mutation
   const deleteUserMutation = trpc.user.delete.useMutation({
     onSuccess: () => {
+      setDeleteError(null);
       refetch();
     },
     onError: (error) => {
-      console.error("Error deleting user:", error.message);
+      const errorMessage = error.message || "Failed to delete user";
+      setDeleteError(errorMessage);
     },
   });
 
   const handleCreateSubmit = () => {
     if (!formData.name || !formData.email) {
-      console.error("Name and email are required");
+      setCreateError("Name and email are required");
       return;
     }
 
@@ -105,11 +115,13 @@ export function UserManagement() {
 
   const handleDeleteUser = (id: number) => {
     if (confirm("Are you sure you want to delete this user?")) {
+      setDeleteError(null);
       deleteUserMutation.mutate({ id });
     }
   };
 
   const handleChangeRole = (userId: number, newRole: UserRole) => {
+    setUpdateError(null);
     updateRoleMutation.mutate({ id: userId, role: newRole });
   };
 
@@ -136,6 +148,12 @@ export function UserManagement() {
               <DialogTitle>Create New User</DialogTitle>
               <DialogDescription>Add a new user to the system and assign a role</DialogDescription>
             </DialogHeader>
+            {createError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{createError}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-4">
               <Input
                 placeholder="Full Name"
@@ -209,6 +227,14 @@ export function UserManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Error Alert */}
+      {(deleteError || updateError) && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{deleteError || updateError}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Users List */}
       <Card>

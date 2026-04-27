@@ -193,15 +193,18 @@
 
 
 ## Phase 21: User Management System
-- [ ] Update schema: add staff_profiles, user_roles, staff_activity_logs, role_permissions tables
-- [ ] Create User Management backend routers: CRUD, role assignment, activity logging
-- [ ] Build User Management page with staff directory and role assignment
-- [ ] Build Staff Activity Logs viewer page
-- [ ] Build Permissions Matrix configuration page
-- [ ] Add password management and user status controls
-- [ ] Implement user search and filtering
-- [ ] Write comprehensive user management tests
-- [ ] Add User Management menu item to navigation
+- [x] Update schema: add staff_profiles, user_roles, staff_activity_logs, role_permissions tables
+- [x] Create User Management backend routers: CRUD, role assignment, activity logging
+- [x] Build User Management page with staff directory and role assignment
+- [x] Build Staff Activity Logs viewer page
+- [x] Build Permissions Matrix configuration page
+- [x] Add password management and user status controls
+- [x] Implement user search and filtering
+- [x] Write comprehensive user management tests
+- [x] Add User Management menu item to navigation
+- [x] Prevent multiple accounts per email (duplicate email validation in createUser)
+- [x] Prevent deletion of last admin account (validation in deleteUser)
+- [x] Update UI to display validation error messages with Alert components
 
 ## Phase 22: Serving Order Display & Receipt Printing
 - [x] Update PaymentDialog to show receipt after successful payment
@@ -380,3 +383,10 @@
 - [x] Updated receipt header to display actual store name and contact info
 - [x] Updated receipt footer to display custom header and footer messages
 - [x] Receipt now reflects all store information configured in Settings
+
+
+## Phase 38: Fix User Management Issues
+- [ ] Prevent multiple accounts under same email
+- [ ] Prevent deletion of last admin account
+- [ ] Add validation messages to Administration UI
+- [ ] Test user deletion and creation restrictions
