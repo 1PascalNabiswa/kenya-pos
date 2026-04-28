@@ -397,6 +397,16 @@ const ordersRouter = router({
         }).catch(console.error);
       }
 
+      // Log activity
+      await recordStaffActivity({
+        userId: ctx.user?.id,
+        activityType: "create_order",
+        description: `Created order ${orderNumber} for ${input.customerName || 'Walk-in'} - KES ${input.totalAmount}`,
+        entityType: "Order",
+        entityId: id,
+        status: "success",
+      });
+
       return { success: true, orderId: id, orderNumber };
     }),
 

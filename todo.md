@@ -68,6 +68,13 @@
 - [x] Update CSV export to include user name column
 - [x] Test Staff Activity Log displays user names correctly
 
+## Phase 28c: Implement Real-Time Activity Logging
+- [x] Add activity logging to orders.create procedure
+- [x] Implement auto-refresh polling (every 5 seconds) in StaffActivityLogs component
+- [x] Add manual refresh button with loading state
+- [x] Update page description to show auto-refresh status
+- [x] Test real-time activity logging works
+
 ## Phase 29: Fix Credit System
 - [ ] Fix credit.create procedure to create customer first if needed
 - [ ] Ensure creditLimit is a number, not a string

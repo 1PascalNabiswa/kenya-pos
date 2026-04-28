@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Download, AlertCircle } from "lucide-react";
+import { Search, Download, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ACTIVITY_TYPES = [
@@ -49,13 +49,29 @@ export function StaffActivityLogs() {
   const [activityTypeFilter, setActivityTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [days, setDays] = useState(7);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch activity logs
-  const { data: logs, isLoading } = trpc.staff.getActivityLogs.useQuery({
+  // Fetch activity logs with polling
+  const { data: logs, isLoading, refetch } = trpc.staff.getActivityLogs.useQuery({
     activityType: activityTypeFilter && activityTypeFilter !== "all" ? activityTypeFilter : undefined,
     days,
     limit: 500,
   });
+
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  };
 
   const handleExport = () => {
     if (!logs) return;
@@ -97,12 +113,18 @@ export function StaffActivityLogs() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Staff Activity Logs</h1>
-          <p className="text-gray-600 mt-1">Monitor staff activities and system events</p>
+          <p className="text-gray-600 mt-1">Monitor staff activities and system events (Auto-refreshing every 5 seconds)</p>
         </div>
-        <Button onClick={handleExport} variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleManualRefresh} variant="outline" className="gap-2" disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button onClick={handleExport} variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
