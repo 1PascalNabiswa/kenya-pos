@@ -37,14 +37,21 @@ import { DeactivationAlert } from "./components/DeactivationAlert";
 import { useDeactivationCheck } from "./hooks/useDeactivationCheck";
 import { useState } from "react";
 import { useDefaultLandingPage } from "./hooks/useDefaultLandingPage";
+import { useAuth } from "./_core/hooks/useAuth";
 
 // Component to redirect to role-based landing page
 function RoleBasedRedirect() {
   const [, setLocation] = useLocation();
+  const { user, loading } = useAuth();
   const landingPage = useDefaultLandingPage();
   
+  // Wait for user data to load before redirecting
+  if (loading) {
+    return null; // Show nothing while loading
+  }
+  
   // Redirect to the landing page
-  if (landingPage !== "/") {
+  if (landingPage !== "/" && user) {
     setLocation(landingPage);
   }
   
