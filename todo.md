@@ -432,3 +432,18 @@
 - [x] Create deactivation alert modal component
 - [x] Add frontend logout handler for deactivated users
 - [x] Test automatic logout when user is deactivated
+
+
+## Critical Bugs to Fix
+- [ ] Fix smooth scrolling issue on all pages
+- [ ] Fix page navigation issue between pages
+- [ ] Fix cart items being reset immediately after adding to cart
+- [ ] Investigate if deactivation check hook is causing conflicts
+
+## Phase 25: Graceful Deactivation Messaging
+- [x] Implement deactivation status check endpoint that returns user active status
+- [x] Create DeactivationAlert component with friendly message
+- [x] Implement useDeactivationCheck hook that polls for account status changes
+- [x] Show soft message to deactivated users before logout
+- [x] Test deactivation workflow with admin deactivating a user
+- [x] Verify deactivated user receives graceful message

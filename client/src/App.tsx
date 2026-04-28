@@ -32,9 +32,10 @@ import { RolePermissionsMatrix } from "@/pages/RolePermissionsMatrix";
 import CustomRoleBuilder from "@/pages/CustomRoleBuilder";
 import AuditLogViewer from "@/pages/AuditLogViewer";
 import { NotificationPreferencesPage } from "@/pages/NotificationPreferences";
-import { DeactivationAlert } from "@/components/DeactivationAlert";
-import { useDeactivationCheck } from "@/hooks/useDeactivationCheck";
 import { useLocation } from "wouter";
+import { DeactivationAlert } from "./components/DeactivationAlert";
+import { useDeactivationCheck } from "./hooks/useDeactivationCheck";
+import { useState } from "react";
 
 function Router() {
   return (
@@ -212,8 +213,8 @@ function Router() {
   );
 }
 
-function App() {
-  const [isDeactivated, setIsDeactivated] = React.useState(false);
+function AppContent() {
+  const [isDeactivated, setIsDeactivated] = useState(false);
   const [, setLocation] = useLocation();
 
   useDeactivationCheck(() => {
@@ -236,15 +237,23 @@ function App() {
   };
 
   return (
+    <>
+      <DeactivationAlert
+        isOpen={isDeactivated}
+        onConfirm={handleDeactivationConfirm}
+      />
+      <Router />
+    </>
+  );
+}
+
+function App() {
+  return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <DeactivationAlert
-            isOpen={isDeactivated}
-            onConfirm={handleDeactivationConfirm}
-          />
-          <Router />
+          <AppContent />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

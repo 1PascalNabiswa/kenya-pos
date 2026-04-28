@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { customerWallets } from "../drizzle/schema";
+import { customerWallets, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -1542,6 +1542,26 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    checkStatus: protectedProcedure.query(async (opts) => {
+      // Get fresh user data from database to check current active status
+      const db = await getDb();
+      if (!db) {
+        return {
+          isActive: false,
+          userId: opts.ctx.user!.id,
+        };
+      }
+      const result = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, opts.ctx.user!.id))
+        .limit(1);
+      const user = result.length > 0 ? result[0] : null;
+      return {
+        isActive: user?.isActive ?? false,
+        userId: user?.id,
+      };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
