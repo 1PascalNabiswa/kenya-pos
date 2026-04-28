@@ -27,6 +27,13 @@ export const ROLE_PAGE_ACCESS: Record<string, string[]> = {
     "/staff-management",
     "/settings",
   ],
+  supervisor: [
+    "/dashboard",
+    "/sales/pos",
+    "/sales/orders",
+    "/customers",
+    "/reports/sales",
+  ],
   cashier: [
     "/sales/pos",
     "/sales/orders",
@@ -37,11 +44,14 @@ export const ROLE_PAGE_ACCESS: Record<string, string[]> = {
     "/sales/pos",
     "/customers",
   ],
+  inventory_manager: [
+    "/inventory/products",
+    "/inventory/categories",
+    "/inventory/alerts",
+    "/reports/sales",
+  ],
   kitchen_staff: [
     "/kitchen",
-  ],
-  serving_staff: [
-    "/serving",
   ],
   user: [
     "/sales/pos",
