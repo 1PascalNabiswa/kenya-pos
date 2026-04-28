@@ -60,7 +60,6 @@ const navItems: NavItem[] = [
     children: [
       { label: "Sales Transaction", href: "/sales/pos", icon: <ShoppingCart size={14} /> },
       { label: "Sales Orders", href: "/sales/orders", icon: <FileText size={14} /> },
-      { label: "Invoices", href: "/sales/invoices", icon: <FileText size={14} /> },
       { label: "Customers", href: "/sales/customers", icon: <Users size={14} /> },
       { label: "Transactions", href: "/sales/transactions", icon: <CreditCard size={14} /> },
     ],
@@ -185,7 +184,6 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
           if (child.label === "Alerts" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
           if (child.label === "Sales Transaction" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
           if (child.label === "Sales Orders" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
-          if (child.label === "Invoices" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
           if (child.label === "Sales Reports" && !canAccessFeature(user.role as any, 'canViewReports')) return false;
           if (child.label === "Inventory Reports" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
           if (child.label === "Branches" && !canAccessFeature(user.role as any, 'canAccessBranches')) return false;

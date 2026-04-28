@@ -102,11 +102,6 @@ function Router() {
           <Customers />
         </POSLayout>
       )} />
-      <Route path="/sales/invoices" component={() => (
-        <POSLayout>
-          <SalesOrders />
-        </POSLayout>
-      )} />
       <Route path="/customers" component={() => (
         <POSLayout>
           <Customers />

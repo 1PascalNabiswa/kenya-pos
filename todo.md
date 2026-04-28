@@ -48,3 +48,9 @@
 - [x] Test redirects for Waiter (redirects to /sales/pos)
 - [x] Test redirects for Manager (redirects to /dashboard)
 - [x] Verify sensitive pages are hidden from unauthorized roles via canAccessPage function
+
+## Phase 27: Remove Invoices Page
+- [x] Remove Invoices page from Sales menu navigation
+- [x] Remove /invoices route from App.tsx
+- [x] Remove Invoices component import
+- [x] Test navigation to verify Invoices is removed
