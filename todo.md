@@ -38,3 +38,13 @@
 - [x] Show soft message to deactivated users before logout
 - [x] Test deactivation workflow with admin deactivating a user
 - [x] Verify deactivated user receives graceful message
+
+## Phase 26: Role-Based Landing Pages
+- [x] Define page access permissions for each role (Admin, Manager, Cashier, Waiter, etc.)
+- [x] Create role-based page access mapping in constants (rolePageAccess.ts)
+- [x] Implement landing page redirect logic based on user role (useDefaultLandingPage hook)
+- [x] Test redirects for Admin (redirects to /dashboard)
+- [x] Test redirects for Cashier (redirects to /sales/pos)
+- [x] Test redirects for Waiter (redirects to /sales/pos)
+- [x] Test redirects for Manager (redirects to /dashboard)
+- [x] Verify sensitive pages are hidden from unauthorized roles via canAccessPage function

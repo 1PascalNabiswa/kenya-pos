@@ -36,15 +36,25 @@ import { useLocation } from "wouter";
 import { DeactivationAlert } from "./components/DeactivationAlert";
 import { useDeactivationCheck } from "./hooks/useDeactivationCheck";
 import { useState } from "react";
+import { useDefaultLandingPage } from "./hooks/useDefaultLandingPage";
+
+// Component to redirect to role-based landing page
+function RoleBasedRedirect() {
+  const [, setLocation] = useLocation();
+  const landingPage = useDefaultLandingPage();
+  
+  // Redirect to the landing page
+  if (landingPage !== "/") {
+    setLocation(landingPage);
+  }
+  
+  return null;
+}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={() => (
-        <POSLayout>
-          <Dashboard />
-        </POSLayout>
-      )} />
+      <Route path="/" component={RoleBasedRedirect} />
       <Route path="/dashboard" component={() => (
         <POSLayout>
           <Dashboard />
