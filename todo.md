@@ -61,6 +61,13 @@
 - [x] Update filter logic to handle "all" value
 - [x] Test Staff Activity Log page loads without errors
 
+## Phase 28b: Display User Names in Staff Activity Logs
+- [x] Update getStaffActivityLogs to join with users table and include user name
+- [x] Update StaffActivityLogs component to display user name instead of user ID
+- [x] Update search functionality to search by user name
+- [x] Update CSV export to include user name column
+- [x] Test Staff Activity Log displays user names correctly
+
 ## Phase 29: Fix Credit System
 - [ ] Fix credit.create procedure to create customer first if needed
 - [ ] Ensure creditLimit is a number, not a string

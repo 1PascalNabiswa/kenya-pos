@@ -1427,8 +1427,19 @@ export async function getStaffActivityLogs(filters?: {
   if (filters?.endDate) conditions.push(lte(staffActivityLogs.createdAt, filters.endDate));
   
   return db
-    .select()
+    .select({
+      id: staffActivityLogs.id,
+      userId: staffActivityLogs.userId,
+      userName: users.name,
+      activityType: staffActivityLogs.activityType,
+      description: staffActivityLogs.description,
+      entityType: staffActivityLogs.entityType,
+      entityId: staffActivityLogs.entityId,
+      status: staffActivityLogs.status,
+      createdAt: staffActivityLogs.createdAt,
+    })
     .from(staffActivityLogs)
+    .leftJoin(users, eq(staffActivityLogs.userId, users.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(staffActivityLogs.createdAt))
     .limit(filters?.limit || 1000);

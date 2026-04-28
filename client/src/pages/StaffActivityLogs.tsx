@@ -61,11 +61,11 @@ export function StaffActivityLogs() {
     if (!logs) return;
 
     const csv = [
-      ["Date", "Time", "User ID", "Activity Type", "Description", "Entity Type", "Entity ID", "Status"],
+      ["Date", "Time", "User Name", "Activity Type", "Description", "Entity Type", "Entity ID", "Status"],
       ...logs.map((log: any) => [
         new Date(log.createdAt).toLocaleDateString(),
         new Date(log.createdAt).toLocaleTimeString(),
-        log.userId,
+        log.userName || `User ${log.userId}`,
         log.activityType,
         log.description || "",
         log.entityType || "",
@@ -88,6 +88,7 @@ export function StaffActivityLogs() {
   const filteredLogs = logs?.filter((log: any) =>
     search === "" ||
     log.description?.toLowerCase().includes(search.toLowerCase()) ||
+    log.userName?.toLowerCase().includes(search.toLowerCase()) ||
     log.userId.toString().includes(search)
   ) || [];
 
@@ -111,7 +112,7 @@ export function StaffActivityLogs() {
             <div className="flex-1 min-w-64 relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search by user ID or description..."
+                placeholder="Search by user name or description..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -170,7 +171,7 @@ export function StaffActivityLogs() {
                       <Badge className={activityColors[log.activityType] || "bg-gray-100"}>
                         {log.activityType.replace(/_/g, " ")}
                       </Badge>
-                      <span className="text-sm font-medium">User ID: {log.userId}</span>
+                      <span className="text-sm font-medium">{log.userName || `User ${log.userId}`}</span>
                     </div>
                     <span className="text-sm text-gray-500">
                       {new Date(log.createdAt).toLocaleString()}
