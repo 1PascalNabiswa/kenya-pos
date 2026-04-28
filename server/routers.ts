@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { customerWallets, users, customers } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { customerWallets, users, customers, creditAccounts } from "../drizzle/schema";
+import { eq, desc, and } from "drizzle-orm";
 import Stripe from "stripe";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
@@ -904,26 +904,36 @@ const creditRouter = router({
       
       if (!customerId) throw new Error("Failed to create or find customer");
       
-      // Set due date to 30 days from now
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30);
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
       
-      const result = await createCreditAccount({
-        customerId: customerId,
-        creditLimit: "0.00",
-        amountUsed: "0.00",
-        status: "active",
-        interestRate: "0.00",
-        dueDate: dueDate,
-      } as any);
-      await recordAuditLog({
-        module: "POS",
-        userId: ctx.user?.id,
-        action: "CREATE",
-        entityType: "CreditAccount",
-        beforeValue: input,
-      });
-      return result;
+      try {
+        const result = await db.insert(creditAccounts).values({
+          customerId: customerId,
+          studentName: input.studentName,
+          studentId: input.studentId || "",
+          balance: 0,
+          totalCredit: 0,
+          totalPaid: 0,
+          status: "active",
+        } as any);
+        
+        await recordAuditLog({
+          module: "POS",
+          userId: ctx.user?.id,
+          action: "CREATE",
+          entityType: "CreditAccount",
+          beforeValue: input,
+        });
+        
+        return { success: true, id: customerId };
+      } catch (err) {
+        console.error("Failed to create credit account:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to create credit account: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
     }),
 
   list: protectedProcedure

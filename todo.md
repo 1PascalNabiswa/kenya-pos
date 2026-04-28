@@ -76,7 +76,7 @@
 - [x] Test real-time activity logging works
 
 ## Phase 29: Fix Credit System
-- [ ] Fix credit.create procedure to create customer first if needed
-- [ ] Ensure creditLimit is a number, not a string
-- [ ] Test adding students to credit system
-- [ ] Verify credit account appears in the table
+- [x] Update Drizzle schema to match actual database structure
+- [x] Fix credit.create procedure to return correct ID
+- [x] Test adding students to credit system
+- [x] Verify credit account appears in the table

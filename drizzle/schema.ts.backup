@@ -262,20 +262,18 @@ export type InsertForm = typeof forms.$inferInsert;
 // ─── Credit Accounts ───────────────────────────────────────────────────────
 export const creditAccounts = mysqlTable("credit_accounts", {
   id: int("id").autoincrement().primaryKey(),
-  customerId: int("customerId").references(() => customers.id),
-  studentName: varchar("studentName", { length: 200 }).notNull(),
-  studentId: varchar("studentId", { length: 100 }),
-  balance: decimal("balance", { precision: 12, scale: 2 }).default("0"),
-  totalCredit: decimal("totalCredit", { precision: 12, scale: 2 }).default("0"),
-  totalPaid: decimal("totalPaid", { precision: 12, scale: 2 }).default("0"),
-  status: mysqlEnum("status", ["active", "settled", "suspended"]).default("active").notNull(),
-  authorizedBy: int("authorizedBy").references(() => users.id),
+  customerId: int("customerId").notNull().references(() => customers.id),
+  creditLimit: decimal("creditLimit", { precision: 12, scale: 2 }).notNull(),
+  amountUsed: decimal("amountUsed", { precision: 12, scale: 2 }).default("0").notNull(),
+  status: mysqlEnum("status", ["active", "suspended", "closed"]).default("active").notNull(),
+  interestRate: decimal("interestRate", { precision: 5, scale: 2 }).default("0"),
+  dueDate: timestamp("dueDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
 export type CreditAccount = typeof creditAccounts.$inferSelect;
 export type InsertCreditAccount = typeof creditAccounts.$inferInsert;
-
 
 // ─── Credit Transactions ───────────────────────────────────────────────────
 export const creditTransactions = mysqlTable("credit_transactions", {
