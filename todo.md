@@ -80,3 +80,12 @@
 - [x] Fix credit.create procedure to return correct ID
 - [x] Test adding students to credit system
 - [x] Verify credit account appears in the table
+
+## Phase 30: Credit Account Management
+- [ ] Add database functions to update credit balance and status
+- [ ] Add tRPC procedures for updating credit account
+- [ ] Create credit account detail modal/dialog
+- [ ] Implement balance update functionality (add/deduct credit)
+- [ ] Implement status change functionality (active/settled/suspended)
+- [ ] Add transaction history display
+- [ ] Test credit management features

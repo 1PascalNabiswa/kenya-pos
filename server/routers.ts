@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { getDb } from "./db";
+import { getDb, updateCreditAccountBalance, updateCreditAccountStatus, updateCreditAccountTotalCredit, updateCreditAccountTotalPaid } from "./db";
 import { customerWallets, users, customers, creditAccounts } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import Stripe from "stripe";
@@ -952,6 +952,46 @@ const creditRouter = router({
     .input(z.object({ creditAccountId: z.number() }))
     .query(async ({ input }) => {
       return getCreditTransactionHistory(input.creditAccountId);
+    }),
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      balance: z.number().optional(),
+      totalCredit: z.number().optional(),
+      totalPaid: z.number().optional(),
+      status: z.enum(["active", "settled", "suspended"]).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        if (input.balance !== undefined) {
+          await updateCreditAccountBalance(input.id, input.balance);
+        }
+        if (input.status !== undefined) {
+          await updateCreditAccountStatus(input.id, input.status);
+        }
+        if (input.totalCredit !== undefined) {
+          await updateCreditAccountTotalCredit(input.id, input.totalCredit);
+        }
+        if (input.totalPaid !== undefined) {
+          await updateCreditAccountTotalPaid(input.id, input.totalPaid);
+        }
+
+        await recordAuditLog({
+          module: "POS",
+          userId: ctx.user?.id,
+          action: "UPDATE",
+          entityType: "CreditAccount",
+          afterValue: input,
+        });
+
+        return { success: true };
+      } catch (err) {
+        console.error("Failed to update credit account:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to update credit account: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
     }),
 });
 

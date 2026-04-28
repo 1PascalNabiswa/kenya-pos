@@ -2751,3 +2751,32 @@ export async function getAllUserNotificationPreferences() {
   
   return result;
 }
+
+// ─── Credit Account Management ─────────────────────────────────────────────
+export async function updateCreditAccountBalance(id: number, newBalance: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(creditAccounts).set({ balance: newBalance }).where(eq(creditAccounts.id, id));
+}
+
+export async function updateCreditAccountStatus(id: number, status: "active" | "settled" | "suspended") {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(creditAccounts).set({ status: status }).where(eq(creditAccounts.id, id));
+}
+
+export async function updateCreditAccountTotalCredit(id: number, totalCredit: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(creditAccounts).set({ totalCredit: totalCredit }).where(eq(creditAccounts.id, id));
+}
+
+export async function updateCreditAccountTotalPaid(id: number, totalPaid: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(creditAccounts).set({ totalPaid: totalPaid }).where(eq(creditAccounts.id, id));
+}
