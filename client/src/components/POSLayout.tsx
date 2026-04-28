@@ -256,7 +256,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
         className={`sidebar fixed lg:static flex-shrink-0 flex flex-col h-full overflow-y-auto z-50 transform transition-all duration-300 ${
           sidebarCollapsed ? "hidden lg:hidden" : ""
         } ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 pointer-events-none"
+          sidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full lg:translate-x-0 lg:pointer-events-auto pointer-events-none"
         } ${
           sidebarCollapsed ? "lg:w-0" : "w-60"
         }`}
