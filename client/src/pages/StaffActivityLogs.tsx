@@ -46,13 +46,13 @@ const activityColors: Record<string, string> = {
 };
 
 export function StaffActivityLogs() {
-  const [activityTypeFilter, setActivityTypeFilter] = useState<string>("");
+  const [activityTypeFilter, setActivityTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [days, setDays] = useState(7);
 
   // Fetch activity logs
   const { data: logs, isLoading } = trpc.staff.getActivityLogs.useQuery({
-    activityType: activityTypeFilter || undefined,
+    activityType: activityTypeFilter && activityTypeFilter !== "all" ? activityTypeFilter : undefined,
     days,
     limit: 500,
   });
@@ -122,7 +122,7 @@ export function StaffActivityLogs() {
                 <SelectValue placeholder="Activity type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Activities</SelectItem>
+                <SelectItem value="all">All Activities</SelectItem>
                 {ACTIVITY_TYPES.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type.replace(/_/g, " ")}

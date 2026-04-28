@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { customerWallets, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { customerWallets, users, customers } from "../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import Stripe from "stripe";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
@@ -861,10 +861,51 @@ const creditRouter = router({
   create: protectedProcedure
     .input(z.object({ studentName: z.string(), studentId: z.string().optional(), customerId: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
+      let customerId = input.customerId;
+      
+      // If no customerId provided, create a new customer for the student
+      if (!customerId) {
+        const db = await getDb();
+        if (!db) throw new Error("DB unavailable");
+        
+        try {
+          const customerResult = await db.insert(customers).values({
+            name: input.studentName,
+            email: `${input.studentId || input.studentName.toLowerCase().replace(/\s+/g, '.')}@student.local`,
+            phone: input.studentId || "",
+          });
+          
+          // Get the inserted customer ID
+          const insertedCustomer = await db.select().from(customers)
+            .where(eq(customers.name, input.studentName))
+            .orderBy(desc(customers.id))
+            .limit(1);
+          
+          if (!insertedCustomer[0]) throw new Error("Failed to create customer");
+          customerId = insertedCustomer[0].id;
+        } catch (err) {
+          console.error("Failed to create customer:", err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Failed to create customer: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
+      
+      if (!customerId) throw new Error("Failed to create or find customer");
+      
+      // Set due date to 30 days from now
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+      
       const result = await createCreditAccount({
-        customerId: input.customerId || 0,
-        creditLimit: "0",
-      });
+        customerId: customerId,
+        creditLimit: "0.00",
+        amountUsed: "0.00",
+        status: "active",
+        interestRate: "0.00",
+        dueDate: dueDate,
+      } as any);
       await recordAuditLog({
         module: "POS",
         userId: ctx.user?.id,

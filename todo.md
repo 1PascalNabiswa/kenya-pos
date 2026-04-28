@@ -54,3 +54,15 @@
 - [x] Remove /invoices route from App.tsx
 - [x] Remove Invoices component import
 - [x] Test navigation to verify Invoices is removed
+
+## Phase 28: Fix Staff Activity Log Page
+- [x] Fix Select component with empty string value error
+- [x] Change empty value to "all" to comply with shadcn/ui Select requirements
+- [x] Update filter logic to handle "all" value
+- [x] Test Staff Activity Log page loads without errors
+
+## Phase 29: Fix Credit System
+- [ ] Fix credit.create procedure to create customer first if needed
+- [ ] Ensure creditLimit is a number, not a string
+- [ ] Test adding students to credit system
+- [ ] Verify credit account appears in the table
