@@ -217,9 +217,10 @@ function AppContent() {
   const [isDeactivated, setIsDeactivated] = useState(false);
   const [, setLocation] = useLocation();
 
-  useDeactivationCheck(() => {
-    setIsDeactivated(true);
-  });
+  // Disabled deactivation check - causing instability
+  // useDeactivationCheck(() => {
+  //   setIsDeactivated(true);
+  // });
 
   const handleDeactivationConfirm = async () => {
     // Clear session and redirect to login

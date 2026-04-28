@@ -151,6 +151,13 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Close sidebar when clicking on product grid area
+  const handleMainContentClick = () => {
+    if (sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
+
   // Filter navigation items based on user role
   const filterNavItems = (items: NavItem[]): NavItem[] => {
     if (!user?.role) return [];
@@ -249,7 +256,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
         className={`sidebar fixed lg:static flex-shrink-0 flex flex-col h-full overflow-y-auto z-50 transform transition-all duration-300 ${
           sidebarCollapsed ? "hidden lg:hidden" : ""
         } ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 pointer-events-none"
         } ${
           sidebarCollapsed ? "lg:w-0" : "w-60"
         }`}
@@ -382,7 +389,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" onClick={handleMainContentClick}>
           <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
             {children}
           </div>
