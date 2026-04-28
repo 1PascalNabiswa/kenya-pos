@@ -89,3 +89,11 @@
 - [ ] Implement status change functionality (active/settled/suspended)
 - [ ] Add transaction history display
 - [ ] Test credit management features
+
+## Phase 31: Credit Transaction Log Feature
+- [x] Create credit_transactions table schema (already existed)
+- [x] Add database functions for transaction logging (already existed)
+- [x] Create tRPC procedures for transaction operations (already existed)
+- [x] Build CreditTransactionLog UI component with search, filter, and export
+- [x] Integrate transaction log into CreditAccountModal with tabs
+- [x] Test transaction log features - working perfectly

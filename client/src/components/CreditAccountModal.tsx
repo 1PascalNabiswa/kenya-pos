@@ -16,7 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { CreditTransactionLog } from "./CreditTransactionLog";
 
 
 interface CreditAccount {
@@ -52,6 +59,7 @@ export function CreditAccountModal({
   );
   const [status, setStatus] = useState(account?.status || "active");
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
 
   const updateMutation = trpc.credit.update.useMutation();
 
@@ -68,12 +76,12 @@ export function CreditAccountModal({
         status: status as "active" | "settled" | "suspended",
       });
 
-alert("Credit account updated successfully");
+      alert("Credit account updated successfully");
 
       onSuccess();
       onClose();
     } catch (error) {
-alert("Error: " + (error instanceof Error ? error.message : "Failed to update account"));
+      alert("Error: " + (error instanceof Error ? error.message : "Failed to update account"));
     } finally {
       setIsLoading(false);
     }
@@ -81,87 +89,112 @@ alert("Error: " + (error instanceof Error ? error.message : "Failed to update ac
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Manage Credit Account</DialogTitle>
+          <DialogTitle>Manage Credit Account - {account?.studentName}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Student Name</Label>
-            <Input value={account?.studentName || ""} disabled />
-          </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details">Account Details</TabsTrigger>
+            <TabsTrigger value="transactions">Transaction History</TabsTrigger>
+          </TabsList>
 
-          <div>
-            <Label className="text-sm font-medium">Student ID</Label>
-            <Input value={account?.studentId || ""} disabled />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="details" className="space-y-4">
             <div>
-              <Label htmlFor="balance" className="text-sm font-medium">
-                Balance (KES)
+              <Label className="text-sm font-medium">Student Name</Label>
+              <Input value={account?.studentName || ""} disabled />
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">Student ID</Label>
+              <Input value={account?.studentId || ""} disabled />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="balance" className="text-sm font-medium">
+                  Balance (KES)
+                </Label>
+                <Input
+                  id="balance"
+                  type="number"
+                  step="0.01"
+                  value={balance}
+                  onChange={(e) => setBalance(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="totalCredit" className="text-sm font-medium">
+                  Total Credit (KES)
+                </Label>
+                <Input
+                  id="totalCredit"
+                  type="number"
+                  step="0.01"
+                  value={totalCredit}
+                  onChange={(e) => setTotalCredit(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="totalPaid" className="text-sm font-medium">
+                Total Paid (KES)
               </Label>
               <Input
-                id="balance"
+                id="totalPaid"
                 type="number"
                 step="0.01"
-                value={balance}
-                onChange={(e) => setBalance(e.target.value)}
+                value={totalPaid}
+                onChange={(e) => setTotalPaid(e.target.value)}
               />
             </div>
 
             <div>
-              <Label htmlFor="totalCredit" className="text-sm font-medium">
-                Total Credit (KES)
+              <Label htmlFor="status" className="text-sm font-medium">
+                Status
               </Label>
-              <Input
-                id="totalCredit"
-                type="number"
-                step="0.01"
-                value={totalCredit}
-                onChange={(e) => setTotalCredit(e.target.value)}
-              />
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger id="status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="settled">Settled</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
+          </TabsContent>
 
-          <div>
-            <Label htmlFor="totalPaid" className="text-sm font-medium">
-              Total Paid (KES)
-            </Label>
-            <Input
-              id="totalPaid"
-              type="number"
-              step="0.01"
-              value={totalPaid}
-              onChange={(e) => setTotalPaid(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="status" className="text-sm font-medium">
-              Status
-            </Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="settled">Settled</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+          <TabsContent value="transactions">
+            {account && (
+              <CreditTransactionLog
+                creditAccountId={account.id}
+                studentName={account.studentName}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Changes"}
-          </Button>
+          {activeTab === "details" && (
+            <>
+              <Button variant="outline" onClick={onClose} disabled={isLoading}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </>
+          )}
+          {activeTab === "transactions" && (
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
