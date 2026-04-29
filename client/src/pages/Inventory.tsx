@@ -135,7 +135,7 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
           <div className="flex gap-4 items-center w-full">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <Input placeholder="Search products..." className="pl-12 w-full h-12 text-base rounded-lg border-2 bg-white text-black" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              <Input placeholder="Search products..." className="pl-12 w-full h-16 text-lg rounded-lg border-2 bg-white text-black" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
             </div>
             <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v === "all" ? "" : v); setPage(1); }}>
               <SelectTrigger className="w-32 h-12 flex-shrink-0 rounded-lg">
