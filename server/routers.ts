@@ -99,7 +99,7 @@ import {
   recordStaffActivity,
   getStaffActivityLogs,
   getUserActivitySummary,
-
+  createStaffEmployment,
   getStaffEmployment,
   getAllStaffEmployment,
   recordAttendance,
@@ -127,7 +127,6 @@ import {
   reactivateUser,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
-import { createEmploymentRecord } from "./payroll-functions";
 import { storagePut } from "./storage";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { COOKIE_NAME } from "../shared/const";
@@ -414,14 +413,14 @@ const ordersRouter = router({
   updateStatus: protectedProcedure
     .input(z.object({
       id: z.number(),
-      orderStatus: z.enum(["pending", "processing", "completed", "cancelled"]).optional(),
-      paymentStatus: z.enum(["pending", "paid", "failed", "refunded"]).optional(),
+      orderStatus: z.string().optional(),
+      paymentStatus: z.string().optional(),
       mpesaTransactionId: z.string().optional(),
       receiptUrl: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      await updateOrderStatus(id, data as any);
+      await updateOrderStatus(id, data);
       // Update customer total spent when order paid
       if (data.paymentStatus === "paid") {
         const order = await getOrderById(id);
@@ -453,7 +452,7 @@ const paymentsRouter = router({
         const result = await initiateStkPush({
           phone: input.phone,
           amount: input.amount,
-          orderId: input.orderNumber,
+          id: input.orderNumber,
           description: `KenPOS Order ${input.orderNumber}`,
           callbackUrl,
         });
@@ -1237,13 +1236,7 @@ const payrollRouter = router({
       startDate: z.date(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const db = getDb();
-      const result = await createEmploymentRecord(db, {
-        ...input,
-        baseSalary: input.baseSalary || 0,
-        hourlyRate: input.hourlyRate || 0,
-        dailyRate: input.dailyRate || 0,
-      });
+      const result = await createEmploymentRecord(input);
       await recordStaffActivity({
         userId: ctx.user?.id,
         activityType: "manage_user",
@@ -1492,10 +1485,9 @@ const userRouter = router({
       const result = await createUser(input);
       
       if (ctx.user && result) {
-        const insertedId = (result as any)?.insertId || 0;
         await logUserCreation(
           ctx.user.id,
-          insertedId,
+          result.id || 0,
           input,
           ctx.req?.ip
         );

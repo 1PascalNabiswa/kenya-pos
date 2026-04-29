@@ -184,12 +184,12 @@ export async function getProducts(opts?: {
   }
 
   // Build the query with proper where clause handling
-  let query: any = db.select().from(products);
+  let query = db.select().from(products);
   if (conditions.length > 0) {
     query = query.where(and(...conditions));
   }
   
-  let countQuery: any = db.select({ count: sql<number>`count(*)` }).from(products);
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(products);
   if (conditions.length > 0) {
     countQuery = countQuery.where(and(...conditions));
   }
@@ -2757,7 +2757,7 @@ export async function updateCreditAccountBalance(id: number, newBalance: number)
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
-  await db.update(creditAccounts).set({ balance: String(newBalance) }).where(eq(creditAccounts.id, id));
+  await db.update(creditAccounts).set({ balance: newBalance }).where(eq(creditAccounts.id, id));
 }
 
 export async function updateCreditAccountStatus(id: number, status: "active" | "settled" | "suspended") {
@@ -2771,12 +2771,12 @@ export async function updateCreditAccountTotalCredit(id: number, totalCredit: nu
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
-  await db.update(creditAccounts).set({ totalCredit: String(totalCredit) }).where(eq(creditAccounts.id, id));
+  await db.update(creditAccounts).set({ totalCredit: totalCredit }).where(eq(creditAccounts.id, id));
 }
 
 export async function updateCreditAccountTotalPaid(id: number, totalPaid: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   
-  await db.update(creditAccounts).set({ totalPaid: String(totalPaid) }).where(eq(creditAccounts.id, id));
+  await db.update(creditAccounts).set({ totalPaid: totalPaid }).where(eq(creditAccounts.id, id));
 }
