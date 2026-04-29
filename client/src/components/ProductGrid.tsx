@@ -1,7 +1,7 @@
-import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Search, User, X, Wallet } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Product {
   id: number;
@@ -18,6 +18,13 @@ interface Category {
   name: string;
 }
 
+interface Customer {
+  id: number;
+  name: string;
+  phone?: string;
+  wallet_balance?: number;
+}
+
 interface ProductGridProps {
   products: Product[];
   categories: Category[];
@@ -26,6 +33,9 @@ interface ProductGridProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAddToCart: (product: Product) => void;
+  customers?: Customer[];
+  selectedCustomer?: Customer | null;
+  onSelectCustomer?: (customer: Customer | null) => void;
 }
 
 function getCategoryCount(products: Product[], categoryId: number | null): number {
@@ -41,16 +51,83 @@ export default function ProductGrid({
   searchQuery,
   onSearchChange,
   onAddToCart,
+  customers = [],
+  selectedCustomer = null,
+  onSelectCustomer = () => {},
 }: ProductGridProps) {
   const [showImages, setShowImages] = useState(true);
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+
+  const filteredCustomers = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      c.phone?.includes(customerSearch)
+  );
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Top controls: Customer Type | Search | Toggle */}
       <div className="flex gap-2 mb-4 items-center">
-        {/* Customer Type Button */}
-        <button className="px-4 py-2 rounded-lg text-xs font-medium whitespace-nowrap bg-primary text-primary-foreground hover:opacity-90 transition-all">
-          Walk-in Customer
-        </button>
+        {/* Customer Selector */}
+        {selectedCustomer ? (
+          <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 flex-shrink-0">
+            <User className="w-4 h-4 text-primary" />
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-medium truncate">{selectedCustomer.name}</span>
+            </div>
+            <button
+              onClick={() => onSelectCustomer(null)}
+              className="text-muted-foreground hover:text-foreground flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-2 text-xs font-medium whitespace-nowrap bg-primary text-primary-foreground hover:opacity-90 transition-all rounded-lg px-3 py-2 flex-shrink-0">
+                <User className="w-4 h-4" />
+                <span>Walk-in</span>
+                <span className="text-xs opacity-75">Change</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="start">
+              <Input
+                placeholder="Search customers..."
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                className="mb-2 text-xs"
+              />
+              <div className="max-h-40 overflow-y-auto space-y-0.5">
+                {filteredCustomers.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      onSelectCustomer(c);
+                      setCustomerSearchOpen(false);
+                      setCustomerSearch("");
+                    }}
+                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-left text-xs"
+                  >
+                    <div>
+                      <p className="font-medium">{c.name}</p>
+                      <p className="text-muted-foreground text-xs">{c.phone}</p>
+                    </div>
+                    <span className="font-medium text-primary text-xs flex items-center gap-1">
+                      <Wallet className="w-3 h-3" />
+                      KES {(c.wallet_balance || 0).toLocaleString()}
+                    </span>
+                  </button>
+                ))}
+                {filteredCustomers.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    No customers found
+                  </p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
         
         {/* Search Bar */}
         <div className="relative flex-1 max-w-xs">

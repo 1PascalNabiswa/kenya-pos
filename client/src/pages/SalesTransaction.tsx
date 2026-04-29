@@ -204,6 +204,9 @@ export default function SalesTransaction() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onAddToCart={addToCart}
+          customers={customers}
+          selectedCustomer={selectedCustomer}
+          onSelectCustomer={setSelectedCustomer}
         />
       </div>
 
