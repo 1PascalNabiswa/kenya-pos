@@ -75,6 +75,10 @@ export default function ProductGrid({
             <div className="flex-1 min-w-0">
               <span className="text-xs font-medium truncate">{selectedCustomer.name}</span>
             </div>
+            <div className="flex items-center gap-1 text-xs font-medium text-primary flex-shrink-0">
+              <Wallet className="w-3.5 h-3.5" />
+              KES {(selectedCustomer.wallet_balance || 0).toLocaleString()}
+            </div>
             <button
               onClick={() => onSelectCustomer(null)}
               className="text-muted-foreground hover:text-foreground flex-shrink-0"

@@ -185,13 +185,6 @@ export default function SalesTransaction() {
     <div className="h-screen flex flex-col lg:flex-row gap-2 p-2 min-h-0">
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Customer Selector */}
-        <CustomerSelector
-          customers={customers}
-          selectedCustomer={selectedCustomer}
-          onSelect={setSelectedCustomer}
-        />
-
         {/* Product Grid */}
         <ProductGrid
           products={products}
