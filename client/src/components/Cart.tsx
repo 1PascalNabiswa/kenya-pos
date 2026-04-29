@@ -44,7 +44,7 @@ export default function Cart({
           items.map((item) => (
             <div
               key={item.product_id}
-              className="flex items-center gap-2 bg-muted/50 rounded-lg p-2" style={{borderWidth: '0.5px'}}
+              className="flex items-center gap-2 bg-muted/50 rounded-lg p-2 min-w-0" style={{borderWidth: '0.5px'}}
             >
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate">{item.product_name}</p>
