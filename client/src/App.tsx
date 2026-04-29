@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -45,14 +45,17 @@ function RoleBasedRedirect() {
   const { user, loading } = useAuth();
   const landingPage = useDefaultLandingPage();
   
-  // Wait for user data to load before redirecting
-  if (loading) {
-    return null; // Show nothing while loading
-  }
+  // Use useEffect to handle navigation outside of render phase
+  useEffect(() => {
+    // Wait for user data to load before redirecting
+    if (!loading && landingPage !== "/" && user) {
+      setLocation(landingPage);
+    }
+  }, [loading, landingPage, user, setLocation]);
   
-  // Redirect to the landing page
-  if (landingPage !== "/" && user) {
-    setLocation(landingPage);
+  // Show nothing while loading
+  if (loading) {
+    return null;
   }
   
   return null;
