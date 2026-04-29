@@ -45,66 +45,72 @@ export default function ProductGrid({
   const [showImages, setShowImages] = useState(true);
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Search bar */}
-      <div className="mb-3">
-        <div className="relative w-fit">
+      {/* Top controls: Customer Type | Search | Toggle */}
+      <div className="flex gap-2 mb-4 items-center">
+        {/* Customer Type Button */}
+        <button className="px-4 py-2 rounded-lg text-xs font-medium whitespace-nowrap bg-primary text-primary-foreground hover:opacity-90 transition-all">
+          Walk-in Customer
+        </button>
+        
+        {/* Search Bar */}
+        <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 w-[110px] bg-background text-foreground font-medium border border-border focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="pl-9 w-full bg-background text-foreground font-medium border border-border focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </div>
+        
+        {/* Show/Hide Images Toggle */}
+        <button
+          onClick={() => setShowImages(!showImages)}
+          className="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all bg-card border border-border text-muted-foreground hover:bg-muted flex items-center gap-2"
+          title={showImages ? "Hide images" : "Show images"}
+        >
+          {showImages ? (
+            <>
+              <EyeOff size={14} />
+              Hide
+            </>
+          ) : (
+            <>
+              <Eye size={14} />
+              Show
+            </>
+          )}
+        </button>
       </div>
       
-      {/* Categories & Toggle Button */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4 items-center">
-          <button
-            onClick={() => onSelectCategory(null)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-              selectedCategory === null
-                ? "bg-primary text-primary-foreground"
-                : "bg-card border border-border text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            All <span className="text-xs opacity-75">({getCategoryCount(products, null)})</span>
-          </button>
-          {categories.map((cat) => {
-            const count = getCategoryCount(products, cat.id);
-            return (
-              <button
-                key={cat.id}
-                onClick={() => onSelectCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                  selectedCategory === cat.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card border border-border text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {cat.name} <span className="text-xs opacity-75">({count})</span>
-              </button>
-            );
-          })}
-        <div className="flex-shrink-0 ml-auto pl-2 border-l border-border">
-          <button
-            onClick={() => setShowImages(!showImages)}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all bg-card border border-border text-muted-foreground hover:bg-muted flex items-center gap-2"
-            title={showImages ? "Hide images" : "Show images"}
-          >
-            {showImages ? (
-              <>
-                <EyeOff size={14} />
-                Hide Images
-              </>
-            ) : (
-              <>
-                <Eye size={14} />
-                Show Images
-              </>
-            )}
-          </button>
-        </div>
+      {/* Categories */}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4">
+        <button
+          onClick={() => onSelectCategory(null)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+            selectedCategory === null
+              ? "bg-primary text-primary-foreground"
+              : "bg-card border border-border text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          All <span className="text-xs opacity-75">({getCategoryCount(products, null)})</span>
+        </button>
+        {categories.map((cat) => {
+          const count = getCategoryCount(products, cat.id);
+          return (
+            <button
+              key={cat.id}
+              onClick={() => onSelectCategory(cat.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                selectedCategory === cat.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card border border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {cat.name} <span className="text-xs opacity-75">({count})</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Grid */}
