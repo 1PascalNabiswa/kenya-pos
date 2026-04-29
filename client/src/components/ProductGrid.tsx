@@ -1,5 +1,7 @@
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 interface Product {
   id: number;
@@ -40,6 +42,7 @@ export default function ProductGrid({
   onSearchChange,
   onAddToCart,
 }: ProductGridProps) {
+  const [showImages, setShowImages] = useState(true);
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Search & filters */}
@@ -50,9 +53,26 @@ export default function ProductGrid({
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-background text-foreground font-medium border border-border focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="pl-9 w-[110px] bg-background text-foreground font-medium border border-border focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </div>
+        <button
+          onClick={() => setShowImages(!showImages)}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all bg-card border border-border text-muted-foreground hover:bg-muted flex items-center gap-2"
+          title={showImages ? "Hide images" : "Show images"}
+        >
+          {showImages ? (
+            <>
+              <EyeOff size={14} />
+              Hide Images
+            </>
+          ) : (
+            <>
+              <Eye size={14} />
+              Show Images
+            </>
+          )}
+        </button>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           <button
             onClick={() => onSelectCategory(null)}
@@ -99,17 +119,19 @@ export default function ProductGrid({
               disabled={product.stock <= 0}
               className="bg-card border border-border rounded-xl p-3 text-left hover:shadow-md hover:border-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
             >
-              <div className="w-full aspect-square bg-muted rounded-lg mb-2 flex items-center justify-center overflow-hidden">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl">📦</span>
-                )}
-              </div>
+              {showImages && (
+                <div className="w-full aspect-square bg-muted rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl">📦</span>
+                  )}
+                </div>
+              )}
               <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
                 {product.name}
               </p>
