@@ -32,36 +32,36 @@ export default function InventoryReport() {
   // Calculate inventory metrics
   const inventoryMetrics = {
     totalProducts: productsData?.total ?? 0,
-    totalItems: products.filter((p) => (Number(p.stockQuantity) || 0) > 0).length,
-    totalValue: products.reduce((sum, p) => sum + ((Number(p.stockQuantity) || 0) * (Number(p.price) || 0)), 0),
+    totalItems: products.filter((p: any) => (Number(p.stockQuantity) || 0) > 0).length,
+    totalValue: products.reduce((sum: number, p: any) => sum + ((Number(p.stockQuantity) || 0) * (Number(p.price) || 0)), 0),
     lowStockCount: lowStock?.length ?? 0,
   };
 
   // Stock level distribution
   const stockDistribution = [
-    { name: "Overstocked (>100)", value: products.filter((p) => (Number(p.stockQuantity) || 0) > 100).length },
-    { name: "Adequate (20-100)", value: products.filter((p) => (Number(p.stockQuantity) || 0) >= 20 && (Number(p.stockQuantity) || 0) <= 100).length },
-    { name: "Low (5-19)", value: products.filter((p) => (Number(p.stockQuantity) || 0) >= 5 && (Number(p.stockQuantity) || 0) < 20).length },
-    { name: "Critical (<5)", value: products.filter((p) => (Number(p.stockQuantity) || 0) < 5).length },
+    { name: "Overstocked (>100)", value: products.filter((p: any) => (Number(p.stockQuantity) || 0) > 100).length },
+    { name: "Adequate (20-100)", value: products.filter((p: any) => (Number(p.stockQuantity) || 0) >= 20 && (Number(p.stockQuantity) || 0) <= 100).length },
+    { name: "Low (5-19)", value: products.filter((p: any) => (Number(p.stockQuantity) || 0) >= 5 && (Number(p.stockQuantity) || 0) < 20).length },
+    { name: "Critical (<5)", value: products.filter((p: any) => (Number(p.stockQuantity) || 0) < 5).length },
   ];
 
   // Top products by value
   const topByValue = products
-    .map((p) => ({
+    .map((p: any) => ({
       name: p.name,
       value: (Number(p.stockQuantity) || 0) * (Number(p.price) || 0),
       quantity: Number(p.stockQuantity) || 0,
     }))
-    .sort((a, b) => b.value - a.value)
+    .sort((a: any, b: any) => b.value - a.value)
     .slice(0, 10);
 
   // Low stock products
   const lowStockProducts = (lowStock ?? []).slice(0, 10);
 
   // Category distribution by value
-  const categoryValue = products.reduce((acc: any, p) => {
+  const categoryValue = products.reduce((acc: any, p: any) => {
     const catId = p.categoryId;
-    const catName = categories?.find((c) => c.id === catId)?.name || "Uncategorized";
+    const catName = categories?.find((c: any) => c.id === catId)?.name || "Uncategorized";
     const existing = acc.find((c: any) => c.name === catName);
     const value = (Number(p.stockQuantity) || 0) * (Number(p.price) || 0);
     if (existing) {
