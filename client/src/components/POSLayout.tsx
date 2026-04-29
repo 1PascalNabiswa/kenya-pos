@@ -388,7 +388,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content */}
         <main className="flex-1 overflow-auto" onClick={handleMainContentClick}>
-          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+          <div className="max-w-7xl mx-auto w-full" style={{paddingTop: '0px', paddingBottom: '2px', paddingLeft: '1rem', paddingRight: '1rem'}}>
             {children}
           </div>
         </main>
