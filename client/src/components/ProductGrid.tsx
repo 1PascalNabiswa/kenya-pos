@@ -45,9 +45,9 @@ export default function ProductGrid({
   const [showImages, setShowImages] = useState(true);
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Search & filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
+      {/* Search bar */}
+      <div className="mb-3">
+        <div className="relative w-fit">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
@@ -56,24 +56,10 @@ export default function ProductGrid({
             className="pl-9 w-[110px] bg-background text-foreground font-medium border border-border focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </div>
-        <button
-          onClick={() => setShowImages(!showImages)}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all bg-card border border-border text-muted-foreground hover:bg-muted flex items-center gap-2"
-          title={showImages ? "Hide images" : "Show images"}
-        >
-          {showImages ? (
-            <>
-              <EyeOff size={14} />
-              Hide Images
-            </>
-          ) : (
-            <>
-              <Eye size={14} />
-              Show Images
-            </>
-          )}
-        </button>
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+      </div>
+      
+      {/* Categories & Toggle Button */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4 items-center">
           <button
             onClick={() => onSelectCategory(null)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
@@ -100,6 +86,24 @@ export default function ProductGrid({
               </button>
             );
           })}
+        <div className="flex-shrink-0 ml-auto pl-2 border-l border-border">
+          <button
+            onClick={() => setShowImages(!showImages)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all bg-card border border-border text-muted-foreground hover:bg-muted flex items-center gap-2"
+            title={showImages ? "Hide images" : "Show images"}
+          >
+            {showImages ? (
+              <>
+                <EyeOff size={14} />
+                Hide Images
+              </>
+            ) : (
+              <>
+                <Eye size={14} />
+                Show Images
+              </>
+            )}
+          </button>
         </div>
       </div>
 
