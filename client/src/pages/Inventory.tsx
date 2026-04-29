@@ -132,13 +132,13 @@ export default function Inventory({ tab: initialTab = "products" }: { tab?: Tab 
       {/* Products Tab */}
       {tab === "products" && (
         <>
-          <div className="flex gap-3">
-            <div className="relative flex-1">
+          <div className="flex gap-3 items-center">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
-              <Input placeholder="Search products..." className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              <Input placeholder="Search products..." className="pl-9 w-full" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
             </div>
             <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v === "all" ? "" : v); setPage(1); }}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-48 flex-shrink-0">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
