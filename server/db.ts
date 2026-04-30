@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, like, lt, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   Category,
@@ -1648,7 +1648,7 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack: 
   const customerDetails = await db
     .select()
     .from(customers)
-    .where(sql`${customers.id} IN (${customerIds.join(',')})`);
+    .where(inArray(customers.id, customerIds));
   
   // Create a map of customer details
   const customerMap = new Map(customerDetails.map(c => [c.id, c]));

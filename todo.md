@@ -104,3 +104,10 @@
 - [x] Add lg:max-w-96 to enforce maximum width constraint
 - [x] Test cart maintains fixed width on large screens
 - [x] Verify products remain visible and accessible
+
+## Phase 33: Fix Customer Spending Reports Page
+- [x] Refactor CustomerSpendingReports to use topCustomers data as source of truth
+- [x] Create customer dropdown from topCustomers instead of customers.list
+- [x] Use topCustomers data to populate spending details when customer is selected
+- [x] Remove redundant spending queries (customerSpendingTrends, customerSpendingMonthly, etc.)
+- [x] Test customer selection shows real spending data
