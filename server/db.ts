@@ -1580,12 +1580,12 @@ export async function getCustomerPaymentMethodBreakdown(customerId: number) {
       COUNT(o.id) as orderCount,
       SUM(o.totalAmount) as totalAmount,
       AVG(o.totalAmount) as avgAmount,
-      ROUND(SUM(o.totalAmount) / (SELECT SUM(totalAmount) FROM orders WHERE customerId = ? AND orderStatus = 'completed') * 100, 2) as percentageOfTotal
+      ROUND(SUM(o.totalAmount) / (SELECT SUM(totalAmount) FROM orders WHERE customerId = ${customerId} AND orderStatus = 'completed') * 100, 2) as percentageOfTotal
     FROM orders o
-    WHERE o.customerId = ? AND o.orderStatus = 'completed'
+    WHERE o.customerId = ${customerId} AND o.orderStatus = 'completed'
     GROUP BY o.paymentMethod
     ORDER BY totalAmount DESC
-  `, [customerId, customerId]);
+  `);
   
   return result as any[];
 }
