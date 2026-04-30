@@ -393,12 +393,20 @@ export default function PaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Process Payment</DialogTitle>
+      <DialogContent className="max-w-full h-screen w-screen max-h-screen flex flex-col p-0">
+        <DialogHeader className="sticky top-0 z-10 border-b bg-white p-6">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl">Process Payment</DialogTitle>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 text-2xl"
+            >
+              ✕
+            </button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div className="bg-gray-50 p-4 rounded-lg space-y-2">
             <div className="flex justify-between">
               <span>Subtotal:</span>
