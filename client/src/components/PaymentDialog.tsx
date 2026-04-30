@@ -275,15 +275,16 @@ export default function PaymentDialog({
   };
 
   const handleSplitPayment = async () => {
-    // Calculate confirmed amounts (cash is always confirmed, M-Pesa is pending)
-    const confirmedTotal = splitPayments
-      .filter((p) => p.method === "cash")
-      .reduce((sum, p) => sum + p.amount, 0);
-    
-    // Check if we have enough confirmed payment (cash) to cover the order
-    if (confirmedTotal < total) {
-      const needed = total - confirmedTotal;
-      toast.error(`Need at least KES ${needed} more in confirmed payments (cash)`);
+    // Validate that we have payment methods added
+    if (splitPayments.length === 0) {
+      toast.error("Please add at least one payment method");
+      return;
+    }
+
+    // Check if total collected covers the order amount
+    if (splitTotal < total) {
+      const needed = total - splitTotal;
+      toast.error(`Need KES ${needed.toLocaleString()} more to cover the total`);
       return;
     }
 
@@ -775,7 +776,7 @@ export default function PaymentDialog({
 
               <Button
                 onClick={handleSplitPayment}
-                disabled={splitTotal === 0 || isProcessing}
+                disabled={splitPayments.length === 0 || splitTotal < total || isProcessing}
                 className="w-full"
               >
                 {isProcessing ? (
