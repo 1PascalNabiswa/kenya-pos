@@ -346,6 +346,7 @@ const ordersRouter = router({
       cashChange: z.string().optional(),
       status: z.enum(["pending", "completed"]).optional(),
       notes: z.string().optional(),
+      splitPayments: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const orderNumber = await generateOrderNumber();
@@ -369,12 +370,28 @@ const ordersRouter = router({
         }))
       );
 
-      // Update customer total spent
-      if (input.customerId && input.paymentMethod === "cash") {
+      // Update customer total spent and handle wallet deductions
+      if (input.customerId) {
         const customer = await getCustomerById(input.customerId);
         if (customer) {
           const newTotal = Number(customer.totalSpent || 0) + Number(input.totalAmount);
           await updateCustomer(input.customerId, { totalSpent: String(newTotal) });
+        }
+
+        // Handle split payment wallet deductions
+        if (input.splitPayments && input.paymentMethod === "mixed") {
+          try {
+            const splitPayments = JSON.parse(input.splitPayments);
+            const walletPayment = splitPayments.find((p: any) => p.method === "wallet");
+            if (walletPayment && walletPayment.amount > 0) {
+              await spendFromWallet(input.customerId, walletPayment.amount, id);
+            }
+          } catch (e) {
+            console.error("Error processing wallet deduction:", e);
+          }
+        } else if (input.paymentMethod === "wallet") {
+          // Single wallet payment
+          await spendFromWallet(input.customerId, Number(input.totalAmount), id);
         }
       }
 

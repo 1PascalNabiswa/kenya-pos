@@ -326,6 +326,11 @@ export default function PaymentDialog({
         cashReceived: String(totalReceived),
         cashChange: String(excessAmount),
         status: orderStatus,
+        splitPayments: JSON.stringify(splitPayments.map((p) => ({
+          method: p.method,
+          amount: p.amount,
+          mpesaPhone: p.mpesaPhone,
+        }))),
       });
 
       // Split payment methods are already recorded in the order creation
