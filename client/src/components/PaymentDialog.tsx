@@ -323,7 +323,7 @@ export default function PaymentDialog({
         taxAmount: String(taxAmount),
         totalAmount: String(total),
         paymentMethod: "mixed",
-        cashReceived: String(confirmedTotal),
+        cashReceived: String(totalReceived),
         cashChange: String(excessAmount),
         status: orderStatus,
       });
