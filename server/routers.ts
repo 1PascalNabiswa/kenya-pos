@@ -378,19 +378,15 @@ const ordersRouter = router({
           await updateCustomer(input.customerId, { totalSpent: String(newTotal) });
         }
 
-        // Handle split payment wallet deductions
+        // Handle wallet deductions for split or single wallet payments
         if (input.splitPayments && input.paymentMethod === "mixed") {
-          try {
-            const splitPayments = JSON.parse(input.splitPayments);
-            const walletPayment = splitPayments.find((p: any) => p.method === "wallet");
-            if (walletPayment && walletPayment.amount > 0) {
-              await spendFromWallet(input.customerId, walletPayment.amount, id);
-            }
-          } catch (e) {
-            console.error("Error processing wallet deduction:", e);
+          const splitPayments = JSON.parse(input.splitPayments);
+          const walletPayment = splitPayments.find((p: any) => p.method === "wallet");
+          if (walletPayment && walletPayment.amount > 0) {
+            await spendFromWallet(input.customerId, Number(walletPayment.amount), id);
           }
         } else if (input.paymentMethod === "wallet") {
-          // Single wallet payment
+          // Single wallet payment - deduct entire amount
           await spendFromWallet(input.customerId, Number(input.totalAmount), id);
         }
       }

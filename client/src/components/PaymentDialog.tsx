@@ -91,6 +91,7 @@ export default function PaymentDialog({
     onSuccess: (data) => {
       utils.reports.dashboard.invalidate();
       utils.orders.list.invalidate();
+      utils.customers.list.invalidate(); // Refresh customer data to show updated wallet balance
     },
   });
 
@@ -307,6 +308,9 @@ export default function PaymentDialog({
       const hasMpesaPending = mpesaPayments.length > 0;
       const orderStatus = hasMpesaPending ? "pending" : "completed";
 
+      console.log("[Split Payment] customerId:", customerId, "customerName:", customerName, "total:", total);
+      console.log("[Split Payment] splitPayments:", splitPayments);
+
       const result = await createOrder.mutateAsync({
         customerId,
         customerName: customerName || "Walk-in Customer",
@@ -344,7 +348,12 @@ export default function PaymentDialog({
       setShowReceipt(true);
       onComplete(result.orderId, result.orderNumber);
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to process split payment");
+      // Check if it's an insufficient balance message - show as warning instead of error
+      if (e.message?.includes("Insufficient wallet balance")) {
+        toast.warning(e.message);
+      } else {
+        toast.error(e.message ?? "Failed to process split payment");
+      }
     } finally {
       setIsProcessing(false);
     }

@@ -715,6 +715,11 @@ export async function spendFromWallet(customerId: number, amount: number, id: nu
   const wallet = await getWallet(customerId);
   if (!wallet) throw new Error("Wallet not found");
   
+  const currentBalance = Number(wallet.balance);
+  if (currentBalance < amount) {
+    throw new Error(`Insufficient wallet balance. Available: KES ${currentBalance}, Required: KES ${amount}`);
+  }
+  
   const newTotalSpent = Number(wallet.totalSpent) + amount;
   const newBalance = Number(wallet.totalLoaded) - newTotalSpent;
   
@@ -731,7 +736,7 @@ export async function spendFromWallet(customerId: number, amount: number, id: nu
     customerId,
     type: "spend",
     amount: amount.toString(),
-    id,
+    orderId: id,
   });
   
   return newBalance;
