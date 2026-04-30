@@ -328,20 +328,8 @@ export default function PaymentDialog({
         status: orderStatus,
       });
 
-      // Record split payments with confirmation status
-      for (const payment of splitPayments) {
-        try {
-          await addPaymentMethod.mutateAsync({
-            id: result.orderId,
-            method: payment.method,
-            amount: Number(payment.amount),
-            status: payment.method === "cash" ? "confirmed" : "pending",
-            mpesaPhone: payment.mpesaPhone,
-          });
-        } catch (e) {
-          console.error("Failed to record payment method:", e);
-        }
-      }
+      // Split payment methods are already recorded in the order creation
+      // No need to record separately in payment_methods table
 
       const methods = splitPayments.map((p) => `${p.method}: KES ${p.amount}`).join(", ");
       const statusMsg = hasMpesaPending ? " (M-Pesa pending confirmation)" : " (Paid)";
