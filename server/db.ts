@@ -1489,24 +1489,28 @@ export async function getCustomerSpendingByWeek(customerId: number, weeksBack: n
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - (weeksBack * 7));
   
-  const result = await db.execute(sql`
-    SELECT 
-      WEEK(o.createdAt) as week,
-      YEAR(o.createdAt) as year,
-      DATE_FORMAT(o.createdAt, '%Y-W%u') as weekLabel,
-      MIN(DATE(o.createdAt)) as weekStart,
-      MAX(DATE(o.createdAt)) as weekEnd,
-      COUNT(o.id) as orderCount,
-      SUM(o.totalAmount) as totalSpent,
-      AVG(o.totalAmount) as avgOrderValue,
-      COUNT(DISTINCT o.paymentMethod) as paymentMethodsUsed
-    FROM orders o
-    WHERE o.customerId = ? AND o.createdAt >= ? AND o.orderStatus = 'completed'
-    GROUP BY YEAR(o.createdAt), WEEK(o.createdAt)
-    ORDER BY YEAR(o.createdAt) DESC, WEEK(o.createdAt) DESC
-  `, [customerId, startDate]);
-  
-  return result as any[];
+  try {
+    const result = await db.execute(sql`
+      SELECT 
+        WEEK(createdAt) as week,
+        YEAR(createdAt) as year,
+        DATE_FORMAT(createdAt, '%Y-W%u') as weekLabel,
+        MIN(DATE(createdAt)) as weekStart,
+        MAX(DATE(createdAt)) as weekEnd,
+        COUNT(id) as orderCount,
+        SUM(totalAmount) as totalSpent,
+        AVG(totalAmount) as avgOrderValue,
+        COUNT(DISTINCT paymentMethod) as paymentMethodsUsed
+      FROM orders
+      WHERE customerId = ${customerId} AND createdAt >= ${startDate} AND orderStatus = 'completed'
+      GROUP BY YEAR(createdAt), WEEK(createdAt)
+      ORDER BY YEAR(createdAt) DESC, WEEK(createdAt) DESC
+    `);
+    return result as any[];
+  } catch (error) {
+    console.error('Error fetching customer spending by week:', error);
+    return [];
+  }
 }
 
 export async function getCustomerSpendingByMonth(customerId: number, monthsBack: number = 12) {
@@ -1516,42 +1520,40 @@ export async function getCustomerSpendingByMonth(customerId: number, monthsBack:
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - monthsBack);
   
-  const result = await db.execute(sql`
-    SELECT 
-      MONTH(o.createdAt) as month,
-      YEAR(o.createdAt) as year,
-      DATE_FORMAT(o.createdAt, '%Y-%m') as monthLabel,
-      DATE_FORMAT(o.createdAt, '%B %Y') as monthName,
-      COUNT(o.id) as orderCount,
-      SUM(o.totalAmount) as totalSpent,
-      AVG(o.totalAmount) as avgOrderValue,
-      MAX(o.totalAmount) as maxOrderValue,
-      MIN(o.totalAmount) as minOrderValue,
-      SUM(o.taxAmount) as totalTax,
-      SUM(o.discountAmount) as totalDiscount
-    FROM orders o
-    WHERE o.customerId = ? AND o.createdAt >= ? AND o.orderStatus = 'completed'
-    GROUP BY YEAR(o.createdAt), MONTH(o.createdAt)
-    ORDER BY YEAR(o.createdAt) DESC, MONTH(o.createdAt) DESC
-  `, [customerId, startDate]);
-  
-  return result as any[];
+  try {
+    const result = await db.execute(sql`
+      SELECT 
+        MONTH(createdAt) as month,
+        YEAR(createdAt) as year,
+        DATE_FORMAT(createdAt, '%Y-%m') as monthLabel,
+        DATE_FORMAT(createdAt, '%B %Y') as monthName,
+        COUNT(id) as orderCount,
+        SUM(totalAmount) as totalSpent,
+        AVG(totalAmount) as avgOrderValue,
+        MAX(totalAmount) as maxOrderValue,
+        MIN(totalAmount) as minOrderValue,
+        SUM(taxAmount) as totalTax,
+        SUM(discountAmount) as totalDiscount
+      FROM orders
+      WHERE customerId = ${customerId} AND createdAt >= ${startDate} AND orderStatus = 'completed'
+      GROUP BY YEAR(createdAt), MONTH(createdAt)
+      ORDER BY YEAR(createdAt) DESC, MONTH(createdAt) DESC
+    `);
+    return result as any[];
+  } catch (error) {
+    console.error('Error fetching customer spending by month:', error);
+    return [];
+  }
 }
 
 export async function getCustomerSpendingTrends(customerId: number) {
   const db = await getDb();
   if (!db) return null;
   
-  const walletResult = await db.execute(sql`
-    SELECT totalSpent, balance FROM customerWallets WHERE customerId = ?
-  `, [customerId]);
-  
-  const walletData = walletResult[0] as any;
-  const totalSpent = walletData?.totalSpent ?? 0;
-  
   const result = await db.execute(sql`
     SELECT 
       COUNT(o.id) as totalOrders,
+      SUM(o.totalAmount) as totalSpent,
       AVG(o.totalAmount) as avgOrderValue,
       MAX(o.totalAmount) as maxOrderValue,
       MIN(o.totalAmount) as minOrderValue,
@@ -1560,13 +1562,20 @@ export async function getCustomerSpendingTrends(customerId: number) {
       DATE_FORMAT(MAX(o.createdAt), '%Y-%m-%d') as lastOrderDate,
       DATEDIFF(MAX(o.createdAt), MIN(o.createdAt)) as daysSinceFirstOrder
     FROM orders o
-    WHERE o.customerId = ? AND o.orderStatus = 'completed'
-  `, [customerId]);
+    WHERE o.customerId = ${customerId} AND o.orderStatus = 'completed'
+  `);
   
   const orderData = result[0] as any;
   return {
-    ...orderData,
-    totalSpent: totalSpent
+    totalSpent: Number(orderData?.totalSpent ?? 0),
+    totalOrders: Number(orderData?.totalOrders ?? 0),
+    avgOrderValue: Number(orderData?.avgOrderValue ?? 0),
+    maxOrderValue: Number(orderData?.maxOrderValue ?? 0),
+    minOrderValue: Number(orderData?.minOrderValue ?? 0),
+    spendingVariance: Number(orderData?.spendingVariance ?? 0),
+    daysSinceFirstOrder: Number(orderData?.daysSinceFirstOrder ?? 0),
+    firstOrderDate: orderData?.firstOrderDate,
+    lastOrderDate: orderData?.lastOrderDate
   };
 }
 
