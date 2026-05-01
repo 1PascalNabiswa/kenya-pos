@@ -158,15 +158,57 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
 
               {/* Items */}
               <div className="text-xs font-bold mb-1">ITEMS</div>
-              {order.items?.map((item, i) => (
-                <div key={i} className="mb-1">
-                  <div className="text-xs truncate" style={{maxWidth: '100%'}}>{item.productName.substring(0, 20)}</div>
-                  <div className="receipt-row text-xs">
-                    <span>{item.quantity}x KES {Number(item.unitPrice).toLocaleString()}</span>
-                    <span>KES {Number(item.totalPrice).toLocaleString()}</span>
+              {(() => {
+                // For split payments, allocate payment methods to items proportionally
+                let splitPayments = [];
+                let itemPaymentMethods = [];
+                
+                if (order.paymentMethod === "mixed" && order.notes) {
+                  try {
+                    splitPayments = JSON.parse(order.notes);
+                    let remainingPayments = splitPayments.map(p => ({...p}));
+                    
+                    order.items?.forEach((item) => {
+                      let itemAmount = Number(item.totalPrice);
+                      let itemMethods = [];
+                      
+                      for (let i = 0; i < remainingPayments.length && itemAmount > 0; i++) {
+                        if (remainingPayments[i].amount > 0) {
+                          const usedAmount = Math.min(itemAmount, remainingPayments[i].amount);
+                          itemMethods.push({
+                            method: remainingPayments[i].method,
+                            amount: usedAmount
+                          });
+                          remainingPayments[i].amount -= usedAmount;
+                          itemAmount -= usedAmount;
+                        }
+                      }
+                      itemPaymentMethods.push(itemMethods);
+                    });
+                  } catch (e) {
+                    // If parsing fails, just show items without payment methods
+                  }
+                }
+                
+                return order.items?.map((item, i) => (
+                  <div key={i} className="mb-1">
+                    <div className="text-xs truncate" style={{maxWidth: '100%'}}>{item.productName.substring(0, 20)}</div>
+                    <div className="receipt-row text-xs">
+                      <span>{item.quantity}x KES {Number(item.unitPrice).toLocaleString()}</span>
+                      <span>KES {Number(item.totalPrice).toLocaleString()}</span>
+                    </div>
+                    {itemPaymentMethods[i] && itemPaymentMethods[i].length > 0 && (
+                      <div className="text-xs text-gray-600 ml-1">
+                        {itemPaymentMethods[i].map((pm, idx) => (
+                          <div key={idx} className="text-xs">
+                            ({pm.method}: KES {Number(pm.amount).toLocaleString()})
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
 
               <div className="receipt-divider" />
 
@@ -196,6 +238,30 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
                 <span>Payment</span>
                 <span className="uppercase font-bold">{order.paymentMethod}</span>
               </div>
+              
+              {/* Split Payment Details */}
+              {order.paymentMethod === "mixed" && order.notes && (() => {
+                try {
+                  const splitPayments = JSON.parse(order.notes);
+                  if (Array.isArray(splitPayments) && splitPayments.length > 0) {
+                    return (
+                      <>
+                        <div className="text-xs font-bold mt-1">PAYMENT BREAKDOWN</div>
+                        {splitPayments.map((payment, idx) => (
+                          <div key={idx} className="receipt-row text-xs">
+                            <span className="capitalize">{payment.method}</span>
+                            <span>KES {Number(payment.amount).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  }
+                } catch (e) {
+                  // If notes is not valid JSON, just skip
+                }
+                return null;
+              })()}
+              
               {order.paymentMethod === "cash" && order.cashReceived && (
                 <>
                   <div className="receipt-row text-xs">
