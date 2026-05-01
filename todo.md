@@ -111,3 +111,11 @@
 - [x] Use topCustomers data to populate spending details when customer is selected
 - [x] Remove redundant spending queries (customerSpendingTrends, customerSpendingMonthly, etc.)
 - [x] Test customer selection shows real spending data
+
+## Phase 34: Add Payment Method Breakdown to Customer Spending Reports
+- [x] Update getTopCustomersBySpending to separate wallet vs other payment modes
+- [x] Add walletSpent and otherSpent fields to customer spending data
+- [x] Update CustomerSpendingReports page to display payment method breakdown
+- [x] Show wallet spending and other payment methods separately in metrics
+- [x] Display payment method percentages in the breakdown section
+- [x] Test wallet spending matches Customer Wallet page balance

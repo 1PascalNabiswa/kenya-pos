@@ -1617,7 +1617,7 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack: 
       )
     );
   
-  // Group by customer and calculate totals
+  // Group by customer and calculate totals (separated by payment method)
   const customerSpending: Record<number, any> = {};
   
   for (const order of allOrders) {
@@ -1626,11 +1626,22 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack: 
         customerId: order.customerId,
         orderCount: 0,
         totalSpent: 0,
+        walletSpent: 0,
+        otherSpent: 0,
         lastOrderDate: order.createdAt,
       };
     }
     customerSpending[order.customerId].orderCount += 1;
-    customerSpending[order.customerId].totalSpent += Number(order.totalAmount);
+    const amount = Number(order.totalAmount);
+    customerSpending[order.customerId].totalSpent += amount;
+    
+    // Separate wallet vs other payment methods
+    if (order.paymentMethod === 'wallet') {
+      customerSpending[order.customerId].walletSpent += amount;
+    } else {
+      customerSpending[order.customerId].otherSpent += amount;
+    }
+    
     if (order.createdAt > customerSpending[order.customerId].lastOrderDate) {
       customerSpending[order.customerId].lastOrderDate = order.createdAt;
     }
@@ -1664,6 +1675,8 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack: 
         email: customer?.email,
         orderCount: spending.orderCount,
         totalSpent: spending.totalSpent,
+        walletSpent: spending.walletSpent,
+        otherSpent: spending.otherSpent,
         avgOrderValue: spending.totalSpent / spending.orderCount,
         lastOrderDate: spending.lastOrderDate,
         daysSinceLastOrder: Math.floor((Date.now() - spending.lastOrderDate.getTime()) / (1000 * 60 * 60 * 24)),
