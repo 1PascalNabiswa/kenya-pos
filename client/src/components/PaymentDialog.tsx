@@ -100,9 +100,10 @@ export default function PaymentDialog({
   const addPaymentMethod = trpc.payments.addMethod.useMutation();
   const queryMpesaStatus = trpc.payments.queryMpesaStatus.useMutation();
   const deductWallet = trpc.wallet.deduct.useMutation();
+  const hasWalletInSplit = splitPayments.some((p) => p.method === "wallet");
   const getWallet = trpc.wallet.get.useQuery(
     { customerId: customerId || 0 },
-    { enabled: !!customerId && (method === "wallet") }
+    { enabled: !!customerId && (method === "wallet" || hasWalletInSplit) }
   );
 
   const cashChange = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0;
