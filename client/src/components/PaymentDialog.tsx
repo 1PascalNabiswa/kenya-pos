@@ -298,6 +298,21 @@ export default function PaymentDialog({
       }
     }
 
+    // Check wallet balance if wallet payment is included in split
+    const walletPayments = splitPayments.filter((p) => p.method === "wallet");
+    if (walletPayments.length > 0) {
+      const walletAmount = walletPayments.reduce((sum, p) => sum + p.amount, 0);
+      if (!customerId) {
+        toast.error("Cannot use wallet for walk-in customers");
+        return;
+      }
+      if (!getWallet.data || getWallet.data.balance < walletAmount) {
+        const available = getWallet.data?.balance || 0;
+        toast.error(`Insufficient wallet balance. Available: KES ${available.toLocaleString()}, Needed: KES ${walletAmount.toLocaleString()}`);
+        return;
+      }
+    }
+
     setIsProcessing(true);
     try {
       // Calculate total received and excess (change/refund)
