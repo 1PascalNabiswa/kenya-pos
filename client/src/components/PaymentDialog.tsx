@@ -307,6 +307,11 @@ export default function PaymentDialog({
         toast.error("Cannot use wallet for walk-in customers");
         return;
       }
+      // Wait for wallet data to load if it's still loading
+      if (getWallet.isLoading) {
+        toast.error("Loading wallet balance... Please wait");
+        return;
+      }
       if (!getWallet.data || getWallet.data.balance < walletAmount) {
         const available = getWallet.data?.balance || 0;
         toast.error(`Insufficient wallet balance. Available: KES ${available.toLocaleString()}, Needed: KES ${walletAmount.toLocaleString()}`);
