@@ -722,7 +722,7 @@ export default function PaymentDialog({
                       <option value="cash">Cash</option>
                       <option value="mpesa">M-Pesa</option>
                       <option value="stripe">Card</option>
-                      <option value="wallet">Wallet</option>
+                      {customerId && <option value="wallet">Wallet</option>}
                     </select>
                     <input
                       type="number"
