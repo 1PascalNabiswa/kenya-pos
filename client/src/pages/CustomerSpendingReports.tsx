@@ -6,15 +6,48 @@ import { DollarSign, ShoppingCart, Calendar, Wallet } from "lucide-react";
 
 export default function CustomerSpendingReports() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
-  // Fetch top customers - this is our source of truth for customer spending
-  const { data: topCustomers = [] } = trpc.reports.topCustomers.useQuery({});
+  // Calculate default date range (last 3 months)
+  const defaultEndDate = new Date();
+  const defaultStartDate = new Date();
+  defaultStartDate.setMonth(defaultStartDate.getMonth() - 3);
+
+  // Format dates for display
+  const formatDateForInput = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  // Initialize date inputs on first load
+  useMemo(() => {
+    if (!startDate) setStartDate(formatDateForInput(defaultStartDate));
+    if (!endDate) setEndDate(formatDateForInput(defaultEndDate));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch top customers with date range
+  const { data: topCustomers = [] } = trpc.reports.topCustomers.useQuery(
+    startDate && endDate
+      ? {
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+        }
+      : {}
+  );
 
   // Get the selected customer's data from topCustomers
   const selectedCustomerData = useMemo(() => {
     if (!selectedCustomerId || !topCustomers || topCustomers.length === 0) return null;
     return topCustomers.find((c: any) => c?.id === selectedCustomerId);
   }, [selectedCustomerId, topCustomers]);
+
+  const handleDateChange = (type: 'start' | 'end', value: string) => {
+    if (type === 'start') {
+      setStartDate(value);
+    } else {
+      setEndDate(value);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -26,7 +59,25 @@ export default function CustomerSpendingReports() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => handleDateChange('start', e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => handleDateChange('end', e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+            />
+          </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">Select Customer</label>
             <Select 
@@ -174,7 +225,9 @@ export default function CustomerSpendingReports() {
         {/* Top Customers */}
         {!selectedCustomerId && (
           <Card className="p-6">
-            <h2 className="text-lg font-bold text-foreground mb-4">Top Customers (Last 3 Months)</h2>
+            <h2 className="text-lg font-bold text-foreground mb-4">
+              Top Customers ({startDate} to {endDate})
+            </h2>
             {Array.isArray(topCustomers) && topCustomers.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -207,7 +260,7 @@ export default function CustomerSpendingReports() {
                 </table>
               </div>
             ) : (
-              <p className="text-muted-foreground">No data available</p>
+              <p className="text-muted-foreground">No data available for the selected date range</p>
             )}
           </Card>
         )}

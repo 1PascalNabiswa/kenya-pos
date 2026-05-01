@@ -1599,20 +1599,29 @@ export async function getCustomerPaymentMethodBreakdown(customerId: number) {
   return result as any[];
 }
 
-export async function getTopCustomersBySpending(limit: number = 10, monthsBack: number = 3) {
+export async function getTopCustomersBySpending(limit: number = 10, monthsBack?: number, startDate?: Date, endDate?: Date) {
   const db = await getDb();
   if (!db) return [];
   
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - monthsBack);
+  // Use custom date range if provided, otherwise use monthsBack
+  let queryStartDate: Date;
+  let queryEndDate: Date = endDate || new Date();
   
-  // Get all completed orders from the last N months
+  if (startDate) {
+    queryStartDate = startDate;
+  } else {
+    queryStartDate = new Date();
+    queryStartDate.setMonth(queryStartDate.getMonth() - (monthsBack || 3));
+  }
+  
+  // Get all completed orders within the date range
   const allOrders = await db
     .select()
     .from(orders)
     .where(
       and(
-        gte(orders.createdAt, startDate),
+        gte(orders.createdAt, queryStartDate),
+        lte(orders.createdAt, queryEndDate),
         eq(orders.orderStatus, 'completed')
       )
     );

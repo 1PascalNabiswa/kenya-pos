@@ -641,10 +641,20 @@ const reportsRouter = router({
     }),
 
   topCustomers: protectedProcedure
-    .input(z.object({ limit: z.number().optional(), monthsBack: z.number().optional() }))
-    .query(async () => {
+    .input(z.object({ 
+      limit: z.number().optional(), 
+      monthsBack: z.number().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional()
+    }))
+    .query(async ({ input }) => {
       const { getTopCustomersBySpending } = await import("./db");
-      return getTopCustomersBySpending(10, 3);
+      return getTopCustomersBySpending(
+        input.limit || 10, 
+        input.monthsBack,
+        input.startDate,
+        input.endDate
+      );
     }),
 
   customerComparison: protectedProcedure

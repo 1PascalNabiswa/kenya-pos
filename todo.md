@@ -119,3 +119,10 @@
 - [x] Show wallet spending and other payment methods separately in metrics
 - [x] Display payment method percentages in the breakdown section
 - [x] Test wallet spending matches Customer Wallet page balance
+
+## Phase 35: Add Custom Date Range Filtering to Customer Spending Reports
+- [x] Update getTopCustomersBySpending to accept startDate and endDate parameters
+- [x] Update topCustomers tRPC endpoint to accept date range parameters
+- [x] Add date range picker UI to CustomerSpendingReports page
+- [x] Connect date picker to data fetching
+- [x] Test filtering with various date ranges
