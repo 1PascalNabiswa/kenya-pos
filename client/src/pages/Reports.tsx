@@ -33,6 +33,7 @@ export default function Reports() {
   const { data: topProducts } = trpc.reports.topProducts.useQuery({ startDate, endDate, limit: 10 });
   const { data: paymentMethodComparison } = trpc.reports.paymentMethodComparison.useQuery({ fromDate: startDate, toDate: endDate });
   const { data: dailySalesByPaymentMethod } = trpc.reports.dailySalesByPaymentMethod.useQuery({ fromDate: startDate, toDate: endDate });
+  const { data: companySettings } = trpc.companySettings.get.useQuery();
 
   const setPreset = (preset: string) => {
     const now = new Date();
@@ -104,8 +105,6 @@ export default function Reports() {
   const handleExportReportPDF = async () => {
     if (!report) return;
     try {
-      const companySettings = await trpc.companySettings.get.query();
-      
       const reportData = {
         title: "Sales Report",
         subtitle: "Detailed Sales Analysis",

@@ -183,3 +183,9 @@
 - [x] Add logo, company name, address, phone, email, website to header
 - [x] Add timestamp and page number to footer
 - [x] Test daily sales report export with branding
+
+## Phase 45: Fix PDF Export Error in Reports Page
+- [x] Fix hooks[lastArg] is not a function error
+- [x] Use useQuery hook for company settings instead of calling in async function
+- [x] Test PDF export functionality
+- [x] Verify success toast appears when PDF is exported
