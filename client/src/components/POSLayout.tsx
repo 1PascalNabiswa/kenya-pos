@@ -28,7 +28,7 @@ import {
   Shield,
   PanelLeft,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -150,6 +150,15 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const [openGroups, setOpenGroups] = useState<string[]>(["Sales"]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Close sidebar when clicking on product grid area
   const handleMainContentClick = () => {
@@ -378,7 +387,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1" />
           <div className="text-sm text-muted-foreground">
-            {new Date().toLocaleString("en-KE", {
+            {currentTime.toLocaleString("en-KE", {
               weekday: "long",
               year: "numeric",
               month: "long",

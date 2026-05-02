@@ -136,3 +136,7 @@
 ## Phase 37: UI Improvements
 - [x] Remove Subtotal line from cart display (since it's the same as total)
 - [x] Update all time displays to show date and time with seconds
+
+## Phase 38: Real-Time Clock on POS Page
+- [x] Add useEffect hook to update timestamp every second in POSLayout
+- [x] Test that timestamp counts seconds in real-time
