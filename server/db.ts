@@ -2926,33 +2926,62 @@ export async function getTransactionLogs(
  */
 export async function getPaymentTotals(startDate?: Date, endDate?: Date) {
   const db = await getDb();
-  if (!db) return null;
+  if (!db) return {
+    totalCash: 0,
+    totalCard: 0,
+    totalMpesa: 0,
+    totalWallet: 0,
+    totalCheck: 0,
+    totalAmount: 0,
+    transactionCount: 0,
+  };
 
-  let query = db
-    .select({
-      totalCash: sql<number>`SUM(${transactionLogs.cash})`,
-      totalCard: sql<number>`SUM(${transactionLogs.card})`,
-      totalMpesa: sql<number>`SUM(${transactionLogs.mpesa})`,
-      totalWallet: sql<number>`SUM(${transactionLogs.wallet})`,
-      totalCheck: sql<number>`SUM(${transactionLogs.check})`,
-      totalAmount: sql<number>`SUM(${transactionLogs.totalAmount})`,
-      transactionCount: sql<number>`COUNT(*)`,
-    })
-    .from(transactionLogs);
+  try {
+    let query = db
+      .select({
+        totalCash: sql<number>`COALESCE(SUM(${transactionLogs.cash}), 0)`,
+        totalCard: sql<number>`COALESCE(SUM(${transactionLogs.card}), 0)`,
+        totalMpesa: sql<number>`COALESCE(SUM(${transactionLogs.mpesa}), 0)`,
+        totalWallet: sql<number>`COALESCE(SUM(${transactionLogs.wallet}), 0)`,
+        totalCheck: sql<number>`COALESCE(SUM(${transactionLogs.check}), 0)`,
+        totalAmount: sql<number>`COALESCE(SUM(${transactionLogs.totalAmount}), 0)`,
+        transactionCount: sql<number>`COUNT(*)`,
+      })
+      .from(transactionLogs);
 
-  if (startDate || endDate) {
-    const conditions = [];
-    if (startDate) {
-      conditions.push(gte(transactionLogs.time, startDate));
+    if (startDate || endDate) {
+      const conditions = [];
+      if (startDate) {
+        conditions.push(gte(transactionLogs.time, startDate));
+      }
+      if (endDate) {
+        conditions.push(lte(transactionLogs.time, endDate));
+      }
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
     }
-    if (endDate) {
-      conditions.push(lte(transactionLogs.time, endDate));
-    }
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+
+    const result = await query;
+    return result[0] || {
+      totalCash: 0,
+      totalCard: 0,
+      totalMpesa: 0,
+      totalWallet: 0,
+      totalCheck: 0,
+      totalAmount: 0,
+      transactionCount: 0,
+    };
+  } catch (error) {
+    console.error('Error fetching payment totals:', error);
+    return {
+      totalCash: 0,
+      totalCard: 0,
+      totalMpesa: 0,
+      totalWallet: 0,
+      totalCheck: 0,
+      totalAmount: 0,
+      transactionCount: 0,
+    };
   }
-
-  const result = await query;
-  return result[0] || null;
 }
