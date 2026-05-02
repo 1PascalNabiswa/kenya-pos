@@ -55,9 +55,12 @@ function addHeaderFooter(doc: PDFDocument, settings: CompanySettings | undefined
   // Add logo if available
   if (settings?.logo) {
     try {
-      doc.image(Buffer.from(settings.logo, "base64"), currentX, headerY, { width: 30, height: 30 });
+      // Convert base64 to buffer for PDFKit
+      const logoBuffer = Buffer.from(settings.logo, "base64");
+      doc.image(logoBuffer, currentX, headerY, { width: 30, height: 30 });
       currentX += 40;
     } catch (e) {
+      console.warn("Could not add logo to daily PDF:", e);
       // Logo failed to load, continue without it
     }
   }

@@ -189,3 +189,9 @@
 - [x] Use useQuery hook for company settings instead of calling in async function
 - [x] Test PDF export functionality
 - [x] Verify success toast appears when PDF is exported
+
+## Phase 46: Fix Missing Logo in PDF Header
+- [x] Fix logo rendering in client-side PDF export (add data URI prefix)
+- [x] Fix logo rendering in server-side daily PDF export
+- [x] Test PDF exports with logo displaying
+- [x] Verify header and footer are complete

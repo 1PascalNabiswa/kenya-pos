@@ -233,11 +233,16 @@ function addCompanyHeader(
   const rightMargin = pageWidth - 10;
 
   // Add logo if available
-  if (companyInfo.logo && companyInfo.logo.startsWith("data:image")) {
+  if (companyInfo.logo) {
     try {
-      doc.addImage(companyInfo.logo, "PNG", leftMargin, yPosition, 20, 15);
+      let logoData = companyInfo.logo;
+      // If logo is raw base64 without data URI prefix, add it
+      if (!logoData.startsWith("data:")) {
+        logoData = `data:image/png;base64,${logoData}`;
+      }
+      doc.addImage(logoData, "PNG", leftMargin, yPosition, 20, 15);
     } catch (error) {
-      console.warn("Could not add logo to PDF");
+      console.warn("Could not add logo to PDF:", error);
     }
   }
 
