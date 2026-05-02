@@ -10,7 +10,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell, LineChart, Line
 } from "recharts";
-import { Download, TrendingUp, ShoppingCart, Users, Package, FileText, CreditCard } from "lucide-react";
+import { Download, TrendingUp, ShoppingCart, Users, Package, FileText, CreditCard, FileJson } from "lucide-react";
+import { generateReportPDF, generateReportExcel } from "@/lib/reportExport";
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
@@ -100,6 +101,70 @@ export default function Reports() {
     }
   };
 
+  const handleExportReportPDF = async () => {
+    if (!report) return;
+    try {
+      const companySettings = await trpc.companySettings.get.query();
+      
+      const reportData = {
+        title: "Sales Report",
+        subtitle: "Detailed Sales Analysis",
+        headers: ["Date", "Orders", "Revenue (KES)", "Tax (KES)"],
+        rows: (report.timeline ?? []).map((d: any) => [
+          d.date,
+          String(d.orderCount),
+          String(Number(d.revenue).toFixed(2)),
+          String(Number(d.tax).toFixed(2)),
+        ]),
+        totals: {
+          "TOTALS": "",
+          [String(report.totalOrders)]: "",
+          [String(Number(report.totalRevenue).toFixed(2))]: "",
+          [String(Number(report.totalTax).toFixed(2))]: "",
+        },
+        startDate,
+        endDate,
+      };
+
+      await generateReportPDF(reportData, companySettings);
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF report");
+    }
+  };
+
+  const handleExportReportExcel = async () => {
+    if (!report) return;
+    try {
+      const companySettings = await trpc.companySettings.get.query();
+      
+      const reportData = {
+        title: "Sales Report",
+        subtitle: "Detailed Sales Analysis",
+        headers: ["Date", "Orders", "Revenue (KES)", "Tax (KES)"],
+        rows: (report.timeline ?? []).map((d: any) => [
+          d.date,
+          String(d.orderCount),
+          String(Number(d.revenue).toFixed(2)),
+          String(Number(d.tax).toFixed(2)),
+        ]),
+        totals: {
+          "TOTALS": "",
+          [String(report.totalOrders)]: "",
+          [String(Number(report.totalRevenue).toFixed(2))]: "",
+          [String(Number(report.totalTax).toFixed(2))]: "",
+        },
+        startDate,
+        endDate,
+      };
+
+      await generateReportExcel(reportData, companySettings);
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast.error("Failed to export Excel report");
+    }
+  };
+
   const timelineData = report?.timeline?.map((d: { date: string; revenue: number | string; orderCount: number | string; tax: number | string }) => ({
     date: d.date,
     revenue: Number(d.revenue),
@@ -135,6 +200,12 @@ export default function Reports() {
           <p className="text-sm text-muted-foreground">Analyze your business performance</p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={handleExportReportPDF} variant="outline" disabled={!report}>
+            <FileText size={16} className="mr-2" /> Export PDF
+          </Button>
+          <Button onClick={handleExportReportExcel} variant="outline" disabled={!report}>
+            <FileJson size={16} className="mr-2" /> Export Excel
+          </Button>
           <Button onClick={() => handleExportDailyPDF(endDate)} variant="outline" disabled={!report}>
             <FileText size={16} className="mr-2" /> Daily PDF
           </Button>

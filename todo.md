@@ -169,3 +169,10 @@
 - [x] Increase logo preview container from 24x24 to 32x32
 - [x] Adjust image sizing to fill container properly
 - [x] Verify logo displays at full size in preview
+
+## Phase 43: Add PDF/Excel Export to Reports Page
+- [x] Create report export utilities with company branding
+- [x] Add PDF export button to Sales Reports page
+- [x] Add Excel export button to Sales Reports page
+- [x] Test exports with company logo and contact info in header
+- [x] Verify formatting and branding on exported documents
