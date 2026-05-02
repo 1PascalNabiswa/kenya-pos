@@ -108,7 +108,7 @@ export async function generateReportPDF(
 }
 
 /**
- * Add products table with proper pagination
+ * Add products table with proper pagination - fixed to not skip rows
  */
 function addProductsTable(
   doc: jsPDF,
@@ -122,7 +122,6 @@ function addProductsTable(
   const headerHeight = 7;
   const pageMargin = 10;
   const footerSpace = 15;
-  const maxRowsPerPage = Math.floor((pageHeight - pageMargin - footerSpace - headerHeight) / rowHeight);
 
   let currentRow = 0;
   let yPosition = startY;
@@ -136,13 +135,28 @@ function addProductsTable(
 
   // Process all products with pagination
   while (currentRow < products.length) {
-    // Check if we need a new page (but not on first iteration)
-    if (!isFirstPage && yPosition > pageHeight - footerSpace - headerHeight - 10) {
+    // Calculate available space on current page for content
+    const availableSpace = pageHeight - yPosition - footerSpace;
+    
+    // Check if we need a new page (need space for at least header + 1 row)
+    if (!isFirstPage && availableSpace < (headerHeight + rowHeight + 5)) {
       doc.addPage();
       yPosition = pageMargin + 5;
     }
 
-    // Add table headers
+    // Calculate how many rows can fit on this page
+    const spaceForRows = pageHeight - yPosition - footerSpace - headerHeight;
+    const maxRowsThisPage = Math.floor(spaceForRows / rowHeight);
+    const rowsToRender = Math.min(maxRowsThisPage, products.length - currentRow);
+
+    if (rowsToRender <= 0) {
+      // If we can't fit any rows, force new page
+      doc.addPage();
+      yPosition = pageMargin + 5;
+      continue;
+    }
+
+    // Draw table headers
     let tableStartY = yPosition;
     let xPosition = pageMargin;
 
@@ -151,7 +165,6 @@ function addProductsTable(
     doc.setFont(undefined, "bold");
     doc.setTextColor(0, 0, 0);
     
-    // Draw header cells with borders instead of filled rectangles
     headers.forEach((header, idx) => {
       doc.setDrawColor(100);
       doc.rect(xPosition, tableStartY, colWidths[idx], headerHeight);
@@ -159,16 +172,14 @@ function addProductsTable(
       xPosition += colWidths[idx];
     });
 
-    // Add rows for this page
+    // Draw rows
     doc.setFont(undefined, "normal");
     let rowY = tableStartY + headerHeight;
-    const rowsOnThisPage = Math.min(maxRowsPerPage, products.length - currentRow);
 
-    for (let i = 0; i < rowsOnThisPage; i++) {
+    for (let i = 0; i < rowsToRender; i++) {
       const row = products[currentRow + i];
       xPosition = pageMargin;
       
-      // Draw row cells with borders
       row.forEach((cell, idx) => {
         doc.setDrawColor(200);
         doc.rect(xPosition, rowY - 5, colWidths[idx], rowHeight);
@@ -178,7 +189,8 @@ function addProductsTable(
       rowY += rowHeight;
     }
 
-    currentRow += rowsOnThisPage;
+    // Update counters
+    currentRow += rowsToRender;
     yPosition = rowY + 8;
     isFirstPage = false;
   }
