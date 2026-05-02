@@ -7,7 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { getDailySalesItemized } from "../db";
+import { getDailySalesItemized, getAllSettings } from "../db";
 import { generateDailySalesPDF } from "../pdf-generator";
 import { initializeDatabase } from "../initDb";
 
@@ -55,7 +55,19 @@ async function startServer() {
         return res.status(404).json({ error: "No data found for this date" });
       }
       
-      const doc = generateDailySalesPDF(data);
+      // Fetch company settings from database
+      const allSettings = await getAllSettings();
+      const companySettings: any = {};
+      if (allSettings && Array.isArray(allSettings)) {
+        allSettings.forEach((setting: any) => {
+          if (setting.key && setting.key.startsWith('company_')) {
+            const key = setting.key.replace('company_', '');
+            companySettings[key] = setting.value;
+          }
+        });
+      }
+      
+      const doc = generateDailySalesPDF(data, companySettings);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="daily-sales-${date}.pdf"`);
       doc.pipe(res);

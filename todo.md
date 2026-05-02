@@ -176,3 +176,10 @@
 - [x] Add Excel export button to Sales Reports page
 - [x] Test exports with company logo and contact info in header
 - [x] Verify formatting and branding on exported documents
+
+## Phase 44: Add Company Branding to Daily Sales Report PDF
+- [x] Update daily PDF export endpoint to include company branding header and footer
+- [x] Fetch company settings in daily PDF generation
+- [x] Add logo, company name, address, phone, email, website to header
+- [x] Add timestamp and page number to footer
+- [x] Test daily sales report export with branding
