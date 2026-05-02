@@ -19,6 +19,7 @@ import {
   deleteProduct,
   generateOrderNumber,
   getAllSettings,
+  getAllProductsSold,
   getCategories,
   getCustomerById,
   getCustomers,
@@ -660,6 +661,20 @@ const reportsRouter = router({
       const data = await getSalesReport(from, to);
       if (!data) return [];
       return (data.topProducts ?? []).slice(0, input.limit ?? 10).map((p: any) => ({
+        productId: 0,
+        productName: p.productName,
+        totalQuantity: p.totalQty,
+        totalRevenue: p.totalRevenue,
+      }));
+    }),
+
+  allProducts: protectedProcedure
+    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      const from = new Date(input.startDate + "T00:00:00");
+      const to = new Date(input.endDate + "T23:59:59");
+      const allProducts = await getAllProductsSold(from, to);
+      return (allProducts ?? []).map((p: any) => ({
         productId: 0,
         productName: p.productName,
         totalQuantity: p.totalQty,

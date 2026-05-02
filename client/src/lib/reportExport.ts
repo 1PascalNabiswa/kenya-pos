@@ -31,7 +31,7 @@ export interface ReportData {
 }
 
 /**
- * Generate PDF report with company branding
+ * Generate PDF report with company branding and pagination for large product lists
  */
 export async function generateReportPDF(
   reportData: ReportData,
@@ -80,48 +80,58 @@ export async function generateReportPDF(
       yPosition += 10;
     }
 
-    // Add top products table
+    // Add all products table with pagination
     if (reportData.topProducts && reportData.topProducts.length > 0) {
       doc.setFontSize(11);
       doc.setFont(undefined, "bold");
-      doc.text("Top Selling Products", 10, yPosition);
+      doc.text(`All Products Sold (${reportData.topProducts.length} items)`, 10, yPosition);
       yPosition += 6;
 
-      const tableStartY = yPosition;
       const headers = ["#", "Product", "Qty Sold", "Revenue"];
       const colWidths = [15, 80, 30, 40];
-      let xPosition = 10;
+      const rowHeight = 6;
+      const maxRowsPerPage = Math.floor((pageHeight - 40) / rowHeight);
+      let currentRow = 0;
 
-      // Table headers
-      doc.setFillColor(200, 200, 200);
-      doc.setFontSize(9);
-      doc.setFont(undefined, "bold");
-      headers.forEach((header, idx) => {
-        doc.rect(xPosition, tableStartY, colWidths[idx], 7, "F");
-        doc.text(header, xPosition + 2, tableStartY + 5);
-        xPosition += colWidths[idx];
-      });
+      // Process all products with pagination
+      while (currentRow < reportData.topProducts.length) {
+        // Add table headers for each page
+        let tableStartY = yPosition;
+        let xPosition = 10;
 
-      // Table rows
-      doc.setFont(undefined, "normal");
-      let rowY = tableStartY + 7;
-      for (const row of reportData.topProducts) {
-        xPosition = 10;
-        row.forEach((cell, idx) => {
-          doc.text(String(cell), xPosition + 2, rowY);
+        doc.setFillColor(200, 200, 200);
+        doc.setFontSize(9);
+        doc.setFont(undefined, "bold");
+        headers.forEach((header, idx) => {
+          doc.rect(xPosition, tableStartY, colWidths[idx], 7, "F");
+          doc.text(header, xPosition + 2, tableStartY + 5);
           xPosition += colWidths[idx];
         });
-        rowY += 6;
 
-        // Check if we need a new page
-        if (rowY > pageHeight - 30) {
+        // Add rows for this page
+        doc.setFont(undefined, "normal");
+        let rowY = tableStartY + 7;
+        const rowsOnThisPage = Math.min(maxRowsPerPage, reportData.topProducts.length - currentRow);
+
+        for (let i = 0; i < rowsOnThisPage; i++) {
+          const row = reportData.topProducts[currentRow + i];
+          xPosition = 10;
+          row.forEach((cell, idx) => {
+            doc.text(String(cell), xPosition + 2, rowY);
+            xPosition += colWidths[idx];
+          });
+          rowY += rowHeight;
+        }
+
+        currentRow += rowsOnThisPage;
+        yPosition = rowY + 8;
+
+        // Add new page if there are more products
+        if (currentRow < reportData.topProducts.length) {
           doc.addPage();
-          rowY = 10;
-          yPosition = rowY + 20;
+          yPosition = 10;
         }
       }
-
-      yPosition = rowY + 8;
     }
 
     // Add payment methods table
@@ -179,7 +189,7 @@ export async function generateReportPDF(
 }
 
 /**
- * Generate Excel report with company branding
+ * Generate Excel report with company branding and all products
  */
 export async function generateReportExcel(
   reportData: ReportData,
@@ -210,14 +220,14 @@ export async function generateReportExcel(
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
 
-    // Create top products sheet
+    // Create all products sheet
     if (reportData.topProducts && reportData.topProducts.length > 0) {
       const productsData = [
         ["#", "Product", "Qty Sold", "Revenue"],
         ...reportData.topProducts,
       ];
       const productsSheet = XLSX.utils.aoa_to_sheet(productsData);
-      XLSX.utils.book_append_sheet(workbook, productsSheet, "Top Products");
+      XLSX.utils.book_append_sheet(workbook, productsSheet, "All Products");
     }
 
     // Create payment methods sheet

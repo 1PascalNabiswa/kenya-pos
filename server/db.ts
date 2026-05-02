@@ -446,6 +446,31 @@ export async function updateOrderStatus(
 }
 
 // ─── Reports ───────────────────────────────────────────────────────────────
+// Fetch all products sold in a date range (for detailed reports)
+export async function getAllProductsSold(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const allProducts = await db
+    .select({
+      productName: orderItems.productName,
+      totalQty: sql<number>`sum(${orderItems.quantity})`,
+      totalRevenue: sql<number>`sum(${orderItems.totalPrice})`,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .where(
+      and(
+        gte(orders.createdAt, fromDate),
+        lte(orders.createdAt, toDate),
+      )
+    )
+    .groupBy(orderItems.productName)
+    .orderBy(desc(sql`sum(${orderItems.totalPrice})`));
+  
+  return allProducts;
+}
+
 export async function getSalesReport(fromDate: Date, toDate: Date) {
   const db = await getDb();
   if (!db) return null;

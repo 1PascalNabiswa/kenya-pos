@@ -209,3 +209,12 @@
 - [x] Include summary totals (total revenue, total orders, avg order value, total VAT)
 - [x] Include payment method breakdown
 - [x] Test PDF export with real data from the report page
+
+## Phase 49: Update PDF Export to Include ALL Products (Not Just Top 10)
+- [x] Create new tRPC procedure `reports.allProducts` to fetch all products sold for a period (remove the .limit(10))
+- [x] Update Reports.tsx to fetch all products using the new procedure
+- [x] Modify reportExport.ts to handle full product list with proper pagination
+- [x] Update Excel export to include all products in a separate sheet
+- [x] Test PDF export with date ranges that have many products
+- [x] Verify pagination works correctly when product list spans multiple pages
+- [x] Test Excel export with full product list

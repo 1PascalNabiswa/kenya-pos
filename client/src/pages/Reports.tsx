@@ -31,6 +31,7 @@ export default function Reports() {
 
   const { data: paymentBreakdown } = trpc.reports.paymentBreakdown.useQuery({ startDate, endDate });
   const { data: topProducts } = trpc.reports.topProducts.useQuery({ startDate, endDate, limit: 10 });
+  const { data: allProducts } = trpc.reports.allProducts.useQuery({ startDate, endDate });
   const { data: paymentMethodComparison } = trpc.reports.paymentMethodComparison.useQuery({ fromDate: startDate, toDate: endDate });
   const { data: dailySalesByPaymentMethod } = trpc.reports.dailySalesByPaymentMethod.useQuery({ fromDate: startDate, toDate: endDate });
   const { data: companySettings } = trpc.companySettings.get.useQuery();
@@ -114,7 +115,7 @@ export default function Reports() {
           avgOrderValue: report.totalRevenue / (report.totalOrders || 1),
           totalTax: report.totalTax,
         },
-        topProducts: (topProducts ?? []).map((p: any, idx: number) => ([
+        topProducts: (allProducts ?? []).map((p: any, idx: number) => ([
           String(idx + 1),
           p.productName,
           String(p.totalQuantity),
@@ -139,24 +140,26 @@ export default function Reports() {
   const handleExportReportExcel = async () => {
     if (!report) return;
     try {
-      const companySettings = await trpc.companySettings.get.query();
-      
       const reportData = {
         title: "Sales Report",
-        subtitle: "Detailed Sales Analysis",
-        headers: ["Date", "Orders", "Revenue (KES)", "Tax (KES)"],
-        rows: (report.timeline ?? []).map((d: any) => [
-          d.date,
-          String(d.orderCount),
-          String(Number(d.revenue).toFixed(2)),
-          String(Number(d.tax).toFixed(2)),
-        ]),
-        totals: {
-          "TOTALS": "",
-          [String(report.totalOrders)]: "",
-          [String(Number(report.totalRevenue).toFixed(2))]: "",
-          [String(Number(report.totalTax).toFixed(2))]: "",
+        subtitle: `${startDate} to ${endDate}`,
+        summary: {
+          totalRevenue: report.totalRevenue,
+          totalOrders: report.totalOrders,
+          avgOrderValue: report.totalRevenue / (report.totalOrders || 1),
+          totalTax: report.totalTax,
         },
+        topProducts: (allProducts ?? []).map((p: any, idx: number) => ([
+          String(idx + 1),
+          p.productName,
+          String(p.totalQuantity),
+          String(Number(p.totalRevenue).toFixed(2)),
+        ])),
+        paymentMethods: (paymentBreakdown ?? []).map((p: any) => ([
+          p.method,
+          String(p.count),
+          String(Number(p.total).toFixed(2)),
+        ])),
         startDate,
         endDate,
       };
