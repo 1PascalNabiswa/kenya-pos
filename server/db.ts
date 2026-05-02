@@ -1661,22 +1661,39 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
     .from(customers)
     .where(inArray(customers.id, customerIds));
   
-  // Get wallet data for all customers
-  const walletData = await db
-    .select()
-    .from(customerWallets)
-    .where(inArray(customerWallets.customerId, customerIds));
-  
-  // Create maps for quick lookup
+  // Get customer details
   const customerMap = new Map(customerDetails.map(c => [c.id, c]));
-  const walletMap = new Map(walletData.map(w => [w.customerId, w]));
+  
+  // Calculate wallet spending from wallet transactions within the date range
+  const walletTransactions = await db
+    .select({
+      customerId: walletTransactions.customerId,
+      amount: walletTransactions.amount,
+    })
+    .from(walletTransactions)
+    .where(
+      and(
+        inArray(walletTransactions.customerId, customerIds),
+        eq(walletTransactions.type, 'spend'),
+        gte(walletTransactions.createdAt, queryStartDate),
+        lte(walletTransactions.createdAt, queryEndDate)
+      )
+    );
+  
+  // Group wallet transactions by customer
+  const walletSpendingByCustomer: Record<number, number> = {};
+  for (const txn of walletTransactions) {
+    if (!walletSpendingByCustomer[txn.customerId]) {
+      walletSpendingByCustomer[txn.customerId] = 0;
+    }
+    walletSpendingByCustomer[txn.customerId] += Number(txn.amount);
+  }
   
   // Merge and sort
   const result = spendingCustomers
     .map(spending => {
       const customer = customerMap.get(spending.customerId);
-      const wallet = walletMap.get(spending.customerId);
-      const walletSpent = wallet ? Number(wallet.totalSpent) : 0;
+      const walletSpent = walletSpendingByCustomer[spending.customerId] || 0;
       return {
         id: customer?.id,
         name: customer?.name,
