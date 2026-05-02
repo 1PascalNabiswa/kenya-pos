@@ -1665,7 +1665,7 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
   const customerMap = new Map(customerDetails.map(c => [c.id, c]));
   
   // Calculate wallet spending from wallet transactions within the date range
-  const walletTransactions = await db
+  const walletTxns = await db
     .select({
       customerId: walletTransactions.customerId,
       amount: walletTransactions.amount,
@@ -1682,7 +1682,7 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
   
   // Group wallet transactions by customer
   const walletSpendingByCustomer: Record<number, number> = {};
-  for (const txn of walletTransactions) {
+  for (const txn of walletTxns) {
     if (!walletSpendingByCustomer[txn.customerId]) {
       walletSpendingByCustomer[txn.customerId] = 0;
     }
