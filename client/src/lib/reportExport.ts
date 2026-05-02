@@ -92,37 +92,7 @@ export async function generateReportPDF(
         yPosition = 10;
       }
 
-      doc.setFontSize(11);
-      doc.setFont(undefined, "bold");
-      doc.text("Payment Methods", 10, yPosition);
-      yPosition += 6;
-
-      const tableStartY = yPosition;
-      const headers = ["Payment Method", "Orders", "Total Revenue"];
-      const colWidths = [80, 30, 60];
-      let xPosition = 10;
-
-      // Table headers
-      doc.setFillColor(200, 200, 200);
-      doc.setFontSize(9);
-      doc.setFont(undefined, "bold");
-      headers.forEach((header, idx) => {
-        doc.rect(xPosition, tableStartY, colWidths[idx], 7, "F");
-        doc.text(header, xPosition + 2, tableStartY + 5);
-        xPosition += colWidths[idx];
-      });
-
-      // Table rows
-      doc.setFont(undefined, "normal");
-      let rowY = tableStartY + 7;
-      for (const row of reportData.paymentMethods) {
-        xPosition = 10;
-        row.forEach((cell, idx) => {
-          doc.text(String(cell), xPosition + 2, rowY);
-          xPosition += colWidths[idx];
-        });
-        rowY += 6;
-      }
+      yPosition = addPaymentMethodsTable(doc, reportData.paymentMethods, yPosition, pageHeight);
     }
 
     // Add footer
@@ -176,11 +146,15 @@ function addProductsTable(
     let tableStartY = yPosition;
     let xPosition = pageMargin;
 
-    doc.setFillColor(200, 200, 200);
+    doc.setFillColor(220, 220, 220);
     doc.setFontSize(9);
     doc.setFont(undefined, "bold");
+    doc.setTextColor(0, 0, 0);
+    
+    // Draw header cells with borders instead of filled rectangles
     headers.forEach((header, idx) => {
-      doc.rect(xPosition, tableStartY, colWidths[idx], headerHeight, "F");
+      doc.setDrawColor(100);
+      doc.rect(xPosition, tableStartY, colWidths[idx], headerHeight);
       doc.text(header, xPosition + 2, tableStartY + 5);
       xPosition += colWidths[idx];
     });
@@ -193,7 +167,11 @@ function addProductsTable(
     for (let i = 0; i < rowsOnThisPage; i++) {
       const row = products[currentRow + i];
       xPosition = pageMargin;
+      
+      // Draw row cells with borders
       row.forEach((cell, idx) => {
+        doc.setDrawColor(200);
+        doc.rect(xPosition, rowY - 5, colWidths[idx], rowHeight);
         doc.text(String(cell), xPosition + 2, rowY);
         xPosition += colWidths[idx];
       });
@@ -206,6 +184,62 @@ function addProductsTable(
   }
 
   return yPosition;
+}
+
+/**
+ * Add payment methods table
+ */
+function addPaymentMethodsTable(
+  doc: jsPDF,
+  paymentMethods: (string | number)[][],
+  startY: number,
+  pageHeight: number
+): number {
+  let yPosition = startY;
+
+  doc.setFontSize(11);
+  doc.setFont(undefined, "bold");
+  doc.text("Payment Methods", 10, yPosition);
+  yPosition += 6;
+
+  const tableStartY = yPosition;
+  const headers = ["Payment Method", "Orders", "Total Revenue"];
+  const colWidths = [80, 30, 60];
+  let xPosition = 10;
+
+  // Table headers
+  doc.setFillColor(220, 220, 220);
+  doc.setFontSize(9);
+  doc.setFont(undefined, "bold");
+  doc.setTextColor(0, 0, 0);
+  
+  headers.forEach((header, idx) => {
+    doc.setDrawColor(100);
+    doc.rect(xPosition, tableStartY, colWidths[idx], 7);
+    doc.text(header, xPosition + 2, tableStartY + 5);
+    xPosition += colWidths[idx];
+  });
+
+  // Table rows
+  doc.setFont(undefined, "normal");
+  let rowY = tableStartY + 7;
+  for (const row of paymentMethods) {
+    xPosition = 10;
+    row.forEach((cell, idx) => {
+      doc.setDrawColor(200);
+      doc.rect(xPosition, rowY - 5, colWidths[idx], 6);
+      // Format revenue values properly - avoid NaN
+      let cellValue = String(cell);
+      if (idx === 2 && typeof cell === "number" && !isNaN(cell)) {
+        cellValue = `KES ${cell.toLocaleString("en-KE", { maximumFractionDigits: 2 })}`;
+      }
+      doc.text(cellValue, xPosition + 2, rowY);
+      xPosition += colWidths[idx];
+    });
+    rowY += 6;
+  }
+
+  return rowY + 8;
 }
 
 /**
@@ -311,7 +345,7 @@ function addCompanyHeader(
 
   // Add horizontal line
   doc.setDrawColor(150);
-  doc.line(10, pageWidth - 10, pageWidth - 10, yPosition);
+  doc.line(10, yPosition, pageWidth - 10, yPosition);
   yPosition += 5;
 
   return yPosition;

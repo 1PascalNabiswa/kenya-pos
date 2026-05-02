@@ -225,3 +225,12 @@
 - [x] Ensure column headers repeat on each new page
 - [x] Test PDF export with large product lists spanning multiple pages
 - [x] Verify all products are visible and properly formatted across all pages
+
+## Phase 51: Fix PDF Export Rendering Errors
+- [x] Remove black header bars covering column headers
+- [x] Fix NaN values in payment methods table - format revenue properly
+- [x] Add proper borders instead of filled rectangles for better visibility
+- [x] Remove diagonal line artifact from PDF rendering
+- [x] Ensure all payment methods are included in the export
+- [x] Test PDF export with all fixes applied
+- [x] Verify headers display correctly on all pages
