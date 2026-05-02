@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Save, Store, Receipt, Smartphone, CreditCard, Bell, Shield } from "lucide-react";
+import { Save, Store, Receipt, Smartphone, CreditCard, Bell, Shield, FileText } from "lucide-react";
+import { CompanySettingsForm } from "@/components/CompanySettingsForm";
 
-type Tab = "store" | "receipt" | "payments" | "notifications" | "security";
+type Tab = "store" | "receipt" | "payments" | "notifications" | "security" | "documents";
 
 export default function Settings() {
-  const [tab, setTab] = useState<Tab>("store");
+  const [tab, setTab] = useState<Tab>("documents");
   const { data: allSettings, isLoading } = trpc.settings.getAll.useQuery();
   const setMany = trpc.settings.setMany.useMutation({
     onSuccess: () => toast.success("Settings saved"),
@@ -114,6 +115,7 @@ export default function Settings() {
     { id: "payments" as Tab, label: "Payments", icon: <Smartphone size={16} /> },
     { id: "notifications" as Tab, label: "Notifications", icon: <Bell size={16} /> },
     { id: "security" as Tab, label: "Security", icon: <Shield size={16} /> },
+    { id: "documents" as Tab, label: "Documents", icon: <FileText size={16} /> },
   ];
 
   return (
@@ -384,6 +386,13 @@ export default function Settings() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Documents Settings */}
+      {tab === "documents" && (
+        <div className="space-y-4">
+          <CompanySettingsForm />
+        </div>
       )}
     </div>
   );
