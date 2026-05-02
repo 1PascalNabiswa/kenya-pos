@@ -158,3 +158,9 @@
 - [x] Update CompanySettingsForm to use tRPC mutations
 - [x] Update document export to fetch settings from database
 - [x] Test settings persistence across browsers and users
+
+## Phase 41: Fix Company Settings Data Loss on Refresh
+- [x] Debug database query issue (like function not working)
+- [x] Fix query to use individual key lookups instead of LIKE
+- [x] Fix logo size overflow error (limit to 50KB)
+- [x] Verify settings persist after page refresh

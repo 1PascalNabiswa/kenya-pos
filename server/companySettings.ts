@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { settings } from "../drizzle/schema";
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export interface CompanyInfo {
   name: string;
@@ -24,11 +24,28 @@ export async function getCompanySettings(): Promise<CompanyInfo> {
       return getDefaultCompanyInfo();
     }
 
-    // Fetch all company settings
-    const allSettings = await db
-      .select()
-      .from(settings)
-      .where(like(settings.key, `${COMPANY_SETTINGS_PREFIX}%`));
+    // Fetch all company settings - get each setting individually
+    const settingKeys = [
+      `${COMPANY_SETTINGS_PREFIX}name`,
+      `${COMPANY_SETTINGS_PREFIX}logo`,
+      `${COMPANY_SETTINGS_PREFIX}address`,
+      `${COMPANY_SETTINGS_PREFIX}phone`,
+      `${COMPANY_SETTINGS_PREFIX}email`,
+      `${COMPANY_SETTINGS_PREFIX}website`,
+      `${COMPANY_SETTINGS_PREFIX}taxId`,
+    ];
+
+    const allSettings = [];
+    for (const key of settingKeys) {
+      const result = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.key, key))
+        .limit(1);
+      if (result.length > 0) {
+        allSettings.push(result[0]);
+      }
+    }
 
     const result: CompanyInfo = {
       name: "KenPOS",
@@ -62,9 +79,16 @@ export async function saveCompanySettings(info: CompanyInfo): Promise<boolean> {
       return false;
     }
 
+    // Limit logo size to prevent database column overflow (max 50KB for base64)
+    let logoValue = info.logo || "";
+    if (logoValue && logoValue.length > 50000) {
+      console.warn("Logo image too large, truncating to 50KB");
+      logoValue = logoValue.substring(0, 50000);
+    }
+
     const settingsToSave = [
       { key: `${COMPANY_SETTINGS_PREFIX}name`, value: info.name },
-      { key: `${COMPANY_SETTINGS_PREFIX}logo`, value: info.logo || "" },
+      { key: `${COMPANY_SETTINGS_PREFIX}logo`, value: logoValue },
       { key: `${COMPANY_SETTINGS_PREFIX}address`, value: info.address || "" },
       { key: `${COMPANY_SETTINGS_PREFIX}phone`, value: info.phone || "" },
       { key: `${COMPANY_SETTINGS_PREFIX}email`, value: info.email || "" },
