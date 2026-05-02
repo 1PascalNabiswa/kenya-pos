@@ -13,6 +13,38 @@ export default function CustomerSpendingReports() {
   const defaultEndDate = new Date();
   const defaultStartDate = new Date();
   defaultStartDate.setMonth(defaultStartDate.getMonth() - 3);
+  
+  // Helper to set date range
+  const setDateRange = (start: Date, end: Date) => {
+    setStartDate(formatDateForInput(start));
+    setEndDate(formatDateForInput(end));
+  };
+  
+  // Quick filter functions
+  const setTodayFilter = () => {
+    const today = new Date();
+    setDateRange(today, today);
+  };
+  
+  const setThisWeekFilter = () => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    setDateRange(startOfWeek, today);
+  };
+  
+  const setThisMonthFilter = () => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    setDateRange(startOfMonth, today);
+  };
+  
+  const setLastThreeMonthsFilter = () => {
+    const today = new Date();
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    setDateRange(threeMonthsAgo, today);
+  };
 
   // Format dates for display
   const formatDateForInput = (date: Date) => {
@@ -58,6 +90,37 @@ export default function CustomerSpendingReports() {
           <p className="text-muted-foreground">Analyze customer spending patterns and trends by payment method</p>
         </div>
 
+        {/* Quick Filters */}
+        <div className="mb-6">
+          <label className="text-sm font-medium text-foreground mb-3 block">Quick Filters</label>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={setTodayFilter}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium"
+            >
+              Today
+            </button>
+            <button
+              onClick={setThisWeekFilter}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium"
+            >
+              This Week
+            </button>
+            <button
+              onClick={setThisMonthFilter}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium"
+            >
+              This Month
+            </button>
+            <button
+              onClick={setLastThreeMonthsFilter}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium"
+            >
+              Last 3 Months
+            </button>
+          </div>
+        </div>
+        
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
@@ -129,17 +192,7 @@ export default function CustomerSpendingReports() {
                 </div>
               </Card>
 
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Other Payment</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      KES {Number(selectedCustomerData.otherSpent ?? 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-green-600" />
-                </div>
-              </Card>
+
 
               <Card className="p-4">
                 <div className="flex items-center justify-between">
@@ -202,21 +255,7 @@ export default function CustomerSpendingReports() {
                     }
                   </p>
                 </div>
-                <div className="border rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <DollarSign className="w-5 h-5 text-green-600 mr-2" />
-                    <p className="font-semibold text-foreground">Other Payment Methods</p>
-                  </div>
-                  <p className="text-3xl font-bold text-green-600">
-                    KES {Number(selectedCustomerData.otherSpent ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {selectedCustomerData.totalSpent > 0 
-                      ? `${((selectedCustomerData.otherSpent / selectedCustomerData.totalSpent) * 100).toFixed(1)}% of total`
-                      : "0% of total"
-                    }
-                  </p>
-                </div>
+
               </div>
             </Card>
           </>
@@ -236,7 +275,7 @@ export default function CustomerSpendingReports() {
                       <th className="text-left py-2 px-4 text-sm font-semibold">Customer</th>
                       <th className="text-right py-2 px-4 text-sm font-semibold">Total Spent</th>
                       <th className="text-right py-2 px-4 text-sm font-semibold">Wallet</th>
-                      <th className="text-right py-2 px-4 text-sm font-semibold">Other</th>
+
                       <th className="text-right py-2 px-4 text-sm font-semibold">Orders</th>
                       <th className="text-right py-2 px-4 text-sm font-semibold">Avg Order</th>
                     </tr>
@@ -251,7 +290,6 @@ export default function CustomerSpendingReports() {
                         <td className="py-2 px-4">{customer?.name || "Unknown"}</td>
                         <td className="text-right py-2 px-4 font-bold">KES {Number(customer?.totalSpent ?? 0).toLocaleString()}</td>
                         <td className="text-right py-2 px-4 text-blue-600 font-semibold">KES {Number(customer?.walletSpent ?? 0).toLocaleString()}</td>
-                        <td className="text-right py-2 px-4 text-green-600 font-semibold">KES {Number(customer?.otherSpent ?? 0).toLocaleString()}</td>
                         <td className="text-right py-2 px-4">{customer?.orderCount ?? 0}</td>
                         <td className="text-right py-2 px-4">KES {Number(customer?.avgOrderValue ?? 0).toLocaleString()}</td>
                       </tr>

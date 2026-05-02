@@ -1626,7 +1626,7 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
       )
     );
   
-  // Group by customer and calculate totals (separated by payment method)
+  // Group by customer and calculate order metrics
   const customerSpending: Record<number, any> = {};
   
   for (const order of allOrders) {
@@ -1635,21 +1635,12 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
         customerId: order.customerId,
         orderCount: 0,
         totalSpent: 0,
-        walletSpent: 0,
-        otherSpent: 0,
         lastOrderDate: order.createdAt,
       };
     }
     customerSpending[order.customerId].orderCount += 1;
     const amount = Number(order.totalAmount);
     customerSpending[order.customerId].totalSpent += amount;
-    
-    // Separate wallet vs other payment methods
-    if (order.paymentMethod === 'wallet') {
-      customerSpending[order.customerId].walletSpent += amount;
-    } else {
-      customerSpending[order.customerId].otherSpent += amount;
-    }
     
     if (order.createdAt > customerSpending[order.customerId].lastOrderDate) {
       customerSpending[order.customerId].lastOrderDate = order.createdAt;
@@ -1663,20 +1654,29 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
   
   if (spendingCustomers.length === 0) return [];
   
-  // Get customer details
+  // Get customer details and wallet data
   const customerIds = spendingCustomers.map(c => c.customerId);
   const customerDetails = await db
     .select()
     .from(customers)
     .where(inArray(customers.id, customerIds));
   
-  // Create a map of customer details
+  // Get wallet data for all customers
+  const walletData = await db
+    .select()
+    .from(customerWallets)
+    .where(inArray(customerWallets.customerId, customerIds));
+  
+  // Create maps for quick lookup
   const customerMap = new Map(customerDetails.map(c => [c.id, c]));
+  const walletMap = new Map(walletData.map(w => [w.customerId, w]));
   
   // Merge and sort
   const result = spendingCustomers
     .map(spending => {
       const customer = customerMap.get(spending.customerId);
+      const wallet = walletMap.get(spending.customerId);
+      const walletSpent = wallet ? Number(wallet.totalSpent) : 0;
       return {
         id: customer?.id,
         name: customer?.name,
@@ -1684,8 +1684,7 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
         email: customer?.email,
         orderCount: spending.orderCount,
         totalSpent: spending.totalSpent,
-        walletSpent: spending.walletSpent,
-        otherSpent: spending.otherSpent,
+        walletSpent: walletSpent,
         avgOrderValue: spending.totalSpent / spending.orderCount,
         lastOrderDate: spending.lastOrderDate,
         daysSinceLastOrder: Math.floor((Date.now() - spending.lastOrderDate.getTime()) / (1000 * 60 * 60 * 24)),

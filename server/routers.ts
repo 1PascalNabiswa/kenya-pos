@@ -362,7 +362,7 @@ const ordersRouter = router({
           paymentMethod: input.paymentMethod,
           paymentStatus: "paid",
           orderStatus: "completed",
-          notes: input.notes,
+          notes: input.splitPayments || input.notes,
         },
         input.items.map((item) => ({
           ...item,
