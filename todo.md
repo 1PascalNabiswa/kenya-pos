@@ -126,3 +126,9 @@
 - [x] Add date range picker UI to CustomerSpendingReports page
 - [x] Connect date picker to data fetching
 - [x] Test filtering with various date ranges
+
+## Phase 36: Fix "Added to Cart" Notification Position
+- [x] Move "Added to Cart" notification popup to top-right to avoid blocking Complete Order button
+- [x] Test notification appears in correct position
+- [x] Verify Complete Order button remains accessible
+

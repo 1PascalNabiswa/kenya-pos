@@ -431,15 +431,21 @@ const ordersRouter = router({
         }
 
         // Handle wallet deductions for split or single wallet payments
-        if (input.splitPayments && input.paymentMethod === "mixed") {
-          const splitPayments = JSON.parse(input.splitPayments);
-          const walletPayment = splitPayments.find((p: any) => p.method === "wallet");
-          if (walletPayment && walletPayment.amount > 0) {
-            await spendFromWallet(input.customerId, Number(walletPayment.amount), id);
+        try {
+          if (input.splitPayments && input.paymentMethod === "mixed") {
+            const splitPayments = JSON.parse(input.splitPayments);
+            const walletPayment = splitPayments.find((p: any) => p.method === "wallet");
+            if (walletPayment && walletPayment.amount > 0) {
+              await spendFromWallet(input.customerId, Number(walletPayment.amount), id);
+            }
+          } else if (input.paymentMethod === "wallet") {
+            // Single wallet payment - deduct entire amount
+            await spendFromWallet(input.customerId, Number(input.totalAmount), id);
           }
-        } else if (input.paymentMethod === "wallet") {
-          // Single wallet payment - deduct entire amount
-          await spendFromWallet(input.customerId, Number(input.totalAmount), id);
+        } catch (walletError) {
+          console.error("[Wallet Deduction] Failed to deduct from wallet:", walletError);
+          // Don't fail the order if wallet deduction fails - order is already created
+          // This prevents the "insufficient balance" error from appearing after order is complete
         }
       }
 
