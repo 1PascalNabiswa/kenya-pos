@@ -107,20 +107,24 @@ export default function Reports() {
     try {
       const reportData = {
         title: "Sales Report",
-        subtitle: "Detailed Sales Analysis",
-        headers: ["Date", "Orders", "Revenue (KES)", "Tax (KES)"],
-        rows: (report.timeline ?? []).map((d: any) => [
-          d.date,
-          String(d.orderCount),
-          String(Number(d.revenue).toFixed(2)),
-          String(Number(d.tax).toFixed(2)),
-        ]),
-        totals: {
-          "TOTALS": "",
-          [String(report.totalOrders)]: "",
-          [String(Number(report.totalRevenue).toFixed(2))]: "",
-          [String(Number(report.totalTax).toFixed(2))]: "",
+        subtitle: `${startDate} to ${endDate}`,
+        summary: {
+          totalRevenue: report.totalRevenue,
+          totalOrders: report.totalOrders,
+          avgOrderValue: report.totalRevenue / (report.totalOrders || 1),
+          totalTax: report.totalTax,
         },
+        topProducts: (topProducts ?? []).map((p: any, idx: number) => ([
+          String(idx + 1),
+          p.productName,
+          String(p.totalQuantity),
+          String(Number(p.totalRevenue).toFixed(2)),
+        ])),
+        paymentMethods: (paymentBreakdown ?? []).map((p: any) => ([
+          p.method,
+          String(p.count),
+          String(Number(p.total).toFixed(2)),
+        ])),
         startDate,
         endDate,
       };

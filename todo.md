@@ -202,3 +202,10 @@
 - [x] Add manual header/footer after addPage calls
 - [x] Fix logo rendering in both PDF export methods (client-side and server-side)
 - [x] Verify Daily PDF and Export PDF both work without errors
+
+## Phase 48: Update PDF Export to Include Actual Sales Data
+- [x] Update reportExport.ts to pass actual sales data to PDF generation
+- [x] Include top products table with quantities and revenue
+- [x] Include summary totals (total revenue, total orders, avg order value, total VAT)
+- [x] Include payment method breakdown
+- [x] Test PDF export with real data from the report page
