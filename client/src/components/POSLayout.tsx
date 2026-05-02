@@ -378,11 +378,15 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1" />
           <div className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString("en-KE", {
+            {new Date().toLocaleString("en-KE", {
               weekday: "long",
               year: "numeric",
               month: "long",
               day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: false,
             })}
           </div>
         </header>

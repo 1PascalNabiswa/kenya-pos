@@ -80,7 +80,7 @@ export function StaffActivityLogs() {
       ["Date", "Time", "User Name", "Activity Type", "Description", "Entity Type", "Entity ID", "Status"],
       ...logs.map((log: any) => [
         new Date(log.createdAt).toLocaleDateString(),
-        new Date(log.createdAt).toLocaleTimeString(),
+        new Date(log.createdAt).toLocaleTimeString("en-KE", { hour12: false }),
         log.userName || `User ${log.userId}`,
         log.activityType,
         log.description || "",
@@ -196,7 +196,11 @@ export function StaffActivityLogs() {
                       <span className="text-sm font-medium">{log.userName || `User ${log.userId}`}</span>
                     </div>
                     <span className="text-sm text-gray-500">
-                      {new Date(log.createdAt).toLocaleString()}
+                      {new Date(log.createdAt).toLocaleString("en-KE", {
+                        year: "numeric", month: "short", day: "numeric",
+                        hour: "2-digit", minute: "2-digit", second: "2-digit",
+                        hour12: false,
+                      })}
                     </span>
                   </div>
                   {log.description && (

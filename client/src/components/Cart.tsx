@@ -86,10 +86,6 @@ export default function Cart({
       </div>
 
       <div className="border-t border-border p-3 space-y-2 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Subtotal</span>
-          <span className="text-sm font-semibold">KES {total.toLocaleString()}</span>
-        </div>
         <div className="flex items-center justify-between font-bold">
           <span className="text-sm">Total</span>
           <span className="text-primary text-sm">KES {total.toLocaleString()}</span>

@@ -132,3 +132,7 @@
 - [x] Test notification appears in correct position
 - [x] Verify Complete Order button remains accessible
 
+
+## Phase 37: UI Improvements
+- [x] Remove Subtotal line from cart display (since it's the same as total)
+- [x] Update all time displays to show date and time with seconds

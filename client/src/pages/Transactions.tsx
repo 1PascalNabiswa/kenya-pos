@@ -156,7 +156,11 @@ export default function Transactions() {
                           {txn.customerName || "Unknown Customer"} • KES {Number(txn.amount).toLocaleString()}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {new Date(txn.createdAt).toLocaleString()}
+                          {new Date(txn.createdAt).toLocaleString("en-KE", {
+                            year: "numeric", month: "short", day: "numeric",
+                            hour: "2-digit", minute: "2-digit", second: "2-digit",
+                            hour12: false,
+                          })}
                         </div>
                       </div>
                       <Dialog>
@@ -263,8 +267,16 @@ export default function Transactions() {
                         )}
                         <div className="text-xs text-muted-foreground">
                           {txn.matchedAt
-                            ? `Matched: ${new Date(txn.matchedAt).toLocaleString()}`
-                            : `Recorded: ${new Date(txn.createdAt).toLocaleString()}`}
+                            ? `Matched: ${new Date(txn.matchedAt).toLocaleString("en-KE", {
+                                year: "numeric", month: "short", day: "numeric",
+                                hour: "2-digit", minute: "2-digit", second: "2-digit",
+                                hour12: false,
+                              })}`
+                            : `Recorded: ${new Date(txn.createdAt).toLocaleString("en-KE", {
+                                year: "numeric", month: "short", day: "numeric",
+                                hour: "2-digit", minute: "2-digit", second: "2-digit",
+                                hour12: false,
+                              })}`}
                         </div>
                       </div>
                       {txn.status === "used" && (

@@ -101,7 +101,8 @@ export default function ReceiptDialog({ open, onClose, orderId, orderNumber, aut
   const formatDate = (d: Date | string) =>
     new Date(d).toLocaleString("en-KE", {
       year: "numeric", month: "short", day: "numeric",
-      hour: "2-digit", minute: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false,
     });
 
   const padLine = (left: string, right: string, width = 32) => {

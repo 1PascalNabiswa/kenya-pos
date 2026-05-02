@@ -49,7 +49,11 @@ export default function AuditLogs() {
     const csv = [
       ["Timestamp", "User", "Action", "Module", "Entity", "Details"],
       ...logs.map((log: any) => [
-        new Date(log.timestamp).toLocaleString(),
+        new Date(log.timestamp).toLocaleString("en-KE", {
+          year: "numeric", month: "short", day: "numeric",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+          hour12: false,
+        }),
         log.userId || "-",
         log.action,
         log.module,
@@ -202,7 +206,11 @@ export default function AuditLogs() {
             ) : (
               logs.map((log: any, idx: number) => (
                 <tr key={idx} className="border-b border-border hover:bg-muted/50">
-                  <td className="px-4 py-2">{new Date(log.timestamp).toLocaleString()}</td>
+                  <td className="px-4 py-2">{new Date(log.timestamp).toLocaleString("en-KE", {
+                    year: "numeric", month: "short", day: "numeric",
+                    hour: "2-digit", minute: "2-digit", second: "2-digit",
+                    hour12: false,
+                  })}</td>
                   <td className="px-4 py-2 font-mono text-xs">{log.userId || "-"}</td>
                   <td className="px-4 py-2">
                     <Badge className={actionColors[log.action] || "bg-gray-100 text-gray-800"}>
