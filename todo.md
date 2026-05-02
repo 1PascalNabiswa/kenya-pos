@@ -164,3 +164,8 @@
 - [x] Fix query to use individual key lookups instead of LIKE
 - [x] Fix logo size overflow error (limit to 50KB)
 - [x] Verify settings persist after page refresh
+
+## Phase 42: Fix Logo Preview Display Size
+- [x] Increase logo preview container from 24x24 to 32x32
+- [x] Adjust image sizing to fill container properly
+- [x] Verify logo displays at full size in preview

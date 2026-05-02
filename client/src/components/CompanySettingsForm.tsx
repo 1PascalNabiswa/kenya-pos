@@ -102,11 +102,11 @@ export const CompanySettingsForm: React.FC = () => {
           <label className="text-sm font-medium">Company Logo</label>
           <div className="flex items-center gap-4">
             {logoPreview && (
-              <div className="w-24 h-24 border border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+              <div className="w-32 h-32 border border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
                 <img
                   src={logoPreview}
                   alt="Logo Preview"
-                  className="max-w-full max-h-full object-contain"
+                  className="w-full h-full object-contain p-2"
                 />
               </div>
             )}
