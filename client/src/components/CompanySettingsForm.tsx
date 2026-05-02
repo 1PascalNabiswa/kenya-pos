@@ -3,12 +3,49 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { CompanyInfo, saveCompanyInfo, getCompanyInfo } from "@/lib/documentExport";
+import { trpc } from "@/lib/trpc";
 
 export const CompanySettingsForm: React.FC = () => {
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(getCompanyInfo());
-  const [logoPreview, setLogoPreview] = useState<string | null>(companyInfo.logo || null);
+  const [companyInfo, setCompanyInfo] = useState({
+    name: "",
+    logo: "",
+    address: "",
+    phone: "",
+    email: "",
+    website: "",
+    taxId: "",
+  });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch company settings from database
+  const { data: settings, isLoading: isLoadingSettings } = trpc.companySettings.get.useQuery();
+  const saveSettings = trpc.companySettings.set.useMutation({
+    onSuccess: () => {
+      toast.success("Company settings saved successfully!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to save settings");
+    },
+  });
+
+  // Load settings when they're fetched
+  useEffect(() => {
+    if (settings) {
+      setCompanyInfo({
+        name: settings.name || "",
+        logo: settings.logo || "",
+        address: settings.address || "",
+        phone: settings.phone || "",
+        email: settings.email || "",
+        website: settings.website || "",
+        taxId: settings.taxId || "",
+      });
+      if (settings.logo) {
+        setLogoPreview(settings.logo);
+      }
+    }
+  }, [settings]);
 
   const handleInputChange = (field: keyof CompanyInfo, value: string) => {
     setCompanyInfo((prev) => ({
@@ -41,15 +78,15 @@ export const CompanySettingsForm: React.FC = () => {
 
     setIsSaving(true);
     try {
-      saveCompanyInfo(companyInfo);
-      toast.success("Company settings saved successfully");
-    } catch (error) {
-      toast.error("Failed to save company settings");
-      console.error(error);
+      await saveSettings.mutateAsync(companyInfo);
     } finally {
       setIsSaving(false);
     }
   };
+
+  if (isLoadingSettings) {
+    return <div className="text-center py-8">Loading company settings...</div>;
+  }
 
   return (
     <Card>
@@ -147,7 +184,7 @@ export const CompanySettingsForm: React.FC = () => {
         </div>
 
         {/* Save Button */}
-        <Button onClick={handleSave} disabled={isSaving} className="w-full">
+        <Button onClick={handleSave} disabled={isSaving || saveSettings.isPending} className="w-full">
           {isSaving ? "Saving..." : "Save Company Settings"}
         </Button>
       </CardContent>

@@ -713,3 +713,4 @@ export const transactionLogs = mysqlTable("transaction_logs", {
 });
 export type TransactionLog = typeof transactionLogs.$inferSelect;
 export type InsertTransactionLog = typeof transactionLogs.$inferInsert;
+

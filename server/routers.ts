@@ -6,6 +6,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
 import { systemRouter } from "./_core/systemRouter";
+import { companySettingsRouter } from "./routers/companySettings";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { logRoleAssignment, logUserCreation, logUserDeletion } from "./auditLogger";
 import {
@@ -1791,6 +1792,7 @@ export const appRouter = router({
   payroll: payrollRouter,
   user: userRouter,
   notificationPreferences: notificationPreferencesRouter,
+  companySettings: companySettingsRouter,
 });
 
 export type AppRouter = typeof appRouter;

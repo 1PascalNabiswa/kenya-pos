@@ -152,3 +152,9 @@
 - [ ] Implement invoice export with header/footer
 - [ ] Add purchase order export template
 - [ ] Test all document exports and verify formatting
+
+## Phase 40: Move Company Settings to Database
+- [x] Create tRPC endpoints for getting/setting company settings
+- [x] Update CompanySettingsForm to use tRPC mutations
+- [x] Update document export to fetch settings from database
+- [x] Test settings persistence across browsers and users
