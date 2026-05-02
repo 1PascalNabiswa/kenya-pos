@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { getDb, updateCreditAccountBalance, updateCreditAccountStatus, updateCreditAccountTotalCredit, updateCreditAccountTotalPaid } from "./db";
+import { getDb, logTransaction, getTransactionLogs, getPaymentTotals, updateCreditAccountBalance, updateCreditAccountStatus, updateCreditAccountTotalCredit, updateCreditAccountTotalPaid } from "./db";
 import { customerWallets, users, customers, creditAccounts } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import Stripe from "stripe";
@@ -369,6 +369,42 @@ const ordersRouter = router({
           discountAmount: item.discountAmount ?? "0",
         }))
       );
+      
+      // Log transaction with payment breakdown
+      try {
+        let paymentBreakdown: any = {
+          cash: 0,
+          card: 0,
+          mpesa: 0,
+          wallet: 0,
+          check: 0,
+        };
+        
+        if (input.splitPayments && input.paymentMethod === "mixed") {
+          const splitPayments = JSON.parse(input.splitPayments);
+          for (const payment of splitPayments) {
+            const method = payment.method.toLowerCase();
+            if (method in paymentBreakdown) {
+              paymentBreakdown[method] = Number(payment.amount);
+            }
+          }
+        } else {
+          // Single payment method
+          const method = input.paymentMethod.toLowerCase();
+          if (method in paymentBreakdown) {
+            paymentBreakdown[method] = Number(input.totalAmount);
+          }
+        }
+        
+        await logTransaction(
+          id,
+          input.customerId || null,
+          input.customerName || "Walk-in Customer",
+          paymentBreakdown
+        );
+      } catch (error) {
+        console.error("Failed to log transaction:", error);
+      }
 
       // Update customer total spent and handle wallet deductions
       if (input.customerId) {
@@ -690,6 +726,27 @@ const reportsRouter = router({
     .query(async ({ input }) => {
       const { getPaymentMethodComparison } = await import("./db");
       return getPaymentMethodComparison(new Date(input.fromDate), new Date(input.toDate));
+    }),
+  transactionLogs: protectedProcedure
+    .input(z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      customerName: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const startDate = input.startDate ? new Date(input.startDate + "T00:00:00") : undefined;
+      const endDate = input.endDate ? new Date(input.endDate + "T23:59:59") : undefined;
+      return getTransactionLogs(startDate, endDate, input.customerName);
+    }),
+  paymentTotals: protectedProcedure
+    .input(z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const startDate = input.startDate ? new Date(input.startDate + "T00:00:00") : undefined;
+      const endDate = input.endDate ? new Date(input.endDate + "T23:59:59") : undefined;
+      return getPaymentTotals(startDate, endDate);
     }),
 });
 

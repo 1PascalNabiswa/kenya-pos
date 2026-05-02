@@ -14,6 +14,7 @@ import {
   CustomerWallet,
   InsertCustomerWallet,
   InsertWalletTransaction,
+  InsertTransactionLog,
   InsertPaymentMethod,
   InsertTransactionReconciliation,
   categories,
@@ -26,6 +27,7 @@ import {
   users,
   customerWallets,
   walletTransactions,
+  transactionLogs,
   paymentMethods,
   transactionReconciliation,
   forms,
@@ -2831,4 +2833,126 @@ export async function updateCreditAccountTotalPaid(id: number, totalPaid: number
   if (!db) throw new Error("DB unavailable");
   
   await db.update(creditAccounts).set({ totalPaid: totalPaid }).where(eq(creditAccounts.id, id));
+}
+
+// ─── Transaction Logging ───────────────────────────────────────────────────
+/**
+ * Log a transaction with payment breakdown
+ * @param orderId Order ID
+ * @param customerId Customer ID (optional)
+ * @param customerName Customer name
+ * @param payments Object with payment method amounts: { cash, card, mpesa, wallet, check }
+ */
+export async function logTransaction(
+  orderId: number,
+  customerId: number | null,
+  customerName: string,
+  payments: {
+    cash?: number;
+    card?: number;
+    mpesa?: number;
+    wallet?: number;
+    check?: number;
+  }
+) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const cash = Number(payments.cash || 0);
+  const card = Number(payments.card || 0);
+  const mpesa = Number(payments.mpesa || 0);
+  const wallet = Number(payments.wallet || 0);
+  const check = Number(payments.check || 0);
+  const totalAmount = cash + card + mpesa + wallet + check;
+
+  try {
+    const result = await db.insert(transactionLogs).values({
+      orderId,
+      customerId,
+      customerName,
+      cash,
+      card,
+      mpesa,
+      wallet,
+      check,
+      totalAmount,
+    });
+    return result;
+  } catch (error) {
+    console.error("Error logging transaction:", error);
+    return null;
+  }
+}
+
+/**
+ * Get transaction logs with optional filtering
+ * @param startDate Start date for filtering
+ * @param endDate End date for filtering
+ * @param customerName Customer name for filtering
+ */
+export async function getTransactionLogs(
+  startDate?: Date,
+  endDate?: Date,
+  customerName?: string
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  let query = db.select().from(transactionLogs);
+
+  if (startDate || endDate) {
+    const conditions = [];
+    if (startDate) {
+      conditions.push(gte(transactionLogs.time, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(transactionLogs.time, endDate));
+    }
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+  }
+
+  if (customerName) {
+    query = query.where(ilike(transactionLogs.customerName, `%${customerName}%`));
+  }
+
+  const results = await query.orderBy(desc(transactionLogs.time));
+  return results;
+}
+
+/**
+ * Get payment totals for a date range
+ */
+export async function getPaymentTotals(startDate?: Date, endDate?: Date) {
+  const db = await getDb();
+  if (!db) return null;
+
+  let query = db
+    .select({
+      totalCash: sql<number>`SUM(${transactionLogs.cash})`,
+      totalCard: sql<number>`SUM(${transactionLogs.card})`,
+      totalMpesa: sql<number>`SUM(${transactionLogs.mpesa})`,
+      totalWallet: sql<number>`SUM(${transactionLogs.wallet})`,
+      totalCheck: sql<number>`SUM(${transactionLogs.check})`,
+      totalAmount: sql<number>`SUM(${transactionLogs.totalAmount})`,
+      transactionCount: sql<number>`COUNT(*)`,
+    })
+    .from(transactionLogs);
+
+  if (startDate || endDate) {
+    const conditions = [];
+    if (startDate) {
+      conditions.push(gte(transactionLogs.time, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(transactionLogs.time, endDate));
+    }
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+  }
+
+  const result = await query;
+  return result[0] || null;
 }

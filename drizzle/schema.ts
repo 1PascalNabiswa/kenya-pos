@@ -694,3 +694,22 @@ export const notificationPreferences = mysqlTable("notification_preferences", {
 
 export type NotificationPreference = typeof notificationPreferences.$inferSelect;
 export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+// ─── Transaction Log (Payment Breakdown) ────────────────────────────────────
+export const transactionLogs = mysqlTable("transaction_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull().references(() => orders.id),
+  customerId: int("customerId").references(() => customers.id),
+  customerName: varchar("customerName", { length: 255 }).notNull(),
+  time: timestamp("time").defaultNow().notNull(),
+  cash: decimal("cash", { precision: 10, scale: 2 }).default(0).notNull(),
+  card: decimal("card", { precision: 10, scale: 2 }).default(0).notNull(),
+  mpesa: decimal("mpesa", { precision: 10, scale: 2 }).default(0).notNull(),
+  wallet: decimal("wallet", { precision: 10, scale: 2 }).default(0).notNull(),
+  check: decimal("check", { precision: 10, scale: 2 }).default(0).notNull(),
+  totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TransactionLog = typeof transactionLogs.$inferSelect;
+export type InsertTransactionLog = typeof transactionLogs.$inferInsert;

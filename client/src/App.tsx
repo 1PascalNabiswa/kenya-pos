@@ -26,6 +26,7 @@ import ServingDisplay from "@/pages/ServingDisplay";
 import { UserManagement } from "@/pages/UserManagement";
 import { StaffActivityLogs } from "@/pages/StaffActivityLogs";
 import CustomerSpendingReports from "@/pages/CustomerSpendingReports";
+import { TransactionReports } from "@/pages/TransactionReports";
 import StaffManagement from "@/pages/StaffManagement";
 import PayrollManagement from "@/pages/PayrollManagement";
 import { RolePermissionsMatrix } from "@/pages/RolePermissionsMatrix";
@@ -128,6 +129,11 @@ function Router() {
       <Route path="/reports/customer-spending" component={() => (
         <POSLayout>
           <CustomerSpendingReports />
+        </POSLayout>
+      )} />
+      <Route path="/reports/transactions" component={() => (
+        <POSLayout>
+          <TransactionReports />
         </POSLayout>
       )} />
       <Route path="/settings" component={() => (
