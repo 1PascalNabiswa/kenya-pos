@@ -558,6 +558,13 @@ export async function getDashboardStats() {
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
     })
     .from(orders)
+    .where(
+      and(
+        eq(orders.orderStatus, 'completed'),
+        gte(orders.createdAt, today),
+        lt(orders.createdAt, tomorrow)
+      )
+    );
 
   const [monthStats] = await db
     .select({
@@ -565,6 +572,12 @@ export async function getDashboardStats() {
       revenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`,
     })
     .from(orders)
+    .where(
+      and(
+        eq(orders.orderStatus, 'completed'),
+        gte(orders.createdAt, monthStart)
+      )
+    )
 
   const [productCount] = await db
     .select({ count: sql<number>`count(*)` })
