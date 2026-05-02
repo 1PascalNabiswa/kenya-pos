@@ -55,8 +55,13 @@ function addHeaderFooter(doc: PDFDocument, settings: CompanySettings | undefined
   // Add logo if available
   if (settings?.logo) {
     try {
+      let logoData = settings.logo;
+      // If logo is a data URI, extract the base64 part
+      if (logoData.startsWith("data:image")) {
+        logoData = logoData.split(",")[1];
+      }
       // Convert base64 to buffer for PDFKit
-      const logoBuffer = Buffer.from(settings.logo, "base64");
+      const logoBuffer = Buffer.from(logoData, "base64");
       doc.image(logoBuffer, currentX, headerY, { width: 30, height: 30 });
       currentX += 40;
     } catch (e) {
@@ -102,11 +107,8 @@ export function generateDailySalesPDF(data: DailySalesData, settings?: CompanySe
     day: "numeric",
   });
 
-  // Add page event listener for headers and footers on new pages
-  doc.on("pageAdded", () => {
-    pageNum++;
-    addHeaderFooter(doc, settings, pageNum);
-  });
+  // Note: We don't use pageAdded event to avoid infinite loops with PDFKit
+  // Headers/footers are added manually when adding new pages
 
   // Add header to first page
   addHeaderFooter(doc, settings, pageNum);
@@ -190,6 +192,8 @@ export function generateDailySalesPDF(data: DailySalesData, settings?: CompanySe
   // Itemized Sales
   if (data.itemizedSales.length > 0) {
     doc.addPage();
+    pageNum++;
+    addHeaderFooter(doc, settings, pageNum);
     doc.fontSize(12).font("Helvetica-Bold").text(`Itemized Sales (${data.itemizedSales.length} items)`, { underline: true });
     doc.moveDown(0.3);
 
@@ -222,7 +226,9 @@ export function generateDailySalesPDF(data: DailySalesData, settings?: CompanySe
     for (const item of data.itemizedSales) {
       if (currentY > 750) {
         doc.addPage();
-        currentY = 100;
+        pageNum++;
+        addHeaderFooter(doc, settings, pageNum);
+        currentY = 120;
       }
 
       doc.text(item.orderNumber, col1, currentY, { width: 60 });

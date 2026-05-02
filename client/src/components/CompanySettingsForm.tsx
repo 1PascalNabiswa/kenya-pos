@@ -78,7 +78,26 @@ export const CompanySettingsForm: React.FC = () => {
 
     setIsSaving(true);
     try {
-      await saveSettings.mutateAsync(companyInfo);
+      // Extract base64 from data URL if needed
+      let logoToSave = companyInfo.logo;
+      if (logoToSave && logoToSave.startsWith("data:")) {
+        const base64Part = logoToSave.split(",")[1];
+        if (base64Part) {
+          logoToSave = base64Part;
+        }
+      }
+
+      // Limit logo size to 50KB
+      if (logoToSave && logoToSave.length > 50000) {
+        toast.error("Logo image is too large. Please use a smaller image.");
+        setIsSaving(false);
+        return;
+      }
+
+      await saveSettings.mutateAsync({
+        ...companyInfo,
+        logo: logoToSave,
+      });
     } finally {
       setIsSaving(false);
     }
