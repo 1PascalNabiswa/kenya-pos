@@ -43,7 +43,7 @@ export async function generateReportPDF(
     const pageHeight = doc.internal.pageSize.getHeight();
     let yPosition = 10;
 
-    // Add company header
+    // Add company header on first page
     yPosition = addCompanyHeader(doc, companyInfo, pageWidth, yPosition);
 
     // Add report title
@@ -82,56 +82,7 @@ export async function generateReportPDF(
 
     // Add all products table with pagination
     if (reportData.topProducts && reportData.topProducts.length > 0) {
-      doc.setFontSize(11);
-      doc.setFont(undefined, "bold");
-      doc.text(`All Products Sold (${reportData.topProducts.length} items)`, 10, yPosition);
-      yPosition += 6;
-
-      const headers = ["#", "Product", "Qty Sold", "Revenue"];
-      const colWidths = [15, 80, 30, 40];
-      const rowHeight = 6;
-      const maxRowsPerPage = Math.floor((pageHeight - 40) / rowHeight);
-      let currentRow = 0;
-
-      // Process all products with pagination
-      while (currentRow < reportData.topProducts.length) {
-        // Add table headers for each page
-        let tableStartY = yPosition;
-        let xPosition = 10;
-
-        doc.setFillColor(200, 200, 200);
-        doc.setFontSize(9);
-        doc.setFont(undefined, "bold");
-        headers.forEach((header, idx) => {
-          doc.rect(xPosition, tableStartY, colWidths[idx], 7, "F");
-          doc.text(header, xPosition + 2, tableStartY + 5);
-          xPosition += colWidths[idx];
-        });
-
-        // Add rows for this page
-        doc.setFont(undefined, "normal");
-        let rowY = tableStartY + 7;
-        const rowsOnThisPage = Math.min(maxRowsPerPage, reportData.topProducts.length - currentRow);
-
-        for (let i = 0; i < rowsOnThisPage; i++) {
-          const row = reportData.topProducts[currentRow + i];
-          xPosition = 10;
-          row.forEach((cell, idx) => {
-            doc.text(String(cell), xPosition + 2, rowY);
-            xPosition += colWidths[idx];
-          });
-          rowY += rowHeight;
-        }
-
-        currentRow += rowsOnThisPage;
-        yPosition = rowY + 8;
-
-        // Add new page if there are more products
-        if (currentRow < reportData.topProducts.length) {
-          doc.addPage();
-          yPosition = 10;
-        }
-      }
+      yPosition = addProductsTable(doc, reportData.topProducts, yPosition, pageHeight);
     }
 
     // Add payment methods table
@@ -172,8 +123,6 @@ export async function generateReportPDF(
         });
         rowY += 6;
       }
-
-      yPosition = rowY + 8;
     }
 
     // Add footer
@@ -186,6 +135,77 @@ export async function generateReportPDF(
     console.error("Error exporting PDF:", error);
     toast.error("Failed to export PDF report");
   }
+}
+
+/**
+ * Add products table with proper pagination
+ */
+function addProductsTable(
+  doc: jsPDF,
+  products: (string | number)[][],
+  startY: number,
+  pageHeight: number
+): number {
+  const headers = ["#", "Product", "Qty Sold", "Revenue"];
+  const colWidths = [15, 80, 30, 40];
+  const rowHeight = 6;
+  const headerHeight = 7;
+  const pageMargin = 10;
+  const footerSpace = 15;
+  const maxRowsPerPage = Math.floor((pageHeight - pageMargin - footerSpace - headerHeight) / rowHeight);
+
+  let currentRow = 0;
+  let yPosition = startY;
+  let isFirstPage = true;
+
+  // Add title
+  doc.setFontSize(11);
+  doc.setFont(undefined, "bold");
+  doc.text(`All Products Sold (${products.length} items)`, pageMargin, yPosition);
+  yPosition += 8;
+
+  // Process all products with pagination
+  while (currentRow < products.length) {
+    // Check if we need a new page (but not on first iteration)
+    if (!isFirstPage && yPosition > pageHeight - footerSpace - headerHeight - 10) {
+      doc.addPage();
+      yPosition = pageMargin + 5;
+    }
+
+    // Add table headers
+    let tableStartY = yPosition;
+    let xPosition = pageMargin;
+
+    doc.setFillColor(200, 200, 200);
+    doc.setFontSize(9);
+    doc.setFont(undefined, "bold");
+    headers.forEach((header, idx) => {
+      doc.rect(xPosition, tableStartY, colWidths[idx], headerHeight, "F");
+      doc.text(header, xPosition + 2, tableStartY + 5);
+      xPosition += colWidths[idx];
+    });
+
+    // Add rows for this page
+    doc.setFont(undefined, "normal");
+    let rowY = tableStartY + headerHeight;
+    const rowsOnThisPage = Math.min(maxRowsPerPage, products.length - currentRow);
+
+    for (let i = 0; i < rowsOnThisPage; i++) {
+      const row = products[currentRow + i];
+      xPosition = pageMargin;
+      row.forEach((cell, idx) => {
+        doc.text(String(cell), xPosition + 2, rowY);
+        xPosition += colWidths[idx];
+      });
+      rowY += rowHeight;
+    }
+
+    currentRow += rowsOnThisPage;
+    yPosition = rowY + 8;
+    isFirstPage = false;
+  }
+
+  return yPosition;
 }
 
 /**
@@ -258,8 +278,6 @@ function addCompanyHeader(
   pageWidth: number,
   yPosition: number
 ): number {
-  const pageHeight = doc.internal.pageSize.getHeight();
-
   // Add horizontal line
   doc.setDrawColor(150);
   doc.line(10, yPosition, pageWidth - 10, yPosition);
@@ -293,7 +311,7 @@ function addCompanyHeader(
 
   // Add horizontal line
   doc.setDrawColor(150);
-  doc.line(10, yPosition, pageWidth - 10, yPosition);
+  doc.line(10, pageWidth - 10, pageWidth - 10, yPosition);
   yPosition += 5;
 
   return yPosition;
