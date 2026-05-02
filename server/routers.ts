@@ -380,22 +380,38 @@ const ordersRouter = router({
           check: 0,
         };
         
-        if (input.splitPayments && input.paymentMethod === "mixed") {
-          const splitPayments = JSON.parse(input.splitPayments);
-          for (const payment of splitPayments) {
-            const method = payment.method.toLowerCase();
+        // Check if this is a split payment
+        if (input.splitPayments) {
+          try {
+            const splitPayments = JSON.parse(input.splitPayments);
+            console.log("[Transaction Log] Split payments detected:", splitPayments);
+            for (const payment of splitPayments) {
+              let method = payment.method?.toLowerCase() || '';
+              // Map 'stripe' to 'card'
+              if (method === 'stripe') method = 'card';
+              if (method in paymentBreakdown) {
+                paymentBreakdown[method] = Number(payment.amount) || 0;
+              }
+            }
+          } catch (parseError) {
+            console.error("[Transaction Log] Failed to parse split payments:", input.splitPayments, parseError);
+            // Fallback to single payment method
+            const method = input.paymentMethod?.toLowerCase() || 'cash';
             if (method in paymentBreakdown) {
-              paymentBreakdown[method] = Number(payment.amount);
+              paymentBreakdown[method] = Number(input.totalAmount);
             }
           }
         } else {
           // Single payment method
-          const method = input.paymentMethod.toLowerCase();
+          let method = input.paymentMethod?.toLowerCase() || 'cash';
+          // Map 'stripe' to 'card'
+          if (method === 'stripe') method = 'card';
           if (method in paymentBreakdown) {
             paymentBreakdown[method] = Number(input.totalAmount);
           }
         }
         
+        console.log("[Transaction Log] Final breakdown:", paymentBreakdown);
         await logTransaction(
           id,
           input.customerId || null,
@@ -403,7 +419,7 @@ const ordersRouter = router({
           paymentBreakdown
         );
       } catch (error) {
-        console.error("Failed to log transaction:", error);
+        console.error("[Transaction Log] Failed to log transaction:", error);
       }
 
       // Update customer total spent and handle wallet deductions

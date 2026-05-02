@@ -723,7 +723,7 @@ export async function spendFromWallet(customerId: number, amount: number, id: nu
   }
   
   const newTotalSpent = Number(wallet.totalSpent) + amount;
-  const newBalance = Number(wallet.totalLoaded) - newTotalSpent;
+  const newBalance = currentBalance - amount;
   
   await db
     .update(customerWallets)
