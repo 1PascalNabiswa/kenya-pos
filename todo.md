@@ -248,3 +248,14 @@
 - [x] Ensured all rows render sequentially without gaps (no more items 34-43 missing)
 - [x] Improved logic to fit maximum rows per page before creating new page
 - [x] Tested PDF export - all products now display continuously across pages
+
+## Phase 54: Add In-App Preview for PDF and Excel Reports
+- [x] Create ReportPreviewModal component for displaying report data
+- [x] Implement PDF preview using iframe or PDF viewer library
+- [x] Implement Excel preview with formatted data table
+- [x] Add "Preview PDF" button to Reports page
+- [x] Add "Preview Excel" button to Reports page
+- [x] Connect preview buttons to show modal with generated preview
+- [x] Test PDF preview displays all products correctly
+- [x] Test Excel preview shows formatted data with proper headers
+- [x] Verify users can still export after previewing

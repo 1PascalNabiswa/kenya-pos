@@ -10,8 +10,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell, LineChart, Line
 } from "recharts";
-import { Download, TrendingUp, ShoppingCart, Users, Package, FileText, CreditCard, FileJson } from "lucide-react";
+import { Download, TrendingUp, ShoppingCart, Users, Package, FileText, CreditCard, FileJson, Eye } from "lucide-react";
 import { generateReportPDF, generateReportExcel } from "@/lib/reportExport";
+import { ReportPreviewModal, type ReportPreviewData } from "@/components/ReportPreviewModal";
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
@@ -22,6 +23,9 @@ export default function Reports() {
   const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
   const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("day");
   const [showPaymentTrends, setShowPaymentTrends] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<ReportPreviewData | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: report, isLoading } = trpc.reports.salesReport.useQuery({
     startDate,
@@ -103,71 +107,65 @@ export default function Reports() {
     }
   };
 
+  const buildReportData = (): ReportPreviewData => {
+    return {
+      title: "Sales Report",
+      subtitle: `${startDate} to ${endDate}`,
+      summary: {
+        totalRevenue: report?.totalRevenue ?? 0,
+        totalOrders: report?.totalOrders ?? 0,
+        avgOrderValue: report ? report.totalRevenue / (report.totalOrders || 1) : 0,
+        totalTax: report?.totalTax ?? 0,
+      },
+      products: (allProducts ?? []).map((p: any, idx: number) => ([
+        String(idx + 1),
+        p.productName,
+        String(p.totalQuantity),
+        String(Number(p.totalRevenue).toFixed(2)),
+      ])),
+      paymentMethods: (paymentBreakdown ?? []).map((p: any) => ([
+        p.method,
+        String(p.count),
+        String(Number(p.total).toFixed(2)),
+      ])),
+      startDate,
+      endDate,
+    };
+  };
+
+  const handlePreviewReport = () => {
+    if (!report) return;
+    setPreviewData(buildReportData());
+    setShowPreview(true);
+  };
+
   const handleExportReportPDF = async () => {
     if (!report) return;
     try {
-      const reportData = {
-        title: "Sales Report",
-        subtitle: `${startDate} to ${endDate}`,
-        summary: {
-          totalRevenue: report.totalRevenue,
-          totalOrders: report.totalOrders,
-          avgOrderValue: report.totalRevenue / (report.totalOrders || 1),
-          totalTax: report.totalTax,
-        },
-        topProducts: (allProducts ?? []).map((p: any, idx: number) => ([
-          String(idx + 1),
-          p.productName,
-          String(p.totalQuantity),
-          String(Number(p.totalRevenue).toFixed(2)),
-        ])),
-        paymentMethods: (paymentBreakdown ?? []).map((p: any) => ([
-          p.method,
-          String(p.count),
-          String(Number(p.total).toFixed(2)),
-        ])),
-        startDate,
-        endDate,
-      };
-
+      setIsExporting(true);
+      const reportData = buildReportData();
       await generateReportPDF(reportData, companySettings);
+      setShowPreview(false);
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast.error("Failed to export PDF report");
+    } finally {
+      setIsExporting(false);
     }
   };
 
   const handleExportReportExcel = async () => {
     if (!report) return;
     try {
-      const reportData = {
-        title: "Sales Report",
-        subtitle: `${startDate} to ${endDate}`,
-        summary: {
-          totalRevenue: report.totalRevenue,
-          totalOrders: report.totalOrders,
-          avgOrderValue: report.totalRevenue / (report.totalOrders || 1),
-          totalTax: report.totalTax,
-        },
-        topProducts: (allProducts ?? []).map((p: any, idx: number) => ([
-          String(idx + 1),
-          p.productName,
-          String(p.totalQuantity),
-          String(Number(p.totalRevenue).toFixed(2)),
-        ])),
-        paymentMethods: (paymentBreakdown ?? []).map((p: any) => ([
-          p.method,
-          String(p.count),
-          String(Number(p.total).toFixed(2)),
-        ])),
-        startDate,
-        endDate,
-      };
-
+      setIsExporting(true);
+      const reportData = buildReportData();
       await generateReportExcel(reportData, companySettings);
+      setShowPreview(false);
     } catch (error) {
       console.error("Error exporting Excel:", error);
       toast.error("Failed to export Excel report");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -198,14 +196,26 @@ export default function Reports() {
   })) ?? [];
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-5">
-      {/* Header */}
+    <>
+      <ReportPreviewModal
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        data={previewData}
+        onExportPDF={handleExportReportPDF}
+        onExportExcel={handleExportReportExcel}
+        isExporting={isExporting}
+      />
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Sales Reports</h1>
           <p className="text-sm text-muted-foreground">Analyze your business performance</p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={handlePreviewReport} variant="outline" disabled={!report}>
+            <Eye size={16} className="mr-2" /> Preview Report
+          </Button>
           <Button onClick={handleExportReportPDF} variant="outline" disabled={!report}>
             <FileText size={16} className="mr-2" /> Export PDF
           </Button>
@@ -483,5 +493,6 @@ export default function Reports() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
