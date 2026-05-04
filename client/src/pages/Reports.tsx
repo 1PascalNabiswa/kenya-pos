@@ -26,6 +26,7 @@ export default function Reports() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<ReportPreviewData | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
   const { data: report, isLoading } = trpc.reports.salesReport.useQuery({
     startDate,
@@ -133,10 +134,21 @@ export default function Reports() {
     };
   };
 
-  const handlePreviewReport = () => {
+  const handlePreviewReport = async () => {
     if (!report) return;
-    setPreviewData(buildReportData());
-    setShowPreview(true);
+    try {
+      const reportData = buildReportData();
+      setPreviewData(reportData);
+      // Generate PDF blob for preview
+      const blob = await generateReportPDF(reportData, companySettings, true);
+      if (blob) {
+        setPdfBlob(blob as Blob);
+      }
+      setShowPreview(true);
+    } catch (error) {
+      console.error("Error generating PDF preview:", error);
+      toast.error("Failed to generate PDF preview");
+    }
   };
 
   const handleExportReportPDF = async () => {
@@ -199,11 +211,15 @@ export default function Reports() {
     <>
       <ReportPreviewModal
         isOpen={showPreview}
-        onClose={() => setShowPreview(false)}
+        onClose={() => {
+          setShowPreview(false);
+          setPdfBlob(null);
+        }}
         data={previewData}
         onExportPDF={handleExportReportPDF}
         onExportExcel={handleExportReportExcel}
         isExporting={isExporting}
+        pdfBlob={pdfBlob}
       />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
         {/* Header */}

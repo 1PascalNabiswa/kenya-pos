@@ -259,3 +259,16 @@
 - [x] Test PDF preview displays all products correctly
 - [x] Test Excel preview shows formatted data with proper headers
 - [x] Verify users can still export after previewing
+
+## Phase 55: Add Actual PDF Preview to Report Modal
+- [x] Install pdfjs-dist or react-pdf library for PDF rendering
+- [x] Modify reportExport.ts to return PDF blob instead of auto-downloading
+- [x] Create PDF preview tab in ReportPreviewModal component
+- [x] Implement embedded PDF viewer in the modal (using iframe)
+- [x] Generate PDF blob when preview modal opens
+- [x] Allow users to scroll through PDF preview pages
+- [x] Verify pagination displays correctly in preview
+- [x] Test export to file still works after preview
+- [x] Ensure preview closes when user clicks Export PDF button
+- [x] Verified PDF preview shows company header, summary, and payment methods
+- [x] Tested export PDF button from preview modal - works correctly

@@ -27,6 +27,7 @@ interface ReportPreviewModalProps {
   onExportPDF: () => void;
   onExportExcel: () => void;
   isExporting?: boolean;
+  pdfBlob?: Blob | null;
 }
 
 export function ReportPreviewModal({
@@ -36,94 +37,16 @@ export function ReportPreviewModal({
   onExportPDF,
   onExportExcel,
   isExporting = false,
+  pdfBlob = null,
 }: ReportPreviewModalProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   useEffect(() => {
-    if (isOpen && data && !pdfUrl) {
-      generatePdfPreview();
-    }
-  }, [isOpen, data]);
-
-  const generatePdfPreview = async () => {
-    try {
-      setGeneratingPdf(true);
-      // Generate PDF blob for preview
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF();
-      
-      // Add content to PDF
-      let yPosition = 10;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      
-      // Title
-      doc.setFontSize(16);
-      doc.setFont(undefined, "bold");
-      doc.text(data?.title || "Report", pageWidth / 2, yPosition, { align: "center" });
-      yPosition += 10;
-      
-      // Summary
-      if (data?.summary) {
-        doc.setFontSize(10);
-        doc.setFont(undefined, "normal");
-        doc.text(`Total Revenue: KES ${data.summary.totalRevenue.toLocaleString()}`, 10, yPosition);
-        yPosition += 5;
-        doc.text(`Total Orders: ${data.summary.totalOrders}`, 10, yPosition);
-        yPosition += 5;
-        doc.text(`Avg Order Value: KES ${data.summary.avgOrderValue.toLocaleString()}`, 10, yPosition);
-        yPosition += 10;
-      }
-      
-      // Products table preview (first 10 items)
-      if (data?.products && data.products.length > 0) {
-        doc.setFontSize(11);
-        doc.setFont(undefined, "bold");
-        doc.text(`Products (${data.products.length} items)`, 10, yPosition);
-        yPosition += 8;
-        
-        doc.setFontSize(9);
-        const headers = ["#", "Product", "Qty", "Revenue"];
-        const colWidths = [15, 80, 25, 40];
-        let xPos = 10;
-        
-        // Headers
-        headers.forEach((header, idx) => {
-          doc.rect(xPos, yPosition - 5, colWidths[idx], 6);
-          doc.text(header, xPos + 2, yPosition);
-          xPos += colWidths[idx];
-        });
-        
-        yPosition += 8;
-        
-        // Show first 10 products in preview
-        const previewProducts = data.products.slice(0, 10);
-        previewProducts.forEach((row) => {
-          xPos = 10;
-          row.forEach((cell, idx) => {
-            doc.rect(xPos, yPosition - 5, colWidths[idx], 6);
-            doc.text(String(cell), xPos + 2, yPosition);
-            xPos += colWidths[idx];
-          });
-          yPosition += 6;
-        });
-        
-        if (data.products.length > 10) {
-          yPosition += 5;
-          doc.setFontSize(9);
-          doc.text(`... and ${data.products.length - 10} more products`, 10, yPosition);
-        }
-      }
-      
-      const pdfBlob = doc.output("blob");
+    if (isOpen && pdfBlob) {
       const url = URL.createObjectURL(pdfBlob);
       setPdfUrl(url);
-    } catch (error) {
-      console.error("Error generating PDF preview:", error);
-    } finally {
-      setGeneratingPdf(false);
     }
-  };
+  }, [isOpen, pdfBlob]);
 
   if (!isOpen || !data) return null;
 
@@ -134,12 +57,33 @@ export function ReportPreviewModal({
           <DialogTitle>Report Preview</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="summary" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue={pdfBlob ? "pdf" : "summary"} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            {pdfBlob && <TabsTrigger value="pdf">PDF Preview</TabsTrigger>}
             <TabsTrigger value="summary">Summary</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="payments">Payment Methods</TabsTrigger>
           </TabsList>
+
+          {/* PDF Preview Tab */}
+          {pdfBlob && (
+            <TabsContent value="pdf" className="space-y-4">
+              <div className="border rounded-lg bg-gray-100 p-4 flex flex-col items-center justify-center min-h-[500px]">
+                {pdfUrl ? (
+                  <iframe
+                    src={pdfUrl}
+                    className="w-full h-[500px] border rounded"
+                    title="PDF Preview"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading PDF...</span>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
           {/* Summary Tab */}
           <TabsContent value="summary" className="space-y-4">
@@ -147,7 +91,7 @@ export function ReportPreviewModal({
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">{data.title}</h3>
                 {data.subtitle && <p className="text-sm text-gray-600">{data.subtitle}</p>}
-                
+
                 {data.summary && (
                   <div className="grid grid-cols-2 gap-4 mt-6">
                     <div className="border rounded p-3">
@@ -177,7 +121,7 @@ export function ReportPreviewModal({
             <ScrollArea className="h-[400px] w-full rounded-md border">
               <div className="p-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Showing {Math.min(10, data.products?.length || 0)} of {data.products?.length || 0} products
+                  Showing all {data.products?.length || 0} products
                 </p>
                 <table className="w-full text-sm">
                   <thead>
@@ -189,7 +133,7 @@ export function ReportPreviewModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {data.products?.slice(0, 10).map((row, idx) => (
+                    {data.products?.map((row, idx) => (
                       <tr key={idx} className="border-b hover:bg-gray-50">
                         <td className="py-2 px-2">{row[0]}</td>
                         <td className="py-2 px-2">{row[1]}</td>
@@ -199,11 +143,6 @@ export function ReportPreviewModal({
                     ))}
                   </tbody>
                 </table>
-                {(data.products?.length || 0) > 10 && (
-                  <p className="text-xs text-gray-500 mt-4">
-                    ... and {(data.products?.length || 0) - 10} more products in the full report
-                  </p>
-                )}
               </div>
             </ScrollArea>
           </TabsContent>

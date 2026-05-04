@@ -32,11 +32,13 @@ export interface ReportData {
 
 /**
  * Generate PDF report with company branding and pagination for large product lists
+ * Returns a Blob for preview or download
  */
 export async function generateReportPDF(
   reportData: ReportData,
-  companyInfo: CompanyInfo | undefined
-): Promise<void> {
+  companyInfo: CompanyInfo | undefined,
+  returnBlob: boolean = false
+): Promise<Blob | void> {
   try {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -98,7 +100,13 @@ export async function generateReportPDF(
     // Add footer
     addFooter(doc, pageWidth, pageHeight);
 
-    // Download PDF
+    // Return blob or download
+    const pdfBlob = doc.output("blob");
+    
+    if (returnBlob) {
+      return pdfBlob;
+    }
+    
     doc.save(`sales-report-${reportData.startDate}-to-${reportData.endDate}.pdf`);
     toast.success("Report exported as PDF");
   } catch (error) {
