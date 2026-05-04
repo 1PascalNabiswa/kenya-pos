@@ -295,10 +295,10 @@ export async function generateReportExcel(
     XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
 
     // Create all products sheet
-    if (reportData.topProducts && reportData.topProducts.length > 0) {
+    if (reportData.products && reportData.products.length > 0) {
       const productsData = [
         ["#", "Product", "Qty Sold", "Revenue"],
-        ...reportData.topProducts,
+        ...reportData.products,
       ];
       const productsSheet = XLSX.utils.aoa_to_sheet(productsData);
       XLSX.utils.book_append_sheet(workbook, productsSheet, "All Products");
