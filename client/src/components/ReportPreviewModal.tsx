@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 
 export interface ReportPreviewData {
   title: string;
@@ -42,141 +40,54 @@ export function ReportPreviewModal({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen && pdfBlob) {
+    if (isOpen && pdfBlob && !pdfUrl) {
       const url = URL.createObjectURL(pdfBlob);
       setPdfUrl(url);
     }
   }, [isOpen, pdfBlob]);
 
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
+
   if (!isOpen || !data) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Report Preview</DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle>{data.title}</DialogTitle>
+          {data.subtitle && <p className="text-sm text-gray-600 mt-1">{data.subtitle}</p>}
         </DialogHeader>
 
-        <Tabs defaultValue={pdfBlob ? "pdf" : "summary"} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            {pdfBlob && <TabsTrigger value="pdf">PDF Preview</TabsTrigger>}
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="payments">Payment Methods</TabsTrigger>
-          </TabsList>
-
-          {/* PDF Preview Tab */}
-          {pdfBlob && (
-            <TabsContent value="pdf" className="space-y-4">
-              <div className="border rounded-lg bg-gray-100 p-4 flex flex-col items-center justify-center min-h-[500px]">
-                {pdfUrl ? (
-                  <iframe
-                    src={pdfUrl}
-                    className="w-full h-[500px] border rounded"
-                    title="PDF Preview"
-                  />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading PDF...</span>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+        {/* PDF Viewer - Main Content */}
+        <div className="flex-1 overflow-auto bg-gray-100 flex items-center justify-center p-4">
+          {pdfUrl ? (
+            <iframe
+              src={pdfUrl}
+              className="w-full h-full border-0 rounded shadow-lg"
+              title="PDF Preview"
+            />
+          ) : (
+            <div className="flex items-center gap-2 text-gray-600">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Loading PDF preview...</span>
+            </div>
           )}
+        </div>
 
-          {/* Summary Tab */}
-          <TabsContent value="summary" className="space-y-4">
-            <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">{data.title}</h3>
-                {data.subtitle && <p className="text-sm text-gray-600">{data.subtitle}</p>}
-
-                {data.summary && (
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="border rounded p-3">
-                      <p className="text-sm text-gray-600">Total Revenue</p>
-                      <p className="text-2xl font-bold">KES {data.summary.totalRevenue.toLocaleString("en-KE", { maximumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="border rounded p-3">
-                      <p className="text-sm text-gray-600">Total Orders</p>
-                      <p className="text-2xl font-bold">{data.summary.totalOrders}</p>
-                    </div>
-                    <div className="border rounded p-3">
-                      <p className="text-sm text-gray-600">Average Order Value</p>
-                      <p className="text-2xl font-bold">KES {data.summary.avgOrderValue.toLocaleString("en-KE", { maximumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="border rounded p-3">
-                      <p className="text-sm text-gray-600">Total VAT</p>
-                      <p className="text-2xl font-bold">KES {data.summary.totalTax.toLocaleString("en-KE", { maximumFractionDigits: 2 })}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          {/* Products Tab */}
-          <TabsContent value="products" className="space-y-4">
-            <ScrollArea className="h-[400px] w-full rounded-md border">
-              <div className="p-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  Showing all {data.products?.length || 0} products
-                </p>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-2">#</th>
-                      <th className="text-left py-2 px-2">Product</th>
-                      <th className="text-right py-2 px-2">Qty Sold</th>
-                      <th className="text-right py-2 px-2">Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.products?.map((row, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-2">{row[0]}</td>
-                        <td className="py-2 px-2">{row[1]}</td>
-                        <td className="text-right py-2 px-2">{row[2]}</td>
-                        <td className="text-right py-2 px-2">{row[3]}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          {/* Payment Methods Tab */}
-          <TabsContent value="payments" className="space-y-4">
-            <ScrollArea className="h-[400px] w-full rounded-md border">
-              <div className="p-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-2">Payment Method</th>
-                      <th className="text-right py-2 px-2">Orders</th>
-                      <th className="text-right py-2 px-2">Total Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.paymentMethods?.map((row, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-2">{row[0]}</td>
-                        <td className="text-right py-2 px-2">{row[1]}</td>
-                        <td className="text-right py-2 px-2">{row[2]}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter className="flex gap-2 justify-end">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
+        {/* Export Buttons */}
+        <DialogFooter className="px-6 py-4 border-t bg-white flex gap-3 justify-end">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isExporting}
+          >
+            Close
           </Button>
           <Button
             variant="outline"
@@ -184,7 +95,7 @@ export function ReportPreviewModal({
             disabled={isExporting}
             className="gap-2"
           >
-            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export Excel
           </Button>
           <Button
@@ -192,7 +103,7 @@ export function ReportPreviewModal({
             disabled={isExporting}
             className="gap-2"
           >
-            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export PDF
           </Button>
         </DialogFooter>

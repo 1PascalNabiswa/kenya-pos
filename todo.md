@@ -278,3 +278,13 @@
 - [x] Update generateReportExcel to use reportData.products instead of reportData.topProducts
 - [x] Test Excel export to verify all products are included
 - [x] Confirm Excel file downloads successfully with all product items
+
+## Phase 57: Redesign PDF Preview Modal - Show Actual PDF as Main Content
+- [x] Simplify ReportPreviewModal to focus on PDF viewer
+- [x] Remove summary tabs (Summary, Products, Payment Methods)
+- [x] Make PDF viewer the main content area of the modal
+- [x] Add Export PDF and Export Excel buttons below the PDF viewer
+- [x] Test PDF preview displays complete formatted document
+- [x] Verify export buttons work from the new layout
+- [x] Fixed infinite loop in useEffect - PDF preview now works correctly
+- [x] Tested Export PDF button - works successfully
