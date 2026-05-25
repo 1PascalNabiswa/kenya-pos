@@ -9,8 +9,11 @@ import {
   ShoppingCart, TrendingUp, Users, Package, AlertTriangle, ArrowRight, Eye
 } from "lucide-react";
 import { Link } from "wouter";
+import { BranchSwitcher } from "@/components/BranchSwitcher";
+import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 
-export default function Dashboard() {
+function DashboardContent() {
+  const { selectedBranch } = useBranch();
   const { data: stats, isLoading } = trpc.reports.dashboard.useQuery();
 
   if (isLoading) {
@@ -74,19 +77,23 @@ export default function Dashboard() {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
+            {selectedBranch && <span>{selectedBranch.branchName} • </span>}
             {new Date().toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
         </div>
-        <Link href="/sales/pos">
-          <Button>
-            <ShoppingCart size={16} className="mr-2" />
-            New Sale
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <BranchSwitcher />
+          <Link href="/sales/pos">
+            <Button>
+              <ShoppingCart size={16} className="mr-2" />
+              New Sale
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -316,5 +323,13 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <BranchProvider>
+      <DashboardContent />
+    </BranchProvider>
   );
 }

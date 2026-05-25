@@ -7,6 +7,7 @@ import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
 import { systemRouter } from "./_core/systemRouter";
 import { companySettingsRouter } from "./routers/companySettings";
+import { branchesRouter as branchesRouterNew } from "./routers/branches";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { logRoleAssignment, logUserCreation, logUserDeletion } from "./auditLogger";
 import {
@@ -127,6 +128,16 @@ import {
   deleteUser,
   deactivateUser,
   reactivateUser,
+  assignUserToBranch,
+  getUserBranches,
+  getPrimaryBranch,
+  removeUserFromBranch,
+  createStockTransfer,
+  getStockTransfers,
+  getStockTransferDetails,
+  approveStockTransfer,
+  receiveStockTransfer,
+  cancelStockTransfer,
 } from "./db";
 import { initiateStkPush, queryStkStatus } from "./mpesa";
 import { storagePut } from "./storage";
@@ -1141,17 +1152,8 @@ const auditRouter = router({
 });
 
 // ─── Branches Router ────────────────────────────────────────────────────────
-const branchesRouter = router({
-  create: protectedProcedure
-    .input(z.object({ name: z.string(), location: z.string().optional(), phone: z.string().optional() }))
-    .mutation(async ({ input }) => {
-      return createBranch(input);
-    }),
-
-  list: protectedProcedure.query(async () => {
-    return listBranches();
-  }),
-});
+// Branches router moved to routers/branches.ts
+// const branchesRouter = branchesRouterNew;
 
 // ─── Serving Points Router ─────────────────────────────────────────────────
 const servingPointsRouter = router({
@@ -1799,7 +1801,7 @@ export const appRouter = router({
   forms: formsRouter,
   credit: creditRouter,
   audit: auditRouter,
-  branches: branchesRouter,
+  branches: branchesRouterNew,
   servingPoints: servingPointsRouter,
   suppliers: suppliersRouter,
   kds: kdsRouter,

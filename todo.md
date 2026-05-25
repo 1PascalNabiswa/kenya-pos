@@ -290,8 +290,23 @@
 - [x] Tested Export PDF button - works successfully
 
 ## Phase 58: Multi-Branch System Implementation
-
-### Database Schema Updates
+- [x] Create user_branches table for user-to-branch assignment
+- [x] Create stock_transfers and stock_transfer_items tables
+- [x] Add branchId column to orders table
+- [x] Create database helper functions for user-branch management
+- [x] Create database helper functions for stock transfers
+- [x] Create tRPC routers for branches, user-branch assignment, and stock transfers
+- [x] Create BranchContext for managing selected branch state
+- [x] Create BranchSwitcher component for dashboard header
+- [x] Integrate BranchSwitcher into Dashboard
+- [ ] Update dashboard to fetch branch-specific KPIs based on selected branch
+- [ ] Create Stock Transfer management page (initiate, approve, receive transfers)
+- [ ] Create User-Branch Assignment management page (admin only)
+- [ ] Update all existing pages to filter data by user's assigned branches
+- [ ] Add branch-based access control middleware to ensure users only see their branches
+- [ ] Test branch switching functionality
+- [ ] Test stock transfer workflow (initiate → approve → receive)
+- [ ] Test user-branch assignment and access control Database Schema Updates
 - [ ] Add `branches` table with branch details (name, location, manager, status)
 - [ ] Add `branch_id` foreign key to `inventory` table
 - [ ] Add `branch_id` foreign key to `sales_transactions` table
