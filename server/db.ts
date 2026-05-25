@@ -71,6 +71,15 @@ import {
   notificationPreferences,
   NotificationPreference,
   InsertNotificationPreference,
+  userBranches,
+  stockTransfers,
+  stockTransferItems,
+  UserBranch,
+  InsertUserBranch,
+  StockTransfer,
+  InsertStockTransfer,
+  StockTransferItem,
+  InsertStockTransferItem,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -3022,4 +3031,243 @@ export async function getPaymentTotals(startDate?: Date, endDate?: Date) {
       transactionCount: 0,
     };
   }
+}
+
+
+// ─── User Branches ─────────────────────────────────────────────────────────
+export async function assignUserToBranch(userId: number, branchId: number, isPrimary = false) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // If this is the first branch assignment, make it primary
+  const existing = await db.select().from(userBranches).where(eq(userBranches.userId, userId));
+  const shouldBePrimary = isPrimary || existing.length === 0;
+  
+  // If making this primary, unset other primary assignments
+  if (shouldBePrimary) {
+    await db.update(userBranches)
+      .set({ isPrimary: false })
+      .where(eq(userBranches.userId, userId));
+  }
+  
+  // Insert or update the assignment
+  const result = await db.insert(userBranches).values({
+    userId,
+    branchId,
+    isPrimary: shouldBePrimary,
+  }).onDuplicateKeyUpdate({
+    set: { isPrimary: shouldBePrimary },
+  });
+  
+  return result;
+}
+
+export async function getUserBranches(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select({
+    id: userBranches.id,
+    userId: userBranches.userId,
+    branchId: userBranches.branchId,
+    branchName: branches.name,
+    branchLocation: branches.location,
+    isPrimary: userBranches.isPrimary,
+    createdAt: userBranches.createdAt,
+  })
+    .from(userBranches)
+    .leftJoin(branches, eq(userBranches.branchId, branches.id))
+    .where(eq(userBranches.userId, userId))
+    .orderBy(desc(userBranches.isPrimary));
+}
+
+export async function getPrimaryBranch(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select({
+    id: userBranches.id,
+    branchId: userBranches.branchId,
+    branchName: branches.name,
+  })
+    .from(userBranches)
+    .leftJoin(branches, eq(userBranches.branchId, branches.id))
+    .where(and(
+      eq(userBranches.userId, userId),
+      eq(userBranches.isPrimary, true)
+    ))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+export async function removeUserFromBranch(userId: number, branchId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.delete(userBranches)
+    .where(and(
+      eq(userBranches.userId, userId),
+      eq(userBranches.branchId, branchId)
+    ));
+}
+
+// ─── Stock Transfers ───────────────────────────────────────────────────────
+export async function createStockTransfer(data: {
+  fromBranchId: number;
+  toBranchId: number;
+  initiatedBy: number;
+  notes?: string;
+  items: Array<{
+    productId: number;
+    productName: string;
+    quantity: number;
+  }>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // Generate transfer number
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 10000);
+  const transferNumber = `ST-${timestamp}-${random}`;
+  
+  // Create transfer record
+  const transferResult = await db.insert(stockTransfers).values({
+    transferNumber,
+    fromBranchId: data.fromBranchId,
+    toBranchId: data.toBranchId,
+    status: "pending",
+    initiatedBy: data.initiatedBy,
+    notes: data.notes || null,
+  });
+  
+  const transferId = transferResult[0];
+  
+  // Create transfer items
+  for (const item of data.items) {
+    await db.insert(stockTransferItems).values({
+      transferId: transferId as number,
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      receivedQuantity: 0,
+    });
+  }
+  
+  return { transferNumber, transferId };
+}
+
+export async function getStockTransfers(filters?: {
+  fromBranchId?: number;
+  toBranchId?: number;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (filters?.fromBranchId) conditions.push(eq(stockTransfers.fromBranchId, filters.fromBranchId));
+  if (filters?.toBranchId) conditions.push(eq(stockTransfers.toBranchId, filters.toBranchId));
+  if (filters?.status) conditions.push(eq(stockTransfers.status, filters.status as any));
+  
+  let query = db.select({
+    id: stockTransfers.id,
+    transferNumber: stockTransfers.transferNumber,
+    fromBranchId: stockTransfers.fromBranchId,
+    fromBranchName: sql`b1.name`.as("fromBranchName"),
+    toBranchId: stockTransfers.toBranchId,
+    toBranchName: sql`b2.name`.as("toBranchName"),
+    status: stockTransfers.status,
+    initiatedBy: stockTransfers.initiatedBy,
+    initiatedByName: users.name,
+    notes: stockTransfers.notes,
+    initiatedAt: stockTransfers.initiatedAt,
+    approvedAt: stockTransfers.approvedAt,
+    receivedAt: stockTransfers.receivedAt,
+  })
+    .from(stockTransfers)
+    .leftJoin(branches, eq(stockTransfers.fromBranchId, branches.id))
+    .leftJoin(users, eq(stockTransfers.initiatedBy, users.id));
+  
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+  }
+  
+  query = query.orderBy(desc(stockTransfers.createdAt));
+  
+  if (filters?.limit) {
+    query = query.limit(filters.limit);
+  }
+  if (filters?.offset) {
+    query = query.offset(filters.offset);
+  }
+  
+  return query;
+}
+
+export async function getStockTransferDetails(transferId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const transfer = await db.select()
+    .from(stockTransfers)
+    .where(eq(stockTransfers.id, transferId))
+    .limit(1);
+  
+  if (!transfer.length) return null;
+  
+  const items = await db.select()
+    .from(stockTransferItems)
+    .where(eq(stockTransferItems.transferId, transferId));
+  
+  return {
+    ...transfer[0],
+    items,
+  };
+}
+
+export async function approveStockTransfer(transferId: number, approvedBy: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(stockTransfers)
+    .set({
+      status: "in_transit",
+      approvedBy,
+      approvedAt: new Date(),
+    })
+    .where(eq(stockTransfers.id, transferId));
+}
+
+export async function receiveStockTransfer(transferId: number, receivedBy: number, receivedItems: Array<{ itemId: number; receivedQuantity: number }>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // Update transfer status
+  await db.update(stockTransfers)
+    .set({
+      status: "received",
+      receivedBy,
+      receivedAt: new Date(),
+    })
+    .where(eq(stockTransfers.id, transferId));
+  
+  // Update received quantities for each item
+  for (const item of receivedItems) {
+    await db.update(stockTransferItems)
+      .set({ receivedQuantity: item.receivedQuantity })
+      .where(eq(stockTransferItems.id, item.itemId));
+  }
+}
+
+export async function cancelStockTransfer(transferId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db.update(stockTransfers)
+    .set({ status: "cancelled" })
+    .where(eq(stockTransfers.id, transferId));
 }

@@ -342,6 +342,54 @@ export const userRoles = mysqlTable("user_roles", {
 export type UserRole = typeof userRoles.$inferSelect;
 export type InsertUserRole = typeof userRoles.$inferInsert;
 
+// ─── User Branches (User-to-Branch Assignment) ──────────────────────────────
+export const userBranches = mysqlTable("user_branches", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  branchId: int("branchId").notNull().references(() => branches.id),
+  isPrimary: boolean("isPrimary").default(false).notNull(), // Primary branch for the user
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserBranch = typeof userBranches.$inferSelect;
+export type InsertUserBranch = typeof userBranches.$inferInsert;
+
+// ─── Stock Transfers ───────────────────────────────────────────────────────
+export const stockTransfers = mysqlTable("stock_transfers", {
+  id: int("id").autoincrement().primaryKey(),
+  transferNumber: varchar("transferNumber", { length: 30 }).notNull().unique(),
+  fromBranchId: int("fromBranchId").notNull().references(() => branches.id),
+  toBranchId: int("toBranchId").notNull().references(() => branches.id),
+  status: mysqlEnum("status", ["pending", "in_transit", "received", "cancelled"]).default("pending").notNull(),
+  initiatedBy: int("initiatedBy").notNull().references(() => users.id),
+  approvedBy: int("approvedBy").references(() => users.id),
+  receivedBy: int("receivedBy").references(() => users.id),
+  notes: text("notes"),
+  initiatedAt: timestamp("initiatedAt").defaultNow().notNull(),
+  approvedAt: timestamp("approvedAt"),
+  receivedAt: timestamp("receivedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StockTransfer = typeof stockTransfers.$inferSelect;
+export type InsertStockTransfer = typeof stockTransfers.$inferInsert;
+
+// ─── Stock Transfer Items ──────────────────────────────────────────────────
+export const stockTransferItems = mysqlTable("stock_transfer_items", {
+  id: int("id").autoincrement().primaryKey(),
+  transferId: int("transferId").notNull().references(() => stockTransfers.id),
+  productId: int("productId").notNull().references(() => products.id),
+  productName: varchar("productName", { length: 200 }).notNull(),
+  quantity: int("quantity").notNull(),
+  receivedQuantity: int("receivedQuantity").default(0).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type StockTransferItem = typeof stockTransferItems.$inferSelect;
+export type InsertStockTransferItem = typeof stockTransferItems.$inferInsert;
+
 
 // ─── Kitchen Display System (KDS) ──────────────────────────────────────────
 export const kitchenStaff = mysqlTable("kitchen_staff", {

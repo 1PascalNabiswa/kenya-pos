@@ -1,0 +1,43 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [
+    "db",
+    "server",
+    "user"
+  ],
+  "dev_command": "pnpm run dev",
+  "env_vars": {
+    "DATABASE_URL": "mysql://MnHpHkK8GkNQpkh.root:087Bb0wmTwjA4HcDBDU5@gateway05.us-east-1.prod.aws.tidbcloud.com:4000/isJHyXZfPQkWAZL2Tr5NqT?ssl={\"rejectUnauthorized\":true}"
+  },
+  "experiments": [
+    "no_db_push"
+  ],
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663511678983/isJHyXZfPQkWAZL2Tr5NqT",
+    "access_key_id": "ASIAZV3A2ECZCOHXOARA",
+    "secret_access_key": "ycsGZOCdTax1xGysczP004QV60CYArxEz/ksMQRE",
+    "session_token": "IQoJb3JpZ2luX2VjEN7//////////wEaCXVzLWVhc3QtMSJHMEUCIQClysqbIJ95SDjauf8tj5WdvHdZ9JCSnCf/jZVXbkQsnAIgdJY8/zcZ6P1pBekjkfkF2VMNagRaDJuqHdG2R/q6bzkq/wMIpv//////////ARAEGgw2NjUzODYwOTg4NjYiDKCrNKwCoUiBeKm32yrTA5uPF7iEPv5bvOfX39BdtAur3CtIcao6rJEnQryGMVDsBqyzDUr8IfvTKJlDPbGXRkDv6bTutGZDhAkKmBcs6CpbWN6OgCrFccjEp4dala20zVjD+rSPSSb+z/9CneVd2q6rclGvcdupYTjtbF39SkIjGxY1vsJfWjlhkI/+43c0edfz6SBER0+pGSgHXTdFCLy3C+UBN9LVOJQNPG8Y7rewKeQjwqK7xUlomIGZiiswGZYM9F4wLOJy+xFT4kJ4f7ZpPG0vLdRNQ3HY3lp+JJVnQp8BxzN03Up1QgyrXVyQAhhck4EpPann7WiOyhP3qxhSaZK04xYPjy9pI7AEgTmNzljY2b6SpmFTkW2MFyewl+lcIlRYGIQS2Czc7/VLeyT40PSYgAlUh/cF0PGysgkBSnTl0rqz3mLgSx5zmmy2mAynhPVV9kqN74pS4SXTgjDgn2fyKagHTOIBrYyU2aMg+dZXLD/s3ZGRprNGK1FHTSVerj8xwS8SOnSPrRbxve8+9EKfSwyImWUEGnxk8kOpRQn2RFLo928Vfqd215NwfRqrScPcqn3Exgg/UKQ639B8HGtOhDS2fZaSXmDGET+7NjVlGqISOsZAmAl2LnnT0eTaMMT7ptAGOp0BodqmSSXVAdXMmclrzkSletyFMUD0xiJd5d/OmXWEN22gvdcMIEGXzrM9DFr9CW7z7GOkaBFZiqdVkVD9sHpd8XtsVJEq1WAEprbQSh1XG51/DmnchNzP/59kaJhY8RzSCDSx9Hn7HMLBdtDa5SaQ9vtInoLm9CYCVHI/cQRmSKJEs2None8agldUX/puMx4brOOP3TZk/FfyqYSq3Q==",
+    "expiration": "2026-05-18T01:08:20.000Z"
+  },
+  "name": "kenya-pos",
+  "path": "/home/ubuntu/kenya-pos",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "npPA55MsWnUUJs3JZqjaFa",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "mH4dBC22cSUZEPR6D7NVWm",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Pascal Nabiswa",
+    "OWNER_OPEN_ID": "gG239eBYuDwAvZgz2xGyfp",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "1a65f315-b152-4ce6-8c9d-e8f566db68ae",
+    "VITE_APP_ID": "isJHyXZfPQkWAZL2Tr5NqT",
+    "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663511678983/TveHQrfpIeppglPg.png",
+    "VITE_APP_TITLE": "KenPOS - Kenyan Point of Sale System",
+    "VITE_FRONTEND_FORGE_API_KEY": "AGZbEvscvkJHa3kQJi3W4P",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-db-user",
+  "test_command": "pnpm test"
+}
