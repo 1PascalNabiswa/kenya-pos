@@ -1264,8 +1264,6 @@ type CreateBranchInput = {
   name: string;
   location?: string | null;
   phone?: string | null;
-  phoneNumber?: string | null;
-  email?: string | null;
   manager?: string | null;
 };
 
@@ -1274,23 +1272,23 @@ const optionalBranchText = (value?: string | null) => {
   return normalized ? normalized : null;
 };
 
+export function normalizeBranchInput(data: CreateBranchInput) {
+  const name = data.name?.trim();
+  if (!name) throw new Error("Branch name is required");
+  return {
+    name,
+    location: optionalBranchText(data.location),
+    phone: optionalBranchText(data.phone),
+    manager: optionalBranchText(data.manager),
+  };
+}
+
 export async function createBranch(data: CreateBranchInput) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
 
-  const name = data.name?.trim();
-  if (!name) throw new Error("Branch name is required");
-
-  // The UI/API uses `phone`, while the database column is `phoneNumber`.
-  // Explicitly map the fields instead of passing the request object through
-  // so Drizzle cannot silently receive an unknown property.
-  const result = await db.insert(branches).values({
-    name,
-    location: optionalBranchText(data.location),
-    phoneNumber: optionalBranchText(data.phoneNumber ?? data.phone),
-    email: optionalBranchText(data.email),
-    manager: optionalBranchText(data.manager),
-  });
+  // Keep this explicit so the API payload cannot pass unknown fields into Drizzle.
+  const result = await db.insert(branches).values(normalizeBranchInput(data));
 
   const insertId = Number(
     (result as any).insertId ?? (result as any)[0]?.insertId ?? 0
