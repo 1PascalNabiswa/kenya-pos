@@ -299,11 +299,11 @@
 - [x] Create BranchContext for managing selected branch state
 - [x] Create BranchSwitcher component for dashboard header
 - [x] Integrate BranchSwitcher into Dashboard
-- [ ] Update dashboard to fetch branch-specific KPIs based on selected branch
-- [ ] Create Stock Transfer management page (initiate, approve, receive transfers)
-- [ ] Create User-Branch Assignment management page (admin only)
+- [x] Update dashboard to fetch branch-specific KPIs based on selected branch
+- [x] Create Stock Transfer management page (initiate, approve, receive transfers)
+- [x] Create User-Branch Assignment management page (admin only)
 - [ ] Update all existing pages to filter data by user's assigned branches
-- [ ] Add branch-based access control middleware to ensure users only see their branches
+- [x] Add server-side branch authorization guards for dashboard, orders, reports, and transfers
 - [ ] Test branch switching functionality
 - [ ] Test stock transfer workflow (initiate → approve → receive)
 - [ ] Test user-branch assignment and access control Database Schema Updates
@@ -317,20 +317,20 @@
 
 ### Backend Implementation
 - [ ] Create branch management procedures (create, read, update, delete)
-- [ ] Create stock transfer procedures (initiate, approve, receive, cancel)
-- [ ] Create user-branch assignment procedures
-- [ ] Add branch-based access control middleware
-- [ ] Update existing queries to filter by user's assigned branches
-- [ ] Create branch performance metrics queries
+- [x] Create stock transfer procedures (initiate, approve, receive, cancel)
+- [x] Create user-branch assignment procedures
+- [x] Add branch authorization guards to protected branch procedures
+- [x] Update orders, dashboard, reports, and transfers queries to filter by assigned branches
+- [x] Create branch performance metrics queries through branch-scoped dashboard KPIs
 
 ### Frontend Implementation
 - [ ] Create Branch Management page
-- [ ] Create Stock Transfer page
-- [ ] Create User-Branch Assignment page
-- [ ] Revamp Dashboard with branch switcher
-- [ ] Add branch-specific KPI cards
+- [x] Create Stock Transfer page
+- [x] Create User-Branch Assignment page
+- [x] Revamp Dashboard with branch switcher
+- [x] Add branch-specific KPI cards
 - [ ] Update all pages to respect branch access control
-- [ ] Add branch filter to POS, Orders, Inventory, Reports pages
+- [ ] Add branch filter to POS, Orders, Inventory, Reports pages (POS, Orders, and Reports complete; Inventory stock model remains)
 
 ### Testing & Validation
 - [ ] Test multi-branch access control

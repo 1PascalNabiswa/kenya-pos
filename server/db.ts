@@ -10,6 +10,7 @@ import {
   lte,
   or,
   sql,
+  aliasedTable,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
@@ -458,6 +459,8 @@ export async function getOrders(opts?: {
   page?: number;
   limit?: number;
   search?: string;
+  branchId?: number;
+  branchIds?: number[];
 }) {
   const db = await getDb();
   if (!db) return { items: [], total: 0 };
@@ -475,6 +478,9 @@ export async function getOrders(opts?: {
   if (opts?.toDate) conditions.push(lte(orders.createdAt, opts.toDate));
   if (opts?.search)
     conditions.push(like(orders.orderNumber, `%${opts.search}%`));
+  if (opts?.branchId) conditions.push(eq(orders.branchId, opts.branchId));
+  if (opts?.branchIds?.length)
+    conditions.push(inArray(orders.branchId, opts.branchIds));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult] = await Promise.all([
     db
@@ -530,7 +536,11 @@ export async function updateOrderStatus(
 
 // ─── Reports ───────────────────────────────────────────────────────────────
 // Fetch all products sold in a date range (for detailed reports)
-export async function getAllProductsSold(fromDate: Date, toDate: Date) {
+export async function getAllProductsSold(
+  fromDate: Date,
+  toDate: Date,
+  branchId?: number
+) {
   const db = await getDb();
   if (!db) return [];
 
@@ -542,16 +552,36 @@ export async function getAllProductsSold(fromDate: Date, toDate: Date) {
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
+    .where(
+      branchId
+        ? and(
+            gte(orders.createdAt, fromDate),
+            lte(orders.createdAt, toDate),
+            eq(orders.branchId, branchId)
+          )
+        : and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate))
+    )
     .groupBy(orderItems.productName)
     .orderBy(desc(sql`sum(${orderItems.totalPrice})`));
 
   return allProducts;
 }
 
-export async function getSalesReport(fromDate: Date, toDate: Date) {
+export async function getSalesReport(
+  fromDate: Date,
+  toDate: Date,
+  branchId?: number
+) {
   const db = await getDb();
   if (!db) return null;
+  const dateScope = () =>
+    branchId
+      ? and(
+          gte(orders.createdAt, fromDate),
+          lte(orders.createdAt, toDate),
+          eq(orders.branchId, branchId)
+        )
+      : and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate));
   const [summary] = await db
     .select({
       totalOrders: sql<number>`count(*)`,
@@ -560,7 +590,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       avgOrderValue: sql<number>`avg(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)));
+    .where(dateScope());
 
   const paymentBreakdown = await db
     .select({
@@ -569,7 +599,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       total: sql<number>`sum(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
+    .where(dateScope())
     .groupBy(orders.paymentMethod);
 
   const topProducts = await db
@@ -580,7 +610,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
+    .where(dateScope())
     .groupBy(orderItems.productName)
     .orderBy(desc(sql`sum(${orderItems.totalPrice})`))
     .limit(10);
@@ -592,7 +622,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       totalRevenue: sql<number>`sum(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
+    .where(dateScope())
     .groupBy(sql`DATE(orders.createdAt)`)
     .orderBy(sql`DATE(orders.createdAt)`);
 
@@ -2981,7 +3011,11 @@ export async function getDailySalesItemized(date: string) {
 }
 
 // ─── Sales by Payment Method ──────────────────────────────────────────────────
-export async function getSalesByPaymentMethod(fromDate: Date, toDate: Date) {
+export async function getSalesByPaymentMethod(
+  fromDate: Date,
+  toDate: Date,
+  branchId?: number
+) {
   const db = await getDb();
   if (!db) return [];
 
@@ -2996,7 +3030,15 @@ export async function getSalesByPaymentMethod(fromDate: Date, toDate: Date) {
       maxOrderValue: sql<number>`max(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
+    .where(
+      branchId
+        ? and(
+            gte(orders.createdAt, fromDate),
+            lte(orders.createdAt, toDate),
+            eq(orders.branchId, branchId)
+          )
+        : and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate))
+    )
     .groupBy(orders.paymentMethod)
     .orderBy(desc(sql<number>`sum(${orders.totalAmount})`));
 
@@ -3006,7 +3048,8 @@ export async function getSalesByPaymentMethod(fromDate: Date, toDate: Date) {
 // ─── Daily Sales by Payment Method ────────────────────────────────────────────
 export async function getDailySalesByPaymentMethod(
   fromDate: Date,
-  toDate: Date
+  toDate: Date,
+  branchId?: number
 ) {
   const db = await getDb();
   if (!db) return [];
@@ -3020,6 +3063,7 @@ export async function getDailySalesByPaymentMethod(
         SUM(${orders.totalAmount}) as totalRevenue
       FROM ${orders}
       WHERE ${orders.createdAt} >= ${fromDate} AND ${orders.createdAt} <= ${toDate}
+      ${branchId ? sql`AND ${orders.branchId} = ${branchId}` : sql``}
       GROUP BY DATE(${orders.createdAt}), ${orders.paymentMethod}
       ORDER BY date, method
     `);
@@ -3031,11 +3075,15 @@ export async function getDailySalesByPaymentMethod(
 }
 
 // ─── Payment Method Comparison ────────────────────────────────────────────────
-export async function getPaymentMethodComparison(fromDate: Date, toDate: Date) {
+export async function getPaymentMethodComparison(
+  fromDate: Date,
+  toDate: Date,
+  branchId?: number
+) {
   const db = await getDb();
   if (!db) return null;
 
-  const byMethod = await getSalesByPaymentMethod(fromDate, toDate);
+  const byMethod = await getSalesByPaymentMethod(fromDate, toDate, branchId);
   const totalSales = byMethod.reduce(
     (sum, m: any) => sum + (Number(m.totalRevenue) || 0),
     0
@@ -3496,6 +3544,19 @@ export async function getUserBranches(userId: number) {
     .orderBy(desc(userBranches.isPrimary));
 }
 
+export async function userHasBranchAccess(userId: number, branchId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .select({ id: userBranches.id })
+    .from(userBranches)
+    .where(
+      and(eq(userBranches.userId, userId), eq(userBranches.branchId, branchId))
+    )
+    .limit(1);
+  return result.length > 0;
+}
+
 export async function getPrimaryBranch(userId: number) {
   const db = await getDb();
   if (!db) return null;
@@ -3557,12 +3618,17 @@ export async function createStockTransfer(data: {
     notes: data.notes || null,
   });
 
-  const transferId = transferResult[0];
+  const transferId = Number(
+    (transferResult as any).insertId ??
+      (transferResult as any)[0]?.insertId ??
+      0
+  );
+  if (!transferId) throw new Error("Failed to create stock transfer");
 
   // Create transfer items
   for (const item of data.items) {
     await db.insert(stockTransferItems).values({
-      transferId: transferId as number,
+      transferId,
       productId: item.productId,
       productName: item.productName,
       quantity: item.quantity,
@@ -3576,7 +3642,8 @@ export async function createStockTransfer(data: {
 export async function getStockTransfers(filters?: {
   fromBranchId?: number;
   toBranchId?: number;
-  status?: string;
+  status?: "pending" | "in_transit" | "received" | "cancelled";
+  branchIds?: number[];
   limit?: number;
   offset?: number;
 }) {
@@ -3590,15 +3657,25 @@ export async function getStockTransfers(filters?: {
     conditions.push(eq(stockTransfers.toBranchId, filters.toBranchId));
   if (filters?.status)
     conditions.push(eq(stockTransfers.status, filters.status as any));
+  if (filters?.branchIds?.length)
+    conditions.push(
+      or(
+        inArray(stockTransfers.fromBranchId, filters.branchIds),
+        inArray(stockTransfers.toBranchId, filters.branchIds)
+      )
+    );
 
-  let query = db
+  const fromBranches = aliasedTable(branches, "fromBranch");
+  const toBranches = aliasedTable(branches, "toBranch");
+
+  let query: any = db
     .select({
       id: stockTransfers.id,
       transferNumber: stockTransfers.transferNumber,
       fromBranchId: stockTransfers.fromBranchId,
-      fromBranchName: sql`b1.name`.as("fromBranchName"),
+      fromBranchName: fromBranches.name,
       toBranchId: stockTransfers.toBranchId,
-      toBranchName: sql`b2.name`.as("toBranchName"),
+      toBranchName: toBranches.name,
       status: stockTransfers.status,
       initiatedBy: stockTransfers.initiatedBy,
       initiatedByName: users.name,
@@ -3608,7 +3685,8 @@ export async function getStockTransfers(filters?: {
       receivedAt: stockTransfers.receivedAt,
     })
     .from(stockTransfers)
-    .leftJoin(branches, eq(stockTransfers.fromBranchId, branches.id))
+    .leftJoin(fromBranches, eq(stockTransfers.fromBranchId, fromBranches.id))
+    .leftJoin(toBranches, eq(stockTransfers.toBranchId, toBranches.id))
     .leftJoin(users, eq(stockTransfers.initiatedBy, users.id));
 
   if (conditions.length > 0) {

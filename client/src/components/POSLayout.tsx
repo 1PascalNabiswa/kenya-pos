@@ -54,6 +54,7 @@ const navItems: NavItem[] = [
       { label: "Products", href: "/inventory/products" },
       { label: "Categories", href: "/inventory/categories" },
       { label: "Stock Alerts", href: "/inventory/alerts" },
+      { label: "Stock Transfers", href: "/inventory/transfers" },
     ],
   },
   {

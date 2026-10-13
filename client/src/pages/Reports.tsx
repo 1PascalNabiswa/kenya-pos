@@ -3,42 +3,110 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  PieChart, Pie, Cell, LineChart, Line
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
 } from "recharts";
-import { Download, TrendingUp, ShoppingCart, Users, Package, FileText, CreditCard, FileJson, Eye } from "lucide-react";
+import {
+  Download,
+  TrendingUp,
+  ShoppingCart,
+  Users,
+  Package,
+  FileText,
+  CreditCard,
+  FileJson,
+  Eye,
+} from "lucide-react";
 import { generateReportPDF, generateReportExcel } from "@/lib/reportExport";
-import { ReportPreviewModal, type ReportPreviewData } from "@/components/ReportPreviewModal";
+import {
+  ReportPreviewModal,
+  type ReportPreviewData,
+} from "@/components/ReportPreviewModal";
+import { useBranch } from "@/contexts/BranchContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 
-const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+const COLORS = [
+  "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#EC4899",
+];
 
 export default function Reports() {
+  const { user } = useAuth();
+  const { selectedBranch } = useBranch();
+  const branchId = selectedBranch?.branchId;
+  const reportsEnabled = user?.role === "admin" || Boolean(branchId);
   const today = new Date();
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const [startDate, setStartDate] = useState(firstOfMonth.toISOString().split("T")[0]);
+  const [startDate, setStartDate] = useState(
+    firstOfMonth.toISOString().split("T")[0]
+  );
   const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
   const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("day");
   const [showPaymentTrends, setShowPaymentTrends] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [previewData, setPreviewData] = useState<ReportPreviewData | null>(null);
+  const [previewData, setPreviewData] = useState<ReportPreviewData | null>(
+    null
+  );
   const [isExporting, setIsExporting] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
-  const { data: report, isLoading } = trpc.reports.salesReport.useQuery({
-    startDate,
-    endDate,
-    groupBy,
-  });
+  const { data: report, isLoading } = trpc.reports.salesReport.useQuery(
+    {
+      startDate,
+      endDate,
+      groupBy,
+      branchId,
+    },
+    { enabled: reportsEnabled }
+  );
 
-  const { data: paymentBreakdown } = trpc.reports.paymentBreakdown.useQuery({ startDate, endDate });
-  const { data: topProducts } = trpc.reports.topProducts.useQuery({ startDate, endDate, limit: 10 });
-  const { data: allProducts } = trpc.reports.allProducts.useQuery({ startDate, endDate });
-  const { data: paymentMethodComparison } = trpc.reports.paymentMethodComparison.useQuery({ fromDate: startDate, toDate: endDate });
-  const { data: dailySalesByPaymentMethod } = trpc.reports.dailySalesByPaymentMethod.useQuery({ fromDate: startDate, toDate: endDate });
+  const { data: paymentBreakdown } = trpc.reports.paymentBreakdown.useQuery(
+    { startDate, endDate, branchId },
+    { enabled: reportsEnabled }
+  );
+  const { data: topProducts } = trpc.reports.topProducts.useQuery(
+    { startDate, endDate, limit: 10, branchId },
+    { enabled: reportsEnabled }
+  );
+  const { data: allProducts } = trpc.reports.allProducts.useQuery(
+    { startDate, endDate, branchId },
+    { enabled: reportsEnabled }
+  );
+  const { data: paymentMethodComparison } =
+    trpc.reports.paymentMethodComparison.useQuery(
+      { fromDate: startDate, toDate: endDate, branchId },
+      { enabled: reportsEnabled }
+    );
+  const { data: dailySalesByPaymentMethod } =
+    trpc.reports.dailySalesByPaymentMethod.useQuery(
+      { fromDate: startDate, toDate: endDate, branchId },
+      { enabled: reportsEnabled }
+    );
   const { data: companySettings } = trpc.companySettings.get.useQuery();
 
   const setPreset = (preset: string) => {
@@ -55,7 +123,11 @@ export default function Reports() {
         start = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
       case "quarter":
-        start = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+        start = new Date(
+          now.getFullYear(),
+          Math.floor(now.getMonth() / 3) * 3,
+          1
+        );
         break;
       case "year":
         start = new Date(now.getFullYear(), 0, 1);
@@ -71,16 +143,21 @@ export default function Reports() {
     if (!report) return;
     const rows = [
       ["Date", "Orders", "Revenue (KES)", "Tax (KES)"],
-      ...(report.timeline ?? []).map((d) => [
+      ...(report.timeline ?? []).map(d => [
         d.date,
         String(d.orderCount),
         String(Number(d.revenue).toFixed(2)),
         String(Number(d.tax).toFixed(2)),
       ]),
       [],
-      ["TOTALS", String(report.totalOrders), String(Number(report.totalRevenue).toFixed(2)), String(Number(report.totalTax).toFixed(2))],
+      [
+        "TOTALS",
+        String(report.totalOrders),
+        String(Number(report.totalRevenue).toFixed(2)),
+        String(Number(report.totalTax).toFixed(2)),
+      ],
     ];
-    const csv = rows.map((r) => r.join(",")).join("\n");
+    const csv = rows.map(r => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -115,20 +192,22 @@ export default function Reports() {
       summary: {
         totalRevenue: report?.totalRevenue ?? 0,
         totalOrders: report?.totalOrders ?? 0,
-        avgOrderValue: report ? report.totalRevenue / (report.totalOrders || 1) : 0,
+        avgOrderValue: report
+          ? report.totalRevenue / (report.totalOrders || 1)
+          : 0,
         totalTax: report?.totalTax ?? 0,
       },
-      products: (allProducts ?? []).map((p: any, idx: number) => ([
+      products: (allProducts ?? []).map((p: any, idx: number) => [
         String(idx + 1),
         p.productName,
         String(p.totalQuantity),
         String(Number(p.totalRevenue).toFixed(2)),
-      ])),
-      paymentMethods: (paymentBreakdown ?? []).map((p: any) => ([
+      ]),
+      paymentMethods: (paymentBreakdown ?? []).map((p: any) => [
         p.method,
         String(p.count),
         String(Number(p.total).toFixed(2)),
-      ])),
+      ]),
       startDate,
       endDate,
     };
@@ -181,31 +260,49 @@ export default function Reports() {
     }
   };
 
-  const timelineData = report?.timeline?.map((d: { date: string; revenue: number | string; orderCount: number | string; tax: number | string }) => ({
-    date: d.date,
-    revenue: Number(d.revenue),
-    orders: Number(d.orderCount),
-  })) ?? [];
+  const timelineData =
+    report?.timeline?.map(
+      (d: {
+        date: string;
+        revenue: number | string;
+        orderCount: number | string;
+        tax: number | string;
+      }) => ({
+        date: d.date,
+        revenue: Number(d.revenue),
+        orders: Number(d.orderCount),
+      })
+    ) ?? [];
 
   const formatPaymentMethod = (method: string | undefined) => {
-    if (!method) return 'UNKNOWN';
+    if (!method) return "UNKNOWN";
     const methodMap: Record<string, string> = {
-      'cash': 'Cash',
-      'mpesa': 'M-Pesa',
-      'stripe': 'Card (Stripe)',
-      'wallet': 'Wallet',
-      'mixed': 'Mixed Payment',
-      'card': 'Card',
-      'check': 'Check',
+      cash: "Cash",
+      mpesa: "M-Pesa",
+      stripe: "Card (Stripe)",
+      wallet: "Wallet",
+      mixed: "Mixed Payment",
+      card: "Card",
+      check: "Check",
     };
-    return methodMap[method.toLowerCase()] || method.charAt(0).toUpperCase() + method.slice(1);
+    return (
+      methodMap[method.toLowerCase()] ||
+      method.charAt(0).toUpperCase() + method.slice(1)
+    );
   };
 
-  const pieData = paymentBreakdown?.map((p: { method?: string; revenue: number | string; count: number | string }) => ({
-    name: formatPaymentMethod(p.method),
-    value: Number(p.revenue),
-    count: Number(p.count),
-  })) ?? [];
+  const pieData =
+    paymentBreakdown?.map(
+      (p: {
+        method?: string;
+        revenue: number | string;
+        count: number | string;
+      }) => ({
+        name: formatPaymentMethod(p.method),
+        value: Number(p.revenue),
+        count: Number(p.count),
+      })
+    ) ?? [];
 
   return (
     <>
@@ -223,292 +320,490 @@ export default function Reports() {
       />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
         {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Sales Reports</h1>
-          <p className="text-sm text-muted-foreground">Analyze your business performance</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handlePreviewReport} variant="outline" disabled={!report}>
-            <Eye size={16} className="mr-2" /> Preview Report
-          </Button>
-          <Button onClick={handleExportReportPDF} variant="outline" disabled={!report}>
-            <FileText size={16} className="mr-2" /> Export PDF
-          </Button>
-          <Button onClick={handleExportReportExcel} variant="outline" disabled={!report}>
-            <FileJson size={16} className="mr-2" /> Export Excel
-          </Button>
-          <Button onClick={() => handleExportDailyPDF(endDate)} variant="outline" disabled={!report}>
-            <FileText size={16} className="mr-2" /> Daily PDF
-          </Button>
-          <Button onClick={handleExport} variant="outline" disabled={!report}>
-            <Download size={16} className="mr-2" /> Export CSV
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-1">
-          {["today", "week", "month", "quarter", "year"].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPreset(p)}
-              className="px-3 py-1.5 text-xs rounded-lg bg-secondary hover:bg-secondary/80 font-medium capitalize"
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Sales Reports</h1>
+            <p className="text-sm text-muted-foreground">
+              Analyze your business performance
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={handlePreviewReport}
+              variant="outline"
+              disabled={!report}
             >
-              {p === "week" ? "7 Days" : p === "quarter" ? "Quarter" : p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
+              <Eye size={16} className="mr-2" /> Preview Report
+            </Button>
+            <Button
+              onClick={handleExportReportPDF}
+              variant="outline"
+              disabled={!report}
+            >
+              <FileText size={16} className="mr-2" /> Export PDF
+            </Button>
+            <Button
+              onClick={handleExportReportExcel}
+              variant="outline"
+              disabled={!report}
+            >
+              <FileJson size={16} className="mr-2" /> Export Excel
+            </Button>
+            <Button
+              onClick={() => handleExportDailyPDF(endDate)}
+              variant="outline"
+              disabled={!report}
+            >
+              <FileText size={16} className="mr-2" /> Daily PDF
+            </Button>
+            <Button onClick={handleExport} variant="outline" disabled={!report}>
+              <Download size={16} className="mr-2" /> Export CSV
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36 h-8 text-xs" />
-          <span className="text-muted-foreground text-xs">to</span>
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36 h-8 text-xs" />
-        </div>
-        <Select value={groupBy} onValueChange={(v) => setGroupBy(v as any)}>
-          <SelectTrigger className="w-28 h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="day">By Day</SelectItem>
-            <SelectItem value="week">By Week</SelectItem>
-            <SelectItem value="month">By Month</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* KPI Cards */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl bg-secondary/50 animate-pulse" />
-          ))}
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex gap-1">
+            {["today", "week", "month", "quarter", "year"].map(p => (
+              <button
+                key={p}
+                onClick={() => setPreset(p)}
+                className="px-3 py-1.5 text-xs rounded-lg bg-secondary hover:bg-secondary/80 font-medium capitalize"
+              >
+                {p === "week"
+                  ? "7 Days"
+                  : p === "quarter"
+                    ? "Quarter"
+                    : p.charAt(0).toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-36 h-8 text-xs"
+            />
+            <span className="text-muted-foreground text-xs">to</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="w-36 h-8 text-xs"
+            />
+          </div>
+          <Select value={groupBy} onValueChange={v => setGroupBy(v as any)}>
+            <SelectTrigger className="w-28 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="day">By Day</SelectItem>
+              <SelectItem value="week">By Week</SelectItem>
+              <SelectItem value="month">By Month</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      ) : report && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Total Revenue", value: `KES ${Number(report.totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: <TrendingUp size={18} />, color: "text-green-600 bg-green-50" },
-            { label: "Total Orders", value: report.totalOrders.toLocaleString(), icon: <ShoppingCart size={18} />, color: "text-blue-600 bg-blue-50" },
-            { label: "Avg Order Value", value: `KES ${Number(report.avgOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: <Package size={18} />, color: "text-purple-600 bg-purple-50" },
-            { label: "Total VAT", value: `KES ${Number(report.totalTax).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: <Users size={18} />, color: "text-orange-600 bg-orange-50" },
-          ].map((kpi) => (
-            <Card key={kpi.label}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                    <p className="text-xl font-bold mt-1">{kpi.value}</p>
-                  </div>
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color}`}>
-                    {kpi.icon}
-                  </div>
+
+        {/* KPI Cards */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-24 rounded-xl bg-secondary/50 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : (
+          report && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  label: "Total Revenue",
+                  value: `KES ${Number(report.totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                  icon: <TrendingUp size={18} />,
+                  color: "text-green-600 bg-green-50",
+                },
+                {
+                  label: "Total Orders",
+                  value: report.totalOrders.toLocaleString(),
+                  icon: <ShoppingCart size={18} />,
+                  color: "text-blue-600 bg-blue-50",
+                },
+                {
+                  label: "Avg Order Value",
+                  value: `KES ${Number(report.avgOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                  icon: <Package size={18} />,
+                  color: "text-purple-600 bg-purple-50",
+                },
+                {
+                  label: "Total VAT",
+                  value: `KES ${Number(report.totalTax).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                  icon: <Users size={18} />,
+                  color: "text-orange-600 bg-orange-50",
+                },
+              ].map(kpi => (
+                <Card key={kpi.label}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          {kpi.label}
+                        </p>
+                        <p className="text-xl font-bold mt-1">{kpi.value}</p>
+                      </div>
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color}`}
+                      >
+                        {kpi.icon}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Payment Method Trends Toggle */}
+        {dailySalesByPaymentMethod && dailySalesByPaymentMethod.length > 0 && (
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPaymentTrends(!showPaymentTrends)}
+              className="w-full"
+            >
+              {showPaymentTrends ? "Hide" : "Show"} Payment Method Trends
+            </Button>
+            {showPaymentTrends && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    Payment Method Trends
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const groupedByDate = dailySalesByPaymentMethod.reduce(
+                      (acc: any, item: any) => {
+                        const dateKey = item.date || "Unknown";
+                        if (!acc[dateKey]) {
+                          acc[dateKey] = { date: dateKey };
+                        }
+                        const methodKey = formatPaymentMethod(item.method);
+                        acc[dateKey][methodKey] =
+                          Number(item.totalRevenue) || 0;
+                        return acc;
+                      },
+                      {}
+                    );
+
+                    const chartData = Object.values(groupedByDate);
+                    const uniqueMethods = Array.from(
+                      new Set(
+                        dailySalesByPaymentMethod.map((d: any) =>
+                          formatPaymentMethod(d.method)
+                        )
+                      )
+                    );
+
+                    return (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={chartData}>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f0f0f0"
+                          />
+                          <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                          <YAxis
+                            tick={{ fontSize: 10 }}
+                            tickFormatter={v => `${(v / 1000).toFixed(0)}K`}
+                          />
+                          <Tooltip
+                            formatter={(value: number) =>
+                              `KES ${value.toLocaleString()}`
+                            }
+                            contentStyle={{ fontSize: 11 }}
+                          />
+                          <Legend />
+                          {(uniqueMethods as any[]).map(
+                            (method: string, idx: number) => (
+                              <Line
+                                key={`line-${method}`}
+                                type="monotone"
+                                dataKey={method}
+                                stroke={COLORS[idx % COLORS.length]}
+                                strokeWidth={2}
+                                dot={false}
+                              />
+                            )
+                          )}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Revenue Timeline */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Revenue Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {timelineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={timelineData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                    <YAxis
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={v => `${(v / 1000).toFixed(0)}K`}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        name === "revenue"
+                          ? `KES ${value.toLocaleString()}`
+                          : value,
+                        name === "revenue" ? "Revenue" : "Orders",
+                      ]}
+                      contentStyle={{ fontSize: 11 }}
+                    />
+                    <Bar
+                      dataKey="revenue"
+                      fill="#3B82F6"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-muted-foreground">
+                  <p className="text-sm">No data for selected period</p>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              )}
+            </CardContent>
+          </Card>
 
-      {/* Payment Method Trends Toggle */}
-      {dailySalesByPaymentMethod && dailySalesByPaymentMethod.length > 0 && (
-        <div className="space-y-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowPaymentTrends(!showPaymentTrends)}
-            className="w-full"
-          >
-            {showPaymentTrends ? 'Hide' : 'Show'} Payment Method Trends
-          </Button>
-          {showPaymentTrends && (
+          {/* Payment Breakdown */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Payment Methods</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pieData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={65}
+                        dataKey="value"
+                      >
+                        {pieData.map(
+                          (
+                            p: { name: string; value: number; count: number },
+                            i: number
+                          ) => (
+                            <Cell
+                              key={`cell-${p.name}-${i}`}
+                              fill={COLORS[i % COLORS.length]}
+                            />
+                          )
+                        )}
+                      </Pie>
+                      <Tooltip
+                        formatter={(v: number) => `KES ${v.toLocaleString()}`}
+                        contentStyle={{ fontSize: 11 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-1.5 mt-2">
+                    {pieData.map(
+                      (
+                        p: { name: string; value: number; count: number },
+                        i: number
+                      ) => (
+                        <div
+                          key={`payment-${p.name}-${i}`}
+                          className="flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{
+                                backgroundColor: COLORS[i % COLORS.length],
+                              }}
+                            />
+                            <span>{p.name}</span>
+                          </div>
+                          <span className="font-medium">
+                            KES{" "}
+                            {p.value.toLocaleString(undefined, {
+                              maximumFractionDigits: 0,
+                            })}
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="h-40 flex items-center justify-center text-muted-foreground">
+                  <p className="text-xs">No payment data</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Payment Method Detailed Breakdown */}
+        {paymentMethodComparison &&
+          paymentMethodComparison.breakdown.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Payment Method Trends</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard size={18} /> Payment Method Performance
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                {(() => {
-                  const groupedByDate = dailySalesByPaymentMethod.reduce((acc: any, item: any) => {
-                    const dateKey = item.date || 'Unknown';
-                    if (!acc[dateKey]) {
-                      acc[dateKey] = { date: dateKey };
-                    }
-                    const methodKey = formatPaymentMethod(item.method);
-                    acc[dateKey][methodKey] = Number(item.totalRevenue) || 0;
-                    return acc;
-                  }, {});
-                  
-                  const chartData = Object.values(groupedByDate);
-                  const uniqueMethods = Array.from(new Set(
-                    dailySalesByPaymentMethod.map((d: any) => formatPaymentMethod(d.method))
-                  ));
-                  
-                  return (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                        <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
-                        <Legend />
-                        {(uniqueMethods as any[]).map((method: string, idx: number) => (
-                          <Line key={`line-${method}`} type="monotone" dataKey={method} stroke={COLORS[idx % COLORS.length]} strokeWidth={2} dot={false} />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  );
-                })()}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground border-b border-border">
+                        <th className="text-left py-2 font-medium">
+                          Payment Method
+                        </th>
+                        <th className="text-right py-2 font-medium">Orders</th>
+                        <th className="text-right py-2 font-medium">Revenue</th>
+                        <th className="text-right py-2 font-medium">
+                          % of Total
+                        </th>
+                        <th className="text-right py-2 font-medium">
+                          Avg Order
+                        </th>
+                        <th className="text-right py-2 font-medium">Min/Max</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentMethodComparison.breakdown.map(
+                        (method: any, i: number) => (
+                          <tr
+                            key={`method-${method.method}-${i}`}
+                            className="border-b border-border/50 hover:bg-secondary/20"
+                          >
+                            <td className="py-2 font-medium">
+                              {formatPaymentMethod(method.method)}
+                            </td>
+                            <td className="py-2 text-right">
+                              {method.orderCount.toLocaleString()}
+                            </td>
+                            <td className="py-2 text-right font-medium text-primary">
+                              KES{" "}
+                              {Number(method.totalRevenue).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 0 }
+                              )}
+                            </td>
+                            <td className="py-2 text-right text-muted-foreground">
+                              {method.percentageOfTotal.toFixed(1)}%
+                            </td>
+                            <td className="py-2 text-right">
+                              KES{" "}
+                              {Number(method.avgOrderValue).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 0 }
+                              )}
+                            </td>
+                            <td className="py-2 text-right text-xs text-muted-foreground">
+                              KES{" "}
+                              {Number(method.minOrderValue).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 0 }
+                              )}{" "}
+                              / KES{" "}
+                              {Number(method.maxOrderValue).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 0 }
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           )}
-        </div>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Revenue Timeline */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Revenue Timeline</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {timelineData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={timelineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                  <Tooltip
-                    formatter={(value: number, name: string) => [
-                      name === "revenue" ? `KES ${value.toLocaleString()}` : value,
-                      name === "revenue" ? "Revenue" : "Orders",
-                    ]}
-                    contentStyle={{ fontSize: 11 }}
-                  />
-                  <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-muted-foreground">
-                <p className="text-sm">No data for selected period</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Payment Breakdown */}
+        {/* Top Products */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Payment Methods</CardTitle>
+            <CardTitle className="text-base">Top Selling Products</CardTitle>
           </CardHeader>
           <CardContent>
-            {pieData.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value">
-                      {pieData.map((p: { name: string; value: number; count: number }, i: number) => (
-                        <Cell key={`cell-${p.name}-${i}`} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => `KES ${v.toLocaleString()}`} contentStyle={{ fontSize: 11 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1.5 mt-2">
-                  {pieData.map((p: { name: string; value: number; count: number }, i: number) => (
-                    <div key={`payment-${p.name}-${i}`} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                        <span>{p.name}</span>
-                      </div>
-                      <span className="font-medium">KES {p.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
+            {topProducts && topProducts.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground border-b border-border">
+                      <th className="text-left py-2 font-medium">#</th>
+                      <th className="text-left py-2 font-medium">Product</th>
+                      <th className="text-right py-2 font-medium">Qty Sold</th>
+                      <th className="text-right py-2 font-medium">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topProducts.map(
+                      (
+                        p: {
+                          productId: number;
+                          productName: string;
+                          totalQuantity: number;
+                          totalRevenue: number;
+                        },
+                        i: number
+                      ) => (
+                        <tr
+                          key={`product-${p.productId}-${p.productName}-${i}`}
+                          className="border-b border-border/50 hover:bg-secondary/20"
+                        >
+                          <td className="py-2 text-muted-foreground">
+                            {i + 1}
+                          </td>
+                          <td className="py-2 font-medium">{p.productName}</td>
+                          <td className="py-2 text-right">
+                            {Number(p.totalQuantity).toLocaleString()}
+                          </td>
+                          <td className="py-2 text-right font-medium text-primary">
+                            KES {Number(p.totalRevenue).toLocaleString()}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <div className="h-40 flex items-center justify-center text-muted-foreground">
-                <p className="text-xs">No payment data</p>
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">
+                  No product sales data for selected period
+                </p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Payment Method Detailed Breakdown */}
-      {paymentMethodComparison && paymentMethodComparison.breakdown.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CreditCard size={18} /> Payment Method Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted-foreground border-b border-border">
-                    <th className="text-left py-2 font-medium">Payment Method</th>
-                    <th className="text-right py-2 font-medium">Orders</th>
-                    <th className="text-right py-2 font-medium">Revenue</th>
-                    <th className="text-right py-2 font-medium">% of Total</th>
-                    <th className="text-right py-2 font-medium">Avg Order</th>
-                    <th className="text-right py-2 font-medium">Min/Max</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paymentMethodComparison.breakdown.map((method: any, i: number) => (
-                    <tr key={`method-${method.method}-${i}`} className="border-b border-border/50 hover:bg-secondary/20">
-                      <td className="py-2 font-medium">{formatPaymentMethod(method.method)}</td>
-                      <td className="py-2 text-right">{method.orderCount.toLocaleString()}</td>
-                      <td className="py-2 text-right font-medium text-primary">KES {Number(method.totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                      <td className="py-2 text-right text-muted-foreground">{method.percentageOfTotal.toFixed(1)}%</td>
-                      <td className="py-2 text-right">KES {Number(method.avgOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                      <td className="py-2 text-right text-xs text-muted-foreground">KES {Number(method.minOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })} / KES {Number(method.maxOrderValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Top Products */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Top Selling Products</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {topProducts && topProducts.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted-foreground border-b border-border">
-                    <th className="text-left py-2 font-medium">#</th>
-                    <th className="text-left py-2 font-medium">Product</th>
-                    <th className="text-right py-2 font-medium">Qty Sold</th>
-                    <th className="text-right py-2 font-medium">Revenue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topProducts.map((p: { productId: number; productName: string; totalQuantity: number; totalRevenue: number }, i: number) => (
-                    <tr key={`product-${p.productId}-${p.productName}-${i}`} className="border-b border-border/50 hover:bg-secondary/20">
-                      <td className="py-2 text-muted-foreground">{i + 1}</td>
-                      <td className="py-2 font-medium">{p.productName}</td>
-                      <td className="py-2 text-right">{Number(p.totalQuantity).toLocaleString()}</td>
-                      <td className="py-2 text-right font-medium text-primary">KES {Number(p.totalRevenue).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">No product sales data for selected period</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
     </>
   );
 }

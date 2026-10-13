@@ -40,6 +40,8 @@ vi.mock("./db", () => ({
   getLowStockProducts: vi.fn().mockResolvedValue([]),
   generateOrderNumber: vi.fn().mockResolvedValue("KEN-20250403-001"),
   createOrder: vi.fn().mockResolvedValue(1),
+  logTransaction: vi.fn().mockResolvedValue(undefined),
+  recordStaffActivity: vi.fn().mockResolvedValue(undefined),
   updateOrderStatus: vi.fn().mockResolvedValue(undefined),
   updateCustomer: vi.fn().mockResolvedValue(undefined),
   getCustomerById: vi.fn().mockResolvedValue(undefined),

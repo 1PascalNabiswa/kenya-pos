@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
   createBranch,
@@ -13,6 +14,7 @@ import {
   approveStockTransfer,
   receiveStockTransfer,
   cancelStockTransfer,
+  userHasBranchAccess,
 } from "../db";
 
 export const branchesRouter = router({
@@ -95,6 +97,21 @@ export const branchesRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
+      if (
+        ctx.user.role !== "admin" &&
+        !(await userHasBranchAccess(ctx.user.id, input.fromBranchId))
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not assigned to the source branch",
+        });
+      }
+      if (input.fromBranchId === input.toBranchId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Source and destination branches must be different",
+        });
+      }
       return createStockTransfer({
         ...input,
         initiatedBy: ctx.user.id,
@@ -113,14 +130,38 @@ export const branchesRouter = router({
         offset: z.number().optional().default(0),
       })
     )
-    .query(async ({ input }) => {
-      return getStockTransfers(input);
+    .query(async ({ input, ctx }) => {
+      if (ctx.user.role === "admin") return getStockTransfers(input);
+      const assignedBranches = await getUserBranches(ctx.user.id);
+      if (assignedBranches.length === 0) return [];
+      return getStockTransfers({
+        ...input,
+        branchIds: assignedBranches.map(branch => branch.branchId),
+      });
     }),
 
   getTransferDetails: protectedProcedure
     .input(z.object({ transferId: z.number() }))
-    .query(async ({ input }) => {
-      return getStockTransferDetails(input.transferId);
+    .query(async ({ input, ctx }) => {
+      const transfer = await getStockTransferDetails(input.transferId);
+      if (!transfer) return null;
+      if (ctx.user.role !== "admin") {
+        const canAccessFrom = await userHasBranchAccess(
+          ctx.user.id,
+          transfer.fromBranchId
+        );
+        const canAccessTo = await userHasBranchAccess(
+          ctx.user.id,
+          transfer.toBranchId
+        );
+        if (!canAccessFrom && !canAccessTo) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to either transfer branch",
+          });
+        }
+      }
+      return transfer;
     }),
 
   approveTransfer: protectedProcedure
@@ -146,6 +187,21 @@ export const branchesRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
+      const transfer = await getStockTransferDetails(input.transferId);
+      if (!transfer)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Stock transfer not found",
+        });
+      if (
+        ctx.user.role !== "admin" &&
+        !(await userHasBranchAccess(ctx.user.id, transfer.toBranchId))
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not assigned to the destination branch",
+        });
+      }
       return receiveStockTransfer(input.transferId, ctx.user.id, input.items);
     }),
 

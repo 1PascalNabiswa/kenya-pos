@@ -392,10 +392,30 @@ const ordersRouter = router({
           page: z.number().optional(),
           limit: z.number().optional(),
           search: z.string().optional(),
+          branchId: z.number().int().positive().optional(),
         })
         .optional()
     )
-    .query(({ input }) => getOrders(input ?? {})),
+    .query(async ({ input, ctx }) => {
+      if (ctx.user.role === "admin") return getOrders(input ?? {});
+      const assignedBranches = await getUserBranches(ctx.user.id);
+      if (
+        input?.branchId &&
+        !assignedBranches.some(branch => branch.branchId === input.branchId)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not assigned to this branch",
+        });
+      }
+      if (assignedBranches.length === 0) return { items: [], total: 0 };
+      return getOrders({
+        ...(input ?? {}),
+        branchIds: input?.branchId
+          ? undefined
+          : assignedBranches.map(branch => branch.branchId),
+      });
+    }),
 
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -643,15 +663,30 @@ const ordersRouter = router({
 const paymentsRouter = router({
   initiateMpesa: protectedProcedure
     .input(
-      z.object({
-        phone: z.string(),
-        amount: z.number(),
-        id: z.number(),
-        orderNumber: z.string(),
-        callbackUrl: z.string().optional(),
-      })
+      z
+        .object({
+          phone: z.string(),
+          amount: z.number(),
+          id: z.number().optional(),
+          orderId: z.union([z.number(), z.string()]).optional(),
+          orderNumber: z.string().optional(),
+          description: z.string().optional(),
+          callbackUrl: z.string().optional(),
+        })
+        .refine(
+          input =>
+            input.id !== undefined ||
+            input.orderId !== undefined ||
+            input.orderNumber !== undefined,
+          {
+            message: "An order reference is required",
+          }
+        )
     )
     .mutation(async ({ input, ctx }) => {
+      const orderReference = String(
+        input.orderNumber ?? input.orderId ?? input.id ?? ""
+      );
       const callbackUrl =
         input.callbackUrl ??
         `${process.env.APP_URL ?? "https://example.com"}/api/mpesa/callback`;
@@ -659,8 +694,8 @@ const paymentsRouter = router({
         const result = await initiateStkPush({
           phone: input.phone,
           amount: input.amount,
-          id: input.orderNumber,
-          description: `KenPOS Order ${input.orderNumber}`,
+          orderId: orderReference,
+          description: input.description ?? `KenPOS Order ${orderReference}`,
           callbackUrl,
         });
         return {
@@ -753,6 +788,25 @@ const paymentsRouter = router({
 });
 
 // ─── Reports Router ────────────────────────────────────────────────────────
+async function requireReportBranch(
+  userId: number,
+  role: string,
+  branchId?: number
+) {
+  if (role === "admin") return branchId;
+  const assignedBranches = await getUserBranches(userId);
+  if (
+    !branchId ||
+    !assignedBranches.some(branch => branch.branchId === branchId)
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Select an assigned branch to view reports",
+    });
+  }
+  return branchId;
+}
+
 const reportsRouter = router({
   dashboard: protectedProcedure
     .input(
@@ -780,9 +834,16 @@ const reportsRouter = router({
       z.object({
         fromDate: z.date(),
         toDate: z.date(),
+        branchId: z.number().int().positive().optional(),
       })
     )
-    .query(({ input }) => getSalesReport(input.fromDate, input.toDate)),
+    .query(async ({ input, ctx }) =>
+      getSalesReport(
+        input.fromDate,
+        input.toDate,
+        await requireReportBranch(ctx.user.id, ctx.user.role, input.branchId)
+      )
+    ),
 
   salesReport: protectedProcedure
     .input(
@@ -790,12 +851,18 @@ const reportsRouter = router({
         startDate: z.string(),
         endDate: z.string(),
         groupBy: z.enum(["day", "week", "month"]).default("day"),
+        branchId: z.number().int().positive().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const branchId = await requireReportBranch(
+        ctx.user.id,
+        ctx.user.role,
+        input.branchId
+      );
       const from = new Date(input.startDate + "T00:00:00");
       const to = new Date(input.endDate + "T23:59:59");
-      const data = await getSalesReport(from, to);
+      const data = await getSalesReport(from, to, branchId);
       if (!data) return null;
       const timeline = (data.dailySales ?? []).map((d: any) => ({
         date: d.date,
@@ -813,11 +880,22 @@ const reportsRouter = router({
     }),
 
   paymentBreakdown: protectedProcedure
-    .input(z.object({ startDate: z.string(), endDate: z.string() }))
-    .query(async ({ input }) => {
+    .input(
+      z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+        branchId: z.number().int().positive().optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const branchId = await requireReportBranch(
+        ctx.user.id,
+        ctx.user.role,
+        input.branchId
+      );
       const from = new Date(input.startDate + "T00:00:00");
       const to = new Date(input.endDate + "T23:59:59");
-      const data = await getSalesReport(from, to);
+      const data = await getSalesReport(from, to, branchId);
       if (!data) return [];
       return (data.paymentBreakdown ?? []).map((p: any) => ({
         method: p.paymentMethod,
@@ -832,12 +910,18 @@ const reportsRouter = router({
         startDate: z.string(),
         endDate: z.string(),
         limit: z.number().optional(),
+        branchId: z.number().int().positive().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const branchId = await requireReportBranch(
+        ctx.user.id,
+        ctx.user.role,
+        input.branchId
+      );
       const from = new Date(input.startDate + "T00:00:00");
       const to = new Date(input.endDate + "T23:59:59");
-      const data = await getSalesReport(from, to);
+      const data = await getSalesReport(from, to, branchId);
       if (!data) return [];
       return (data.topProducts ?? [])
         .slice(0, input.limit ?? 10)
@@ -850,11 +934,22 @@ const reportsRouter = router({
     }),
 
   allProducts: protectedProcedure
-    .input(z.object({ startDate: z.string(), endDate: z.string() }))
-    .query(async ({ input }) => {
+    .input(
+      z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+        branchId: z.number().int().positive().optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const branchId = await requireReportBranch(
+        ctx.user.id,
+        ctx.user.role,
+        input.branchId
+      );
       const from = new Date(input.startDate + "T00:00:00");
       const to = new Date(input.endDate + "T23:59:59");
-      const allProducts = await getAllProductsSold(from, to);
+      const allProducts = await getAllProductsSold(from, to, branchId);
       return (allProducts ?? []).map((p: any) => ({
         productId: 0,
         productName: p.productName,
@@ -941,32 +1036,66 @@ const reportsRouter = router({
     }),
 
   salesByPaymentMethod: protectedProcedure
-    .input(z.object({ fromDate: z.string(), toDate: z.string() }))
-    .query(async ({ input }) => {
+    .input(
+      z.object({
+        fromDate: z.string(),
+        toDate: z.string(),
+        branchId: z.number().int().positive().optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const branchId = await requireReportBranch(
+        ctx.user.id,
+        ctx.user.role,
+        input.branchId
+      );
       const { getSalesByPaymentMethod } = await import("./db");
       return getSalesByPaymentMethod(
         new Date(input.fromDate),
-        new Date(input.toDate)
+        new Date(input.toDate),
+        branchId
       );
     }),
-
   dailySalesByPaymentMethod: protectedProcedure
-    .input(z.object({ fromDate: z.string(), toDate: z.string() }))
-    .query(async ({ input }) => {
+    .input(
+      z.object({
+        fromDate: z.string(),
+        toDate: z.string(),
+        branchId: z.number().int().positive().optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const branchId = await requireReportBranch(
+        ctx.user.id,
+        ctx.user.role,
+        input.branchId
+      );
       const { getDailySalesByPaymentMethod } = await import("./db");
       return getDailySalesByPaymentMethod(
         new Date(input.fromDate),
-        new Date(input.toDate)
+        new Date(input.toDate),
+        branchId
       );
     }),
-
   paymentMethodComparison: protectedProcedure
-    .input(z.object({ fromDate: z.string(), toDate: z.string() }))
-    .query(async ({ input }) => {
+    .input(
+      z.object({
+        fromDate: z.string(),
+        toDate: z.string(),
+        branchId: z.number().int().positive().optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const branchId = await requireReportBranch(
+        ctx.user.id,
+        ctx.user.role,
+        input.branchId
+      );
       const { getPaymentMethodComparison } = await import("./db");
       return getPaymentMethodComparison(
         new Date(input.fromDate),
-        new Date(input.toDate)
+        new Date(input.toDate),
+        branchId
       );
     }),
   transactionLogs: protectedProcedure
