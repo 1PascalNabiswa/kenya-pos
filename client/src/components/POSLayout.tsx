@@ -34,6 +34,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { canAccessFeature } from "@/lib/rolePermissions";
+import { BranchSwitcher } from "@/components/BranchSwitcher";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface NavItem {
   label: string;
@@ -58,10 +60,26 @@ const navItems: NavItem[] = [
     label: "Sales",
     icon: <ShoppingCart size={18} />,
     children: [
-      { label: "Sales Transaction", href: "/sales/pos", icon: <ShoppingCart size={14} /> },
-      { label: "Sales Orders", href: "/sales/orders", icon: <FileText size={14} /> },
-      { label: "Customers", href: "/sales/customers", icon: <Users size={14} /> },
-      { label: "Transactions", href: "/sales/transactions", icon: <CreditCard size={14} /> },
+      {
+        label: "Sales Transaction",
+        href: "/sales/pos",
+        icon: <ShoppingCart size={14} />,
+      },
+      {
+        label: "Sales Orders",
+        href: "/sales/orders",
+        icon: <FileText size={14} />,
+      },
+      {
+        label: "Customers",
+        href: "/sales/customers",
+        icon: <Users size={14} />,
+      },
+      {
+        label: "Transactions",
+        href: "/sales/transactions",
+        icon: <CreditCard size={14} />,
+      },
     ],
   },
   {
@@ -79,8 +97,16 @@ const navItems: NavItem[] = [
     label: "Operations",
     icon: <FileCheck size={18} />,
     children: [
-      { label: "Group Feeding Forms", href: "/forms", icon: <FileCheck size={14} /> },
-      { label: "Credit System", href: "/credit", icon: <CreditCard size={14} /> },
+      {
+        label: "Group Feeding Forms",
+        href: "/forms",
+        icon: <FileCheck size={14} />,
+      },
+      {
+        label: "Credit System",
+        href: "/credit",
+        icon: <CreditCard size={14} />,
+      },
       { label: "Branches", href: "/branches", icon: <Building2 size={14} /> },
       { label: "Suppliers", href: "/suppliers", icon: <Truck size={14} /> },
     ],
@@ -91,22 +117,54 @@ const navItems: NavItem[] = [
     icon: <UserCheck size={18} />,
     children: [
       { label: "User Management", href: "/users", icon: <Users size={14} /> },
-      { label: "Role Permissions", href: "/role-permissions", icon: <Shield size={14} /> },
-      { label: "Custom Roles", href: "/custom-roles", icon: <Shield size={14} /> },
+      {
+        label: "Role Permissions",
+        href: "/role-permissions",
+        icon: <Shield size={14} />,
+      },
+      {
+        label: "Custom Roles",
+        href: "/custom-roles",
+        icon: <Shield size={14} />,
+      },
       { label: "Audit Logs", href: "/audit-logs", icon: <LogIn size={14} /> },
-      { label: "Staff Activity", href: "/staff-activity", icon: <Activity size={14} /> },
-      { label: "Staff Management", href: "/staff-management", icon: <Users size={14} /> },
+      {
+        label: "Staff Activity",
+        href: "/staff-activity",
+        icon: <Activity size={14} />,
+      },
+      {
+        label: "Staff Management",
+        href: "/staff-management",
+        icon: <Users size={14} />,
+      },
       { label: "Payroll", href: "/payroll", icon: <DollarSign size={14} /> },
     ],
   },
-  { label: "Kitchen Display", icon: <UtensilsCrossed size={18} />, href: "/kitchen" },
-  { label: "Serving Display", icon: <ShoppingBag size={18} />, href: "/serving" },
+  {
+    label: "Kitchen Display",
+    icon: <UtensilsCrossed size={18} />,
+    href: "/kitchen",
+  },
+  {
+    label: "Serving Display",
+    icon: <ShoppingBag size={18} />,
+    href: "/serving",
+  },
   { label: "Settings", icon: <Settings size={18} />, href: "/settings" },
 ];
 
-function NavGroup({ item, isOpen, onToggle }: { item: NavItem; isOpen: boolean; onToggle: () => void }) {
+function NavGroup({
+  item,
+  isOpen,
+  onToggle,
+}: {
+  item: NavItem;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   const [location] = useLocation();
-  const isChildActive = item.children?.some((c) => location.startsWith(c.href));
+  const isChildActive = item.children?.some(c => location.startsWith(c.href));
 
   return (
     <div>
@@ -122,7 +180,7 @@ function NavGroup({ item, isOpen, onToggle }: { item: NavItem; isOpen: boolean; 
       </button>
       {isOpen && (
         <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
-          {item.children?.map((child) => (
+          {item.children?.map(child => (
             <Link key={child.href} href={child.href}>
               <div
                 className={`sidebar-item text-sm py-1.5 ${
@@ -145,12 +203,16 @@ function NavGroup({ item, isOpen, onToggle }: { item: NavItem; isOpen: boolean; 
 export default function POSLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated } = useAuth();
   const logoutMutation = trpc.auth.logout.useMutation();
-  const logout = () => logoutMutation.mutate(undefined, { onSuccess: () => window.location.href = '/' });
+  const logout = () =>
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => (window.location.href = "/"),
+    });
   const [location] = useLocation();
   const [openGroups, setOpenGroups] = useState<string[]>(["Sales"]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { selectedBranch } = useBranch();
 
   // Update time every second
   useEffect(() => {
@@ -170,39 +232,143 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   // Filter navigation items based on user role
   const filterNavItems = (items: NavItem[]): NavItem[] => {
     if (!user?.role) return [];
-    
+
     return items.filter(item => {
       // Check if user can access this item
-      if (item.label === "Dashboard" && !canAccessFeature(user.role as any, 'canAccessDashboard')) return false;
-      if (item.label === "Sales" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
-      if (item.label === "Inventory" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
-      if (item.label === "Customers" && !canAccessFeature(user.role as any, 'canManageCustomers')) return false;
-      if (item.label === "Reports" && !canAccessFeature(user.role as any, 'canViewReports')) return false;
-      if (item.label === "Customer Wallet" && !canAccessFeature(user.role as any, 'canAccessWallet')) return false;
-      if (item.label === "Operations" && !canAccessFeature(user.role as any, 'canAccessForms')) return false;
-      if (item.label === "Audit Trail" && !canAccessFeature(user.role as any, 'canAccessAuditLogs')) return false;
-      if (item.label === "Administration" && !canAccessFeature(user.role as any, 'canAccessUserManagement')) return false;
-      if (item.label === "Kitchen Display" && !canAccessFeature(user.role as any, 'canAccessKitchenDisplay')) return false;
-      if (item.label === "Serving Display" && !canAccessFeature(user.role as any, 'canAccessServingDisplay')) return false;
-      if (item.label === "Settings" && !canAccessFeature(user.role as any, 'canAccessSettings')) return false;
-      
+      if (
+        item.label === "Dashboard" &&
+        !canAccessFeature(user.role as any, "canAccessDashboard")
+      )
+        return false;
+      if (
+        item.label === "Sales" &&
+        !canAccessFeature(user.role as any, "canAccessSales")
+      )
+        return false;
+      if (
+        item.label === "Inventory" &&
+        !canAccessFeature(user.role as any, "canAccessInventory")
+      )
+        return false;
+      if (
+        item.label === "Customers" &&
+        !canAccessFeature(user.role as any, "canManageCustomers")
+      )
+        return false;
+      if (
+        item.label === "Reports" &&
+        !canAccessFeature(user.role as any, "canViewReports")
+      )
+        return false;
+      if (
+        item.label === "Customer Wallet" &&
+        !canAccessFeature(user.role as any, "canAccessWallet")
+      )
+        return false;
+      if (
+        item.label === "Operations" &&
+        !canAccessFeature(user.role as any, "canAccessForms")
+      )
+        return false;
+      if (
+        item.label === "Audit Trail" &&
+        !canAccessFeature(user.role as any, "canAccessAuditLogs")
+      )
+        return false;
+      if (
+        item.label === "Administration" &&
+        !canAccessFeature(user.role as any, "canAccessUserManagement")
+      )
+        return false;
+      if (
+        item.label === "Kitchen Display" &&
+        !canAccessFeature(user.role as any, "canAccessKitchenDisplay")
+      )
+        return false;
+      if (
+        item.label === "Serving Display" &&
+        !canAccessFeature(user.role as any, "canAccessServingDisplay")
+      )
+        return false;
+      if (
+        item.label === "Settings" &&
+        !canAccessFeature(user.role as any, "canAccessSettings")
+      )
+        return false;
+
       // Filter children items
       if (item.children) {
         item.children = item.children.filter(child => {
-          if (child.label === "Products" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
-          if (child.label === "Categories" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
-          if (child.label === "Alerts" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
-          if (child.label === "Sales Transaction" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
-          if (child.label === "Sales Orders" && !canAccessFeature(user.role as any, 'canAccessSales')) return false;
-          if (child.label === "Sales Reports" && !canAccessFeature(user.role as any, 'canViewReports')) return false;
-          if (child.label === "Inventory Reports" && !canAccessFeature(user.role as any, 'canAccessInventory')) return false;
-          if (child.label === "Branches" && !canAccessFeature(user.role as any, 'canAccessBranches')) return false;
-          if (child.label === "Suppliers" && !canAccessFeature(user.role as any, 'canAccessSuppliers')) return false;
-          if (child.label === "User Management" && !canAccessFeature(user.role as any, 'canAccessUserManagement')) return false;
-          if (child.label === "Role Permissions" && !canAccessFeature(user.role as any, 'canAccessRolePermissions')) return false;
-          if (child.label === "Staff Activity" && !canAccessFeature(user.role as any, 'canAccessStaffManagement')) return false;
-          if (child.label === "Staff Management" && !canAccessFeature(user.role as any, 'canAccessStaffManagement')) return false;
-          if (child.label === "Payroll" && !canAccessFeature(user.role as any, 'canAccessPayroll')) return false;
+          if (
+            child.label === "Products" &&
+            !canAccessFeature(user.role as any, "canAccessInventory")
+          )
+            return false;
+          if (
+            child.label === "Categories" &&
+            !canAccessFeature(user.role as any, "canAccessInventory")
+          )
+            return false;
+          if (
+            child.label === "Alerts" &&
+            !canAccessFeature(user.role as any, "canAccessInventory")
+          )
+            return false;
+          if (
+            child.label === "Sales Transaction" &&
+            !canAccessFeature(user.role as any, "canAccessSales")
+          )
+            return false;
+          if (
+            child.label === "Sales Orders" &&
+            !canAccessFeature(user.role as any, "canAccessSales")
+          )
+            return false;
+          if (
+            child.label === "Sales Reports" &&
+            !canAccessFeature(user.role as any, "canViewReports")
+          )
+            return false;
+          if (
+            child.label === "Inventory Reports" &&
+            !canAccessFeature(user.role as any, "canAccessInventory")
+          )
+            return false;
+          if (
+            child.label === "Branches" &&
+            !canAccessFeature(user.role as any, "canAccessBranches")
+          )
+            return false;
+          if (
+            child.label === "Suppliers" &&
+            !canAccessFeature(user.role as any, "canAccessSuppliers")
+          )
+            return false;
+          if (
+            child.label === "User Management" &&
+            !canAccessFeature(user.role as any, "canAccessUserManagement")
+          )
+            return false;
+          if (
+            child.label === "Role Permissions" &&
+            !canAccessFeature(user.role as any, "canAccessRolePermissions")
+          )
+            return false;
+          if (
+            child.label === "Staff Activity" &&
+            !canAccessFeature(user.role as any, "canAccessStaffManagement")
+          )
+            return false;
+          if (
+            child.label === "Staff Management" &&
+            !canAccessFeature(user.role as any, "canAccessStaffManagement")
+          )
+            return false;
+          if (
+            child.label === "Payroll" &&
+            !canAccessFeature(user.role as any, "canAccessPayroll")
+          )
+            return false;
           return true;
         });
         return item.children.length > 0;
@@ -213,10 +379,15 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
 
   const visibleNavItems = filterNavItems(navItems);
 
-  const { data: dashboard } = trpc.reports.dashboard.useQuery(undefined, {
-    refetchInterval: 60000,
-    enabled: isAuthenticated,
-  });
+  const { data: dashboard } = trpc.reports.dashboard.useQuery(
+    selectedBranch?.branchId
+      ? { branchId: selectedBranch.branchId }
+      : undefined,
+    {
+      refetchInterval: 60000,
+      enabled: isAuthenticated && Boolean(selectedBranch?.branchId),
+    }
+  );
 
   if (loading) {
     return (
@@ -244,8 +415,8 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   }
 
   const toggleGroup = (label: string) => {
-    setOpenGroups((prev) =>
-      prev.includes(label) ? prev.filter((g) => g !== label) : [...prev, label]
+    setOpenGroups(prev =>
+      prev.includes(label) ? prev.filter(g => g !== label) : [...prev, label]
     );
   };
 
@@ -264,10 +435,10 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
         className={`sidebar fixed lg:static flex-shrink-0 flex flex-col h-full overflow-y-auto z-50 transform transition-all duration-300 ${
           sidebarCollapsed ? "hidden lg:hidden" : ""
         } ${
-          sidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full lg:translate-x-0 lg:pointer-events-auto pointer-events-none"
-        } ${
-          sidebarCollapsed ? "lg:w-0" : "w-60"
-        }`}
+          sidebarOpen
+            ? "translate-x-0 pointer-events-auto"
+            : "-translate-x-full lg:translate-x-0 lg:pointer-events-auto pointer-events-none"
+        } ${sidebarCollapsed ? "lg:w-0" : "w-60"}`}
       >
         {/* Logo */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
@@ -291,8 +462,18 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
         {/* Search */}
         <div className="p-3">
           <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
-            <svg className="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="w-3.5 h-3.5 text-white/50"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
             <span className="text-white/40 text-xs">Search...</span>
           </div>
@@ -300,8 +481,10 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 space-y-0.5 pb-4">
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider px-3 py-2">Menu</p>
-          {visibleNavItems.map((item) => {
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider px-3 py-2">
+            Menu
+          </p>
+          {visibleNavItems.map(item => {
             if (item.children) {
               return (
                 <NavGroup
@@ -338,21 +521,29 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
             <Link href="/inventory/alerts">
               <div className="flex items-center gap-2 text-yellow-600 hover:text-yellow-500 cursor-pointer">
                 <AlertTriangle size={14} />
-                <span className="text-xs font-medium">{dashboard.lowStockCount} Low Stock</span>
+                <span className="text-xs font-medium">
+                  {dashboard.lowStockCount} Low Stock
+                </span>
               </div>
             </Link>
           </div>
-         )}
+        )}
 
         {/* Footer */}
         <div className="p-3 border-t border-white/10 space-y-2">
           <div className="flex items-center gap-2 px-3 py-2">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs">{user?.name?.charAt(0)}</AvatarFallback>
+              <AvatarFallback className="text-xs">
+                {user?.name?.charAt(0)}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-white truncate">{user?.name}</div>
-              <div className="text-[10px] text-white/50 truncate">{user?.email}</div>
+              <div className="text-xs font-semibold text-white truncate">
+                {user?.name}
+              </div>
+              <div className="text-[10px] text-white/50 truncate">
+                {user?.email}
+              </div>
             </div>
           </div>
           <button
@@ -386,6 +577,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
           <div className="flex-1" />
+          <BranchSwitcher />
           <div className="text-sm text-muted-foreground">
             {currentTime.toLocaleString("en-KE", {
               weekday: "long",
@@ -402,7 +594,15 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content */}
         <main className="flex-1 overflow-auto" onClick={handleMainContentClick}>
-          <div className="max-w-7xl mx-auto w-full" style={{paddingTop: '0px', paddingBottom: '2px', paddingLeft: '1rem', paddingRight: '1rem'}}>
+          <div
+            className="max-w-7xl mx-auto w-full"
+            style={{
+              paddingTop: "0px",
+              paddingBottom: "2px",
+              paddingLeft: "1rem",
+              paddingRight: "1rem",
+            }}
+          >
             {children}
           </div>
         </main>

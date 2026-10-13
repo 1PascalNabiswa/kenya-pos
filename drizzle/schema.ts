@@ -69,7 +69,9 @@ export const customers = mysqlTable("customers", {
   email: varchar("email", { length: 320 }),
   address: text("address"),
   loyaltyPoints: int("loyaltyPoints").default(0).notNull(),
-  totalSpent: decimal("totalSpent", { precision: 14, scale: 2 }).default("0").notNull(),
+  totalSpent: decimal("totalSpent", { precision: 14, scale: 2 })
+    .default("0")
+    .notNull(),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -85,12 +87,36 @@ export const orders = mysqlTable("orders", {
   customerId: int("customerId").references(() => customers.id),
   customerName: varchar("customerName", { length: 200 }),
   subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
-  taxAmount: decimal("taxAmount", { precision: 12, scale: 2 }).default("0").notNull(),
-  discountAmount: decimal("discountAmount", { precision: 12, scale: 2 }).default("0").notNull(),
+  taxAmount: decimal("taxAmount", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  discountAmount: decimal("discountAmount", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
   totalAmount: decimal("totalAmount", { precision: 12, scale: 2 }).notNull(),
-  paymentMethod: mysqlEnum("paymentMethod", ["cash", "mpesa", "stripe", "mixed", "wallet"]).notNull(),
-  paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "failed", "refunded"]).default("pending").notNull(),
-  orderStatus: mysqlEnum("orderStatus", ["pending", "processing", "completed", "cancelled"]).default("pending").notNull(),
+  paymentMethod: mysqlEnum("paymentMethod", [
+    "cash",
+    "mpesa",
+    "stripe",
+    "mixed",
+    "wallet",
+  ]).notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", [
+    "pending",
+    "paid",
+    "failed",
+    "refunded",
+  ])
+    .default("pending")
+    .notNull(),
+  orderStatus: mysqlEnum("orderStatus", [
+    "pending",
+    "processing",
+    "completed",
+    "cancelled",
+  ])
+    .default("pending")
+    .notNull(),
   mpesaTransactionId: varchar("mpesaTransactionId", { length: 100 }),
   mpesaPhone: varchar("mpesaPhone", { length: 20 }),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 100 }),
@@ -99,6 +125,7 @@ export const orders = mysqlTable("orders", {
   receiptUrl: text("receiptUrl"),
   notes: text("notes"),
   servedBy: int("servedBy").references(() => users.id),
+  branchId: int("branchId").references(() => branches.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -109,14 +136,19 @@ export type InsertOrder = typeof orders.$inferInsert;
 // ─── Order Items ───────────────────────────────────────────────────────────
 export const orderItems = mysqlTable("order_items", {
   id: int("id").autoincrement().primaryKey(),
-  orderId: int("orderId").notNull().references(() => orders.id),
+  orderId: int("orderId")
+    .notNull()
+    .references(() => orders.id),
   productId: int("productId").references(() => products.id),
   productName: varchar("productName", { length: 200 }).notNull(),
   productSku: varchar("productSku", { length: 50 }),
   quantity: int("quantity").notNull(),
   unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }).notNull(),
   originalPrice: decimal("originalPrice", { precision: 12, scale: 2 }),
-  discountAmount: decimal("discountAmount", { precision: 12, scale: 2 }).default("0"),
+  discountAmount: decimal("discountAmount", {
+    precision: 12,
+    scale: 2,
+  }).default("0"),
   totalPrice: decimal("totalPrice", { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -128,7 +160,13 @@ export type InsertOrderItem = typeof orderItems.$inferInsert;
 export const paymentMethods = mysqlTable("payment_methods", {
   id: int("id").autoincrement().primaryKey(),
   customerId: int("customerId").references(() => customers.id),
-  methodType: mysqlEnum("methodType", ["cash", "card", "mpesa", "wallet", "check"]).notNull(),
+  methodType: mysqlEnum("methodType", [
+    "cash",
+    "card",
+    "mpesa",
+    "wallet",
+    "check",
+  ]).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   cardLast4: varchar("cardLast4", { length: 4 }),
   cardBrand: varchar("cardBrand", { length: 50 }),
@@ -143,10 +181,19 @@ export type InsertPaymentMethod = typeof paymentMethods.$inferInsert;
 // ─── Customer Wallets ──────────────────────────────────────────────────────
 export const customerWallets = mysqlTable("customer_wallets", {
   id: int("id").autoincrement().primaryKey(),
-  customerId: int("customerId").notNull().unique().references(() => customers.id),
-  balance: decimal("balance", { precision: 12, scale: 2 }).default("0").notNull(),
-  totalLoaded: decimal("totalLoaded", { precision: 12, scale: 2 }).default("0").notNull(),
-  totalSpent: decimal("totalSpent", { precision: 12, scale: 2 }).default("0").notNull(),
+  customerId: int("customerId")
+    .notNull()
+    .unique()
+    .references(() => customers.id),
+  balance: decimal("balance", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  totalLoaded: decimal("totalLoaded", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  totalSpent: decimal("totalSpent", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -157,8 +204,12 @@ export type InsertCustomerWallet = typeof customerWallets.$inferInsert;
 // ─── Wallet Transactions ───────────────────────────────────────────────────
 export const walletTransactions = mysqlTable("wallet_transactions", {
   id: int("id").autoincrement().primaryKey(),
-  walletId: int("walletId").notNull().references(() => customerWallets.id),
-  customerId: int("customerId").notNull().references(() => customers.id),
+  walletId: int("walletId")
+    .notNull()
+    .references(() => customerWallets.id),
+  customerId: int("customerId")
+    .notNull()
+    .references(() => customers.id),
   type: mysqlEnum("type", ["load", "spend", "refund"]).notNull(),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   orderId: int("orderId").references(() => orders.id),
@@ -170,27 +221,47 @@ export type WalletTransaction = typeof walletTransactions.$inferSelect;
 export type InsertWalletTransaction = typeof walletTransactions.$inferInsert;
 
 // ─── Transaction Reconciliation ────────────────────────────────────────────
-export const transactionReconciliation = mysqlTable("transaction_reconciliation", {
-  id: int("id").autoincrement().primaryKey(),
-  transactionId: varchar("transactionId", { length: 100 }).notNull().unique(),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  paymentMethod: mysqlEnum("paymentMethod", ["mpesa", "cash", "card", "wallet"]).notNull(),
-  status: mysqlEnum("status", ["unused", "used", "pending"]).default("unused").notNull(),
-  customerId: int("customerId").references(() => customers.id),
-  orderId: int("orderId").references(() => orders.id),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const transactionReconciliation = mysqlTable(
+  "transaction_reconciliation",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    transactionId: varchar("transactionId", { length: 100 }).notNull().unique(),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    paymentMethod: mysqlEnum("paymentMethod", [
+      "mpesa",
+      "cash",
+      "card",
+      "wallet",
+    ]).notNull(),
+    status: mysqlEnum("status", ["unused", "used", "pending"])
+      .default("unused")
+      .notNull(),
+    customerId: int("customerId").references(() => customers.id),
+    orderId: int("orderId").references(() => orders.id),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
 
-export type TransactionReconciliation = typeof transactionReconciliation.$inferSelect;
-export type InsertTransactionReconciliation = typeof transactionReconciliation.$inferInsert;
+export type TransactionReconciliation =
+  typeof transactionReconciliation.$inferSelect;
+export type InsertTransactionReconciliation =
+  typeof transactionReconciliation.$inferInsert;
 
 // ─── Inventory Logs ────────────────────────────────────────────────────────
 export const inventoryLogs = mysqlTable("inventory_logs", {
   id: int("id").autoincrement().primaryKey(),
-  productId: int("productId").notNull().references(() => products.id),
-  changeType: mysqlEnum("changeType", ["sale", "restock", "adjustment", "return", "damage"]).notNull(),
+  productId: int("productId")
+    .notNull()
+    .references(() => products.id),
+  changeType: mysqlEnum("changeType", [
+    "sale",
+    "restock",
+    "adjustment",
+    "return",
+    "damage",
+  ]).notNull(),
   quantityBefore: int("quantityBefore").notNull(),
   quantityChange: int("quantityChange").notNull(),
   quantityAfter: int("quantityAfter").notNull(),
@@ -250,7 +321,16 @@ export const forms = mysqlTable("forms", {
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   spent: decimal("spent", { precision: 12, scale: 2 }).default("0"),
   servingPointId: int("servingPointId").references(() => servingPoints.id),
-  status: mysqlEnum("status", ["not_issued", "issued_not_approved", "issued_approved", "submitted_for_payment", "pending_payment", "paid"]).default("not_issued").notNull(),
+  status: mysqlEnum("status", [
+    "not_issued",
+    "issued_not_approved",
+    "issued_approved",
+    "submitted_for_payment",
+    "pending_payment",
+    "paid",
+  ])
+    .default("not_issued")
+    .notNull(),
   servingDate: timestamp("servingDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -268,7 +348,9 @@ export const creditAccounts = mysqlTable("credit_accounts", {
   balance: decimal("balance", { precision: 12, scale: 2 }).default("0"),
   totalCredit: decimal("totalCredit", { precision: 12, scale: 2 }).default("0"),
   totalPaid: decimal("totalPaid", { precision: 12, scale: 2 }).default("0"),
-  status: mysqlEnum("status", ["active", "settled", "suspended"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "settled", "suspended"])
+    .default("active")
+    .notNull(),
   authorizedBy: int("authorizedBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -276,11 +358,12 @@ export const creditAccounts = mysqlTable("credit_accounts", {
 export type CreditAccount = typeof creditAccounts.$inferSelect;
 export type InsertCreditAccount = typeof creditAccounts.$inferInsert;
 
-
 // ─── Credit Transactions ───────────────────────────────────────────────────
 export const creditTransactions = mysqlTable("credit_transactions", {
   id: int("id").autoincrement().primaryKey(),
-  creditAccountId: int("creditAccountId").notNull().references(() => creditAccounts.id),
+  creditAccountId: int("creditAccountId")
+    .notNull()
+    .references(() => creditAccounts.id),
   orderId: int("orderId").references(() => orders.id),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   type: mysqlEnum("type", ["charge", "payment", "adjustment"]).notNull(),
@@ -333,8 +416,7 @@ export const userRoles = mysqlTable("user_roles", {
     "cashier",
     "waiter",
     "store_manager",
-  ])
-    .notNull(),
+  ]).notNull(),
   branchId: int("branchId").references(() => branches.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -345,8 +427,12 @@ export type InsertUserRole = typeof userRoles.$inferInsert;
 // ─── User Branches (User-to-Branch Assignment) ──────────────────────────────
 export const userBranches = mysqlTable("user_branches", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id),
-  branchId: int("branchId").notNull().references(() => branches.id),
+  userId: int("userId")
+    .notNull()
+    .references(() => users.id),
+  branchId: int("branchId")
+    .notNull()
+    .references(() => branches.id),
   isPrimary: boolean("isPrimary").default(false).notNull(), // Primary branch for the user
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -358,10 +444,23 @@ export type InsertUserBranch = typeof userBranches.$inferInsert;
 export const stockTransfers = mysqlTable("stock_transfers", {
   id: int("id").autoincrement().primaryKey(),
   transferNumber: varchar("transferNumber", { length: 30 }).notNull().unique(),
-  fromBranchId: int("fromBranchId").notNull().references(() => branches.id),
-  toBranchId: int("toBranchId").notNull().references(() => branches.id),
-  status: mysqlEnum("status", ["pending", "in_transit", "received", "cancelled"]).default("pending").notNull(),
-  initiatedBy: int("initiatedBy").notNull().references(() => users.id),
+  fromBranchId: int("fromBranchId")
+    .notNull()
+    .references(() => branches.id),
+  toBranchId: int("toBranchId")
+    .notNull()
+    .references(() => branches.id),
+  status: mysqlEnum("status", [
+    "pending",
+    "in_transit",
+    "received",
+    "cancelled",
+  ])
+    .default("pending")
+    .notNull(),
+  initiatedBy: int("initiatedBy")
+    .notNull()
+    .references(() => users.id),
   approvedBy: int("approvedBy").references(() => users.id),
   receivedBy: int("receivedBy").references(() => users.id),
   notes: text("notes"),
@@ -378,8 +477,12 @@ export type InsertStockTransfer = typeof stockTransfers.$inferInsert;
 // ─── Stock Transfer Items ──────────────────────────────────────────────────
 export const stockTransferItems = mysqlTable("stock_transfer_items", {
   id: int("id").autoincrement().primaryKey(),
-  transferId: int("transferId").notNull().references(() => stockTransfers.id),
-  productId: int("productId").notNull().references(() => products.id),
+  transferId: int("transferId")
+    .notNull()
+    .references(() => stockTransfers.id),
+  productId: int("productId")
+    .notNull()
+    .references(() => products.id),
   productName: varchar("productName", { length: 200 }).notNull(),
   quantity: int("quantity").notNull(),
   receivedQuantity: int("receivedQuantity").default(0).notNull(),
@@ -390,11 +493,12 @@ export const stockTransferItems = mysqlTable("stock_transfer_items", {
 export type StockTransferItem = typeof stockTransferItems.$inferSelect;
 export type InsertStockTransferItem = typeof stockTransferItems.$inferInsert;
 
-
 // ─── Kitchen Display System (KDS) ──────────────────────────────────────────
 export const kitchenStaff = mysqlTable("kitchen_staff", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id),
+  userId: int("userId")
+    .notNull()
+    .references(() => users.id),
   station: varchar("station", { length: 100 }).notNull(), // e.g., "Grill", "Fryer", "Prep"
   isActive: boolean("isActive").default(true).notNull(),
   ordersCompleted: int("ordersCompleted").default(0).notNull(),
@@ -409,8 +513,16 @@ export type InsertKitchenStaff = typeof kitchenStaff.$inferInsert;
 // Order status history for KDS tracking
 export const orderStatusHistory = mysqlTable("order_status_history", {
   id: int("id").autoincrement().primaryKey(),
-  orderId: int("orderId").notNull().references(() => orders.id),
-  status: mysqlEnum("status", ["pending", "preparing", "ready", "served", "completed"]).notNull(),
+  orderId: int("orderId")
+    .notNull()
+    .references(() => orders.id),
+  status: mysqlEnum("status", [
+    "pending",
+    "preparing",
+    "ready",
+    "served",
+    "completed",
+  ]).notNull(),
   kitchenStaffId: int("kitchenStaffId").references(() => kitchenStaff.id),
   notes: text("notes"),
   startTime: timestamp("startTime").defaultNow().notNull(),
@@ -440,7 +552,10 @@ export type InsertKdsSettings = typeof kdsSettings.$inferInsert;
 // ─── Staff Profiles ────────────────────────────────────────────────────────
 export const staffProfiles = mysqlTable("staff_profiles", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique().references(() => users.id),
+  userId: int("userId")
+    .notNull()
+    .unique()
+    .references(() => users.id),
   firstName: varchar("firstName", { length: 100 }).notNull(),
   lastName: varchar("lastName", { length: 100 }).notNull(),
   phoneNumber: varchar("phoneNumber", { length: 20 }),
@@ -448,7 +563,9 @@ export const staffProfiles = mysqlTable("staff_profiles", {
   department: varchar("department", { length: 100 }),
   position: varchar("position", { length: 100 }),
   hireDate: timestamp("hireDate"),
-  status: mysqlEnum("status", ["active", "inactive", "suspended", "on_leave"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "inactive", "suspended", "on_leave"])
+    .default("active")
+    .notNull(),
   branchId: int("branchId").references(() => branches.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -460,7 +577,9 @@ export type InsertStaffProfile = typeof staffProfiles.$inferInsert;
 // ─── Staff Activity Logs ───────────────────────────────────────────────────
 export const staffActivityLogs = mysqlTable("staff_activity_logs", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id),
+  userId: int("userId")
+    .notNull()
+    .references(() => users.id),
   activityType: mysqlEnum("activityType", [
     "login",
     "logout",
@@ -481,13 +600,14 @@ export const staffActivityLogs = mysqlTable("staff_activity_logs", {
   entityId: int("entityId"),
   ipAddress: varchar("ipAddress", { length: 45 }),
   userAgent: text("userAgent"),
-  status: mysqlEnum("status", ["success", "failure"]).default("success").notNull(),
+  status: mysqlEnum("status", ["success", "failure"])
+    .default("success")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type StaffActivityLog = typeof staffActivityLogs.$inferSelect;
 export type InsertStaffActivityLog = typeof staffActivityLogs.$inferInsert;
-
 
 // ─── Employment Types ──────────────────────────────────────────────────────
 export const employmentTypes = mysqlTable("employment_types", {
@@ -504,11 +624,21 @@ export type InsertEmploymentType = typeof employmentTypes.$inferInsert;
 // ─── Staff Employment Records ──────────────────────────────────────────────
 export const staffEmployment = mysqlTable("staff_employment", {
   id: int("id").autoincrement().primaryKey(),
-  staffProfileId: int("staffProfileId").notNull().references(() => staffProfiles.id),
-  employmentTypeId: int("employmentTypeId").notNull().references(() => employmentTypes.id),
-  baseSalary: decimal("baseSalary", { precision: 12, scale: 2 }).default("0").notNull(), // For permanent employees
-  hourlyRate: decimal("hourlyRate", { precision: 12, scale: 2 }).default("0").notNull(), // For casual laborers
-  dailyRate: decimal("dailyRate", { precision: 12, scale: 2 }).default("0").notNull(), // For casual laborers
+  staffProfileId: int("staffProfileId")
+    .notNull()
+    .references(() => staffProfiles.id),
+  employmentTypeId: int("employmentTypeId")
+    .notNull()
+    .references(() => employmentTypes.id),
+  baseSalary: decimal("baseSalary", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(), // For permanent employees
+  hourlyRate: decimal("hourlyRate", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(), // For casual laborers
+  dailyRate: decimal("dailyRate", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(), // For casual laborers
   bankAccount: varchar("bankAccount", { length: 50 }),
   bankName: varchar("bankName", { length: 100 }),
   nssf: varchar("nssf", { length: 20 }), // NSSF number for statutory deductions
@@ -540,8 +670,12 @@ export type InsertDeductionType = typeof deductionTypes.$inferInsert;
 // ─── Payroll Deductions ────────────────────────────────────────────────────
 export const payrollDeductions = mysqlTable("payroll_deductions", {
   id: int("id").autoincrement().primaryKey(),
-  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
-  deductionTypeId: int("deductionTypeId").notNull().references(() => deductionTypes.id),
+  staffEmploymentId: int("staffEmploymentId")
+    .notNull()
+    .references(() => staffEmployment.id),
+  deductionTypeId: int("deductionTypeId")
+    .notNull()
+    .references(() => deductionTypes.id),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   percentage: decimal("percentage", { precision: 5, scale: 2 }), // For percentage-based deductions
   startDate: timestamp("startDate").notNull(),
@@ -569,8 +703,12 @@ export type InsertBonusType = typeof bonusTypes.$inferInsert;
 // ─── Payroll Bonuses ───────────────────────────────────────────────────────
 export const payrollBonuses = mysqlTable("payroll_bonuses", {
   id: int("id").autoincrement().primaryKey(),
-  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
-  bonusTypeId: int("bonusTypeId").notNull().references(() => bonusTypes.id),
+  staffEmploymentId: int("staffEmploymentId")
+    .notNull()
+    .references(() => staffEmployment.id),
+  bonusTypeId: int("bonusTypeId")
+    .notNull()
+    .references(() => bonusTypes.id),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   paymentDate: timestamp("paymentDate").notNull(),
   reason: text("reason"),
@@ -585,10 +723,20 @@ export type InsertPayrollBonus = typeof payrollBonuses.$inferInsert;
 // ─── Attendance Records ────────────────────────────────────────────────────
 export const attendanceRecords = mysqlTable("attendance_records", {
   id: int("id").autoincrement().primaryKey(),
-  staffProfileId: int("staffProfileId").notNull().references(() => staffProfiles.id),
+  staffProfileId: int("staffProfileId")
+    .notNull()
+    .references(() => staffProfiles.id),
   date: timestamp("date").notNull(),
-  hoursWorked: decimal("hoursWorked", { precision: 5, scale: 2 }).default("0").notNull(),
-  status: mysqlEnum("status", ["present", "absent", "late", "half_day", "leave"]).notNull(),
+  hoursWorked: decimal("hoursWorked", { precision: 5, scale: 2 })
+    .default("0")
+    .notNull(),
+  status: mysqlEnum("status", [
+    "present",
+    "absent",
+    "late",
+    "half_day",
+    "leave",
+  ]).notNull(),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -600,16 +748,38 @@ export type InsertAttendanceRecord = typeof attendanceRecords.$inferInsert;
 // ─── Payroll Records ───────────────────────────────────────────────────────
 export const payrollRecords = mysqlTable("payroll_records", {
   id: int("id").autoincrement().primaryKey(),
-  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
+  staffEmploymentId: int("staffEmploymentId")
+    .notNull()
+    .references(() => staffEmployment.id),
   payrollPeriodStart: timestamp("payrollPeriodStart").notNull(),
   payrollPeriodEnd: timestamp("payrollPeriodEnd").notNull(),
-  grossSalary: decimal("grossSalary", { precision: 12, scale: 2 }).default("0").notNull(),
-  totalDeductions: decimal("totalDeductions", { precision: 12, scale: 2 }).default("0").notNull(),
-  totalBonuses: decimal("totalBonuses", { precision: 12, scale: 2 }).default("0").notNull(),
+  grossSalary: decimal("grossSalary", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  totalDeductions: decimal("totalDeductions", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  totalBonuses: decimal("totalBonuses", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
   netPay: decimal("netPay", { precision: 12, scale: 2 }).default("0").notNull(),
-  paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "failed", "cancelled"]).default("pending").notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", [
+    "pending",
+    "paid",
+    "failed",
+    "cancelled",
+  ])
+    .default("pending")
+    .notNull(),
   paymentDate: timestamp("paymentDate"),
-  paymentMethod: mysqlEnum("paymentMethod", ["bank_transfer", "cash", "mpesa", "check"]).default("bank_transfer").notNull(),
+  paymentMethod: mysqlEnum("paymentMethod", [
+    "bank_transfer",
+    "cash",
+    "mpesa",
+    "check",
+  ])
+    .default("bank_transfer")
+    .notNull(),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -621,14 +791,24 @@ export type InsertPayrollRecord = typeof payrollRecords.$inferInsert;
 // ─── Payslips ──────────────────────────────────────────────────────────────
 export const payslips = mysqlTable("payslips", {
   id: int("id").autoincrement().primaryKey(),
-  payrollRecordId: int("payrollRecordId").notNull().references(() => payrollRecords.id),
-  staffEmploymentId: int("staffEmploymentId").notNull().references(() => staffEmployment.id),
+  payrollRecordId: int("payrollRecordId")
+    .notNull()
+    .references(() => payrollRecords.id),
+  staffEmploymentId: int("staffEmploymentId")
+    .notNull()
+    .references(() => staffEmployment.id),
   payslipNumber: varchar("payslipNumber", { length: 50 }).notNull().unique(),
   payrollPeriodStart: timestamp("payrollPeriodStart").notNull(),
   payrollPeriodEnd: timestamp("payrollPeriodEnd").notNull(),
-  grossSalary: decimal("grossSalary", { precision: 12, scale: 2 }).default("0").notNull(),
-  totalDeductions: decimal("totalDeductions", { precision: 12, scale: 2 }).default("0").notNull(),
-  totalBonuses: decimal("totalBonuses", { precision: 12, scale: 2 }).default("0").notNull(),
+  grossSalary: decimal("grossSalary", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  totalDeductions: decimal("totalDeductions", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  totalBonuses: decimal("totalBonuses", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
   netPay: decimal("netPay", { precision: 12, scale: 2 }).default("0").notNull(),
   payslipUrl: text("payslipUrl"), // URL to generated PDF payslip
   generatedAt: timestamp("generatedAt").defaultNow().notNull(),
@@ -643,11 +823,21 @@ export type InsertPayslip = typeof payslips.$inferInsert;
 export const payrollSettings = mysqlTable("payroll_settings", {
   id: int("id").autoincrement().primaryKey(),
   branchId: int("branchId").references(() => branches.id),
-  nssfRate: decimal("nssfRate", { precision: 5, scale: 2 }).default("6").notNull(), // NSSF contribution rate
-  nhifRate: decimal("nhifRate", { precision: 5, scale: 2 }).default("2.75").notNull(), // NHIF contribution rate
-  payeTaxThreshold: decimal("payeTaxThreshold", { precision: 12, scale: 2 }).default("24000").notNull(), // Monthly tax threshold
-  payeRate: decimal("payeRate", { precision: 5, scale: 2 }).default("30").notNull(), // PAYE tax rate
-  payrollCycle: mysqlEnum("payrollCycle", ["weekly", "biweekly", "monthly"]).default("monthly").notNull(),
+  nssfRate: decimal("nssfRate", { precision: 5, scale: 2 })
+    .default("6")
+    .notNull(), // NSSF contribution rate
+  nhifRate: decimal("nhifRate", { precision: 5, scale: 2 })
+    .default("2.75")
+    .notNull(), // NHIF contribution rate
+  payeTaxThreshold: decimal("payeTaxThreshold", { precision: 12, scale: 2 })
+    .default("24000")
+    .notNull(), // Monthly tax threshold
+  payeRate: decimal("payeRate", { precision: 5, scale: 2 })
+    .default("30")
+    .notNull(), // PAYE tax rate
+  payrollCycle: mysqlEnum("payrollCycle", ["weekly", "biweekly", "monthly"])
+    .default("monthly")
+    .notNull(),
   paymentDay: int("paymentDay").default(28).notNull(), // Day of month for salary payment
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -656,17 +846,19 @@ export const payrollSettings = mysqlTable("payroll_settings", {
 export type PayrollSettings = typeof payrollSettings.$inferSelect;
 export type InsertPayrollSettings = typeof payrollSettings.$inferInsert;
 
-
-
 // ─── Supplier Deliveries ───────────────────────────────────────────────────
 export const supplierDeliveries = mysqlTable("supplier_deliveries", {
   id: int("id").autoincrement().primaryKey(),
-  supplierId: int("supplierId").notNull().references(() => suppliers.id),
+  supplierId: int("supplierId")
+    .notNull()
+    .references(() => suppliers.id),
   deliveryDate: timestamp("deliveryDate").notNull(),
   referenceNumber: varchar("referenceNumber", { length: 100 }),
   totalQuantity: int("totalQuantity").notNull(),
   totalAmount: decimal("totalAmount", { precision: 14, scale: 2 }),
-  status: mysqlEnum("status", ["pending", "received", "partial", "cancelled"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "received", "partial", "cancelled"])
+    .default("pending")
+    .notNull(),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -677,8 +869,12 @@ export type InsertSupplierDelivery = typeof supplierDeliveries.$inferInsert;
 // ─── Delivery Items ────────────────────────────────────────────────────────
 export const deliveryItems = mysqlTable("delivery_items", {
   id: int("id").autoincrement().primaryKey(),
-  deliveryId: int("deliveryId").notNull().references(() => supplierDeliveries.id),
-  productId: int("productId").notNull().references(() => products.id),
+  deliveryId: int("deliveryId")
+    .notNull()
+    .references(() => supplierDeliveries.id),
+  productId: int("productId")
+    .notNull()
+    .references(() => products.id),
   quantityOrdered: int("quantityOrdered").notNull(),
   quantityReceived: int("quantityReceived").notNull().default(0),
   unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }).notNull(),
@@ -695,7 +891,9 @@ export type InsertDeliveryItem = typeof deliveryItems.$inferInsert;
 // ─── Store Inventory ───────────────────────────────────────────────────────
 export const storeInventory = mysqlTable("store_inventory", {
   id: int("id").autoincrement().primaryKey(),
-  productId: int("productId").notNull().references(() => products.id),
+  productId: int("productId")
+    .notNull()
+    .references(() => products.id),
   storeQuantity: int("storeQuantity").default(0).notNull(),
   sellingPointQuantity: int("sellingPointQuantity").default(0).notNull(),
   lastRestockDate: timestamp("lastRestockDate"),
@@ -708,9 +906,15 @@ export type InsertStoreInventory = typeof storeInventory.$inferInsert;
 // ─── Store Transfers ───────────────────────────────────────────────────────
 export const storeTransfers = mysqlTable("store_transfers", {
   id: int("id").autoincrement().primaryKey(),
-  productId: int("productId").notNull().references(() => products.id),
+  productId: int("productId")
+    .notNull()
+    .references(() => products.id),
   quantity: int("quantity").notNull(),
-  transferType: mysqlEnum("transferType", ["store_to_selling_point", "selling_point_to_store", "adjustment"]).notNull(),
+  transferType: mysqlEnum("transferType", [
+    "store_to_selling_point",
+    "selling_point_to_store",
+    "adjustment",
+  ]).notNull(),
   transferDate: timestamp("transferDate").defaultNow().notNull(),
   reason: varchar("reason", { length: 200 }),
   notes: text("notes"),
@@ -721,32 +925,39 @@ export const storeTransfers = mysqlTable("store_transfers", {
 export type StoreTransfer = typeof storeTransfers.$inferSelect;
 export type InsertStoreTransfer = typeof storeTransfers.$inferInsert;
 
-
 // ─── Notification Preferences ──────────────────────────────────────────────────
 export const notificationPreferences = mysqlTable("notification_preferences", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: int("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   notificationType: mysqlEnum("notificationType", [
     "low_stock_alert",
     "large_transaction",
     "new_form_creation",
     "new_user_login",
     "payment_failure",
-    "daily_summary"
+    "daily_summary",
   ]).notNull(),
   enabled: boolean("enabled").default(true).notNull(),
-  frequency: mysqlEnum("frequency", ["instant", "daily", "weekly"]).default("instant").notNull(),
+  frequency: mysqlEnum("frequency", ["instant", "daily", "weekly"])
+    .default("instant")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type NotificationPreference = typeof notificationPreferences.$inferSelect;
-export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
+export type NotificationPreference =
+  typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference =
+  typeof notificationPreferences.$inferInsert;
 
 // ─── Transaction Log (Payment Breakdown) ────────────────────────────────────
 export const transactionLogs = mysqlTable("transaction_logs", {
   id: int("id").autoincrement().primaryKey(),
-  orderId: int("orderId").notNull().references(() => orders.id),
+  orderId: int("orderId")
+    .notNull()
+    .references(() => orders.id),
   customerId: int("customerId").references(() => customers.id),
   customerName: varchar("customerName", { length: 255 }).notNull(),
   time: timestamp("time").defaultNow().notNull(),
@@ -761,4 +972,3 @@ export const transactionLogs = mysqlTable("transaction_logs", {
 });
 export type TransactionLog = typeof transactionLogs.$inferSelect;
 export type InsertTransactionLog = typeof transactionLogs.$inferInsert;
-

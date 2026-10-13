@@ -1,6 +1,20 @@
 import { TRPCError } from "@trpc/server";
-import { getDb, logTransaction, getTransactionLogs, getPaymentTotals, updateCreditAccountBalance, updateCreditAccountStatus, updateCreditAccountTotalCredit, updateCreditAccountTotalPaid } from "./db";
-import { customerWallets, users, customers, creditAccounts } from "../drizzle/schema";
+import {
+  getDb,
+  logTransaction,
+  getTransactionLogs,
+  getPaymentTotals,
+  updateCreditAccountBalance,
+  updateCreditAccountStatus,
+  updateCreditAccountTotalCredit,
+  updateCreditAccountTotalPaid,
+} from "./db";
+import {
+  customerWallets,
+  users,
+  customers,
+  creditAccounts,
+} from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -9,7 +23,11 @@ import { systemRouter } from "./_core/systemRouter";
 import { companySettingsRouter } from "./routers/companySettings";
 import { branchesRouter as branchesRouterNew } from "./routers/branches";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { logRoleAssignment, logUserCreation, logUserDeletion } from "./auditLogger";
+import {
+  logRoleAssignment,
+  logUserCreation,
+  logUserDeletion,
+} from "./auditLogger";
 import {
   adjustStock,
   createCategory,
@@ -149,14 +167,27 @@ const categoriesRouter = router({
   list: publicProcedure.query(() => getCategories()),
 
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1), description: z.string().optional(), color: z.string().optional() }))
+    .input(
+      z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        color: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       await createCategory(input);
       return { success: true };
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.number(), name: z.string().optional(), description: z.string().optional(), color: z.string().optional() }))
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        color: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateCategory(id, data);
@@ -174,13 +205,17 @@ const categoriesRouter = router({
 // ─── Products Router ───────────────────────────────────────────────────────
 const productsRouter = router({
   list: publicProcedure
-    .input(z.object({
-      categoryId: z.number().optional(),
-      search: z.string().optional(),
-      isActive: z.boolean().optional(),
-      page: z.number().optional(),
-      limit: z.number().optional(),
-    }).optional())
+    .input(
+      z
+        .object({
+          categoryId: z.number().optional(),
+          search: z.string().optional(),
+          isActive: z.boolean().optional(),
+          page: z.number().optional(),
+          limit: z.number().optional(),
+        })
+        .optional()
+    )
     .query(({ input }) => getProducts(input ?? {})),
 
   get: publicProcedure
@@ -188,40 +223,44 @@ const productsRouter = router({
     .query(({ input }) => getProductById(input.id)),
 
   create: protectedProcedure
-    .input(z.object({
-      name: z.string().min(1),
-      description: z.string().optional(),
-      sku: z.string().optional(),
-      price: z.string(),
-      originalPrice: z.string().optional(),
-      categoryId: z.number().optional(),
-      imageUrl: z.string().optional(),
-      stockQuantity: z.number().default(0),
-      lowStockThreshold: z.number().default(10),
-      barcode: z.string().optional(),
-      unit: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        sku: z.string().optional(),
+        price: z.string(),
+        originalPrice: z.string().optional(),
+        categoryId: z.number().optional(),
+        imageUrl: z.string().optional(),
+        stockQuantity: z.number().default(0),
+        lowStockThreshold: z.number().default(10),
+        barcode: z.string().optional(),
+        unit: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       await createProduct({ ...input, isActive: true });
       return { success: true };
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      name: z.string().optional(),
-      description: z.string().optional(),
-      sku: z.string().optional(),
-      price: z.string().optional(),
-      originalPrice: z.string().optional().nullable(),
-      categoryId: z.number().optional().nullable(),
-      imageUrl: z.string().optional().nullable(),
-      stockQuantity: z.number().optional(),
-      lowStockThreshold: z.number().optional(),
-      barcode: z.string().optional(),
-      unit: z.string().optional(),
-      isActive: z.boolean().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        sku: z.string().optional(),
+        price: z.string().optional(),
+        originalPrice: z.string().optional().nullable(),
+        categoryId: z.number().optional().nullable(),
+        imageUrl: z.string().optional().nullable(),
+        stockQuantity: z.number().optional(),
+        lowStockThreshold: z.number().optional(),
+        barcode: z.string().optional(),
+        unit: z.string().optional(),
+        isActive: z.boolean().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateProduct(id, data as any);
@@ -238,12 +277,14 @@ const productsRouter = router({
   lowStock: protectedProcedure.query(() => getLowStockProducts()),
 
   adjustStock: protectedProcedure
-    .input(z.object({
-      productId: z.number(),
-      changeType: z.enum(["restock", "adjustment", "return", "damage"]),
-      quantityChange: z.number(),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        productId: z.number(),
+        changeType: z.enum(["restock", "adjustment", "return", "damage"]),
+        quantityChange: z.number(),
+        notes: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const newQty = await adjustStock(
         input.productId,
@@ -257,7 +298,13 @@ const productsRouter = router({
     }),
 
   uploadImage: protectedProcedure
-    .input(z.object({ base64: z.string(), filename: z.string(), mimeType: z.string() }))
+    .input(
+      z.object({
+        base64: z.string(),
+        filename: z.string(),
+        mimeType: z.string(),
+      })
+    )
     .mutation(async ({ input }) => {
       const buffer = Buffer.from(input.base64, "base64");
       const key = `products/${Date.now()}-${input.filename}`;
@@ -269,7 +316,15 @@ const productsRouter = router({
 // ─── Customers Router ──────────────────────────────────────────────────────
 const customersRouter = router({
   list: protectedProcedure
-    .input(z.object({ search: z.string().optional(), page: z.number().optional(), limit: z.number().optional() }).optional())
+    .input(
+      z
+        .object({
+          search: z.string().optional(),
+          page: z.number().optional(),
+          limit: z.number().optional(),
+        })
+        .optional()
+    )
     .query(({ input }) => getCustomers(input ?? {})),
 
   get: protectedProcedure
@@ -277,27 +332,31 @@ const customersRouter = router({
     .query(({ input }) => getCustomerById(input.id)),
 
   create: protectedProcedure
-    .input(z.object({
-      name: z.string().min(1),
-      phone: z.string().optional(),
-      email: z.string().email().optional().or(z.literal("")),
-      address: z.string().optional(),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        name: z.string().min(1),
+        phone: z.string().optional(),
+        email: z.string().email().optional().or(z.literal("")),
+        address: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       await createCustomer(input);
       return { success: true };
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      name: z.string().optional(),
-      phone: z.string().optional(),
-      email: z.string().optional(),
-      address: z.string().optional(),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        address: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateCustomer(id, data);
@@ -313,23 +372,29 @@ const customersRouter = router({
 
   purchaseHistory: protectedProcedure
     .input(z.object({ customerId: z.number(), page: z.number().optional() }))
-    .query(({ input }) => getOrders({ customerId: input.customerId, page: input.page })),
+    .query(({ input }) =>
+      getOrders({ customerId: input.customerId, page: input.page })
+    ),
 });
 
 // ─── Orders Router ─────────────────────────────────────────────────────────
 const ordersRouter = router({
   list: protectedProcedure
-    .input(z.object({
-      status: z.string().optional(),
-      paymentStatus: z.string().optional(),
-      paymentMethod: z.string().optional(),
-      customerId: z.number().optional(),
-      fromDate: z.date().optional(),
-      toDate: z.date().optional(),
-      page: z.number().optional(),
-      limit: z.number().optional(),
-      search: z.string().optional(),
-    }).optional())
+    .input(
+      z
+        .object({
+          status: z.string().optional(),
+          paymentStatus: z.string().optional(),
+          paymentMethod: z.string().optional(),
+          customerId: z.number().optional(),
+          fromDate: z.date().optional(),
+          toDate: z.date().optional(),
+          page: z.number().optional(),
+          limit: z.number().optional(),
+          search: z.string().optional(),
+        })
+        .optional()
+    )
     .query(({ input }) => getOrders(input ?? {})),
 
   get: protectedProcedure
@@ -337,31 +402,53 @@ const ordersRouter = router({
     .query(({ input }) => getOrderById(input.id)),
 
   create: protectedProcedure
-    .input(z.object({
-      customerId: z.number().optional(),
-      customerName: z.string().optional(),
-      items: z.array(z.object({
-        productId: z.number().optional(),
-        productName: z.string(),
-        productSku: z.string().optional(),
-        quantity: z.number().min(1),
-        unitPrice: z.string(),
-        originalPrice: z.string().optional(),
+    .input(
+      z.object({
+        customerId: z.number().optional(),
+        customerName: z.string().optional(),
+        items: z.array(
+          z.object({
+            productId: z.number().optional(),
+            productName: z.string(),
+            productSku: z.string().optional(),
+            quantity: z.number().min(1),
+            unitPrice: z.string(),
+            originalPrice: z.string().optional(),
+            discountAmount: z.string().optional(),
+            totalPrice: z.string(),
+          })
+        ),
+        subtotal: z.string(),
+        taxAmount: z.string(),
         discountAmount: z.string().optional(),
-        totalPrice: z.string(),
-      })),
-      subtotal: z.string(),
-      taxAmount: z.string(),
-      discountAmount: z.string().optional(),
-      totalAmount: z.string(),
-      paymentMethod: z.enum(["cash", "mpesa", "stripe", "mixed", "wallet"]),
-      cashReceived: z.string().optional(),
-      cashChange: z.string().optional(),
-      status: z.enum(["pending", "completed"]).optional(),
-      notes: z.string().optional(),
-      splitPayments: z.string().optional(),
-    }))
+        totalAmount: z.string(),
+        paymentMethod: z.enum(["cash", "mpesa", "stripe", "mixed", "wallet"]),
+        cashReceived: z.string().optional(),
+        cashChange: z.string().optional(),
+        status: z.enum(["pending", "completed"]).optional(),
+        notes: z.string().optional(),
+        splitPayments: z.string().optional(),
+        branchId: z.number().int().positive().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
+      if (!input.branchId && ctx.user.role !== "admin") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Select an assigned branch before creating an order",
+        });
+      }
+      if (input.branchId && ctx.user.role !== "admin") {
+        const assignedBranches = await getUserBranches(ctx.user.id);
+        if (
+          !assignedBranches.some(branch => branch.branchId === input.branchId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to this branch",
+          });
+        }
+      }
       const orderNumber = await generateOrderNumber();
       const id = await createOrder(
         {
@@ -375,14 +462,15 @@ const ordersRouter = router({
           paymentMethod: input.paymentMethod,
           paymentStatus: "paid",
           orderStatus: "completed",
+          branchId: input.branchId,
           notes: input.splitPayments || input.notes,
         },
-        input.items.map((item) => ({
+        input.items.map(item => ({
           ...item,
           discountAmount: item.discountAmount ?? "0",
         }))
       );
-      
+
       // Log transaction with payment breakdown
       try {
         let paymentBreakdown: any = {
@@ -392,38 +480,45 @@ const ordersRouter = router({
           wallet: 0,
           check: 0,
         };
-        
+
         // Check if this is a split payment
         if (input.splitPayments) {
           try {
             const splitPayments = JSON.parse(input.splitPayments);
-            console.log("[Transaction Log] Split payments detected:", splitPayments);
+            console.log(
+              "[Transaction Log] Split payments detected:",
+              splitPayments
+            );
             for (const payment of splitPayments) {
-              let method = payment.method?.toLowerCase() || '';
+              let method = payment.method?.toLowerCase() || "";
               // Map 'stripe' to 'card'
-              if (method === 'stripe') method = 'card';
+              if (method === "stripe") method = "card";
               if (method in paymentBreakdown) {
                 paymentBreakdown[method] = Number(payment.amount) || 0;
               }
             }
           } catch (parseError) {
-            console.error("[Transaction Log] Failed to parse split payments:", input.splitPayments, parseError);
+            console.error(
+              "[Transaction Log] Failed to parse split payments:",
+              input.splitPayments,
+              parseError
+            );
             // Fallback to single payment method
-            const method = input.paymentMethod?.toLowerCase() || 'cash';
+            const method = input.paymentMethod?.toLowerCase() || "cash";
             if (method in paymentBreakdown) {
               paymentBreakdown[method] = Number(input.totalAmount);
             }
           }
         } else {
           // Single payment method
-          let method = input.paymentMethod?.toLowerCase() || 'cash';
+          let method = input.paymentMethod?.toLowerCase() || "cash";
           // Map 'stripe' to 'card'
-          if (method === 'stripe') method = 'card';
+          if (method === "stripe") method = "card";
           if (method in paymentBreakdown) {
             paymentBreakdown[method] = Number(input.totalAmount);
           }
         }
-        
+
         console.log("[Transaction Log] Final breakdown:", paymentBreakdown);
         await logTransaction(
           id,
@@ -439,24 +534,40 @@ const ordersRouter = router({
       if (input.customerId) {
         const customer = await getCustomerById(input.customerId);
         if (customer) {
-          const newTotal = Number(customer.totalSpent || 0) + Number(input.totalAmount);
-          await updateCustomer(input.customerId, { totalSpent: String(newTotal) });
+          const newTotal =
+            Number(customer.totalSpent || 0) + Number(input.totalAmount);
+          await updateCustomer(input.customerId, {
+            totalSpent: String(newTotal),
+          });
         }
 
         // Handle wallet deductions for split or single wallet payments
         try {
           if (input.splitPayments && input.paymentMethod === "mixed") {
             const splitPayments = JSON.parse(input.splitPayments);
-            const walletPayment = splitPayments.find((p: any) => p.method === "wallet");
+            const walletPayment = splitPayments.find(
+              (p: any) => p.method === "wallet"
+            );
             if (walletPayment && walletPayment.amount > 0) {
-              await spendFromWallet(input.customerId, Number(walletPayment.amount), id);
+              await spendFromWallet(
+                input.customerId,
+                Number(walletPayment.amount),
+                id
+              );
             }
           } else if (input.paymentMethod === "wallet") {
             // Single wallet payment - deduct entire amount
-            await spendFromWallet(input.customerId, Number(input.totalAmount), id);
+            await spendFromWallet(
+              input.customerId,
+              Number(input.totalAmount),
+              id
+            );
           }
         } catch (walletError) {
-          console.error("[Wallet Deduction] Failed to deduct from wallet:", walletError);
+          console.error(
+            "[Wallet Deduction] Failed to deduct from wallet:",
+            walletError
+          );
           // Don't fail the order if wallet deduction fails - order is already created
           // This prevents the "insufficient balance" error from appearing after order is complete
         }
@@ -474,7 +585,10 @@ const ordersRouter = router({
       // Check low stock and notify
       const lowStock = await getLowStockProducts();
       if (lowStock.length > 0) {
-        const names = lowStock.slice(0, 3).map((p) => `${p.name} (${p.stockQuantity} left)`).join(", ");
+        const names = lowStock
+          .slice(0, 3)
+          .map(p => `${p.name} (${p.stockQuantity} left)`)
+          .join(", ");
         await notifyOwner({
           title: "Low Stock Alert",
           content: `${lowStock.length} product(s) running low: ${names}`,
@@ -485,7 +599,7 @@ const ordersRouter = router({
       await recordStaffActivity({
         userId: ctx.user?.id,
         activityType: "create_order",
-        description: `Created order ${orderNumber} for ${input.customerName || 'Walk-in'} - KES ${input.totalAmount}`,
+        description: `Created order ${orderNumber} for ${input.customerName || "Walk-in"} - KES ${input.totalAmount}`,
         entityType: "Order",
         entityId: id,
         status: "success",
@@ -495,13 +609,15 @@ const ordersRouter = router({
     }),
 
   updateStatus: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      orderStatus: z.string().optional(),
-      paymentStatus: z.string().optional(),
-      mpesaTransactionId: z.string().optional(),
-      receiptUrl: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        orderStatus: z.string().optional(),
+        paymentStatus: z.string().optional(),
+        mpesaTransactionId: z.string().optional(),
+        receiptUrl: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateOrderStatus(id, data);
@@ -511,8 +627,11 @@ const ordersRouter = router({
         if (order?.customerId) {
           const customer = await getCustomerById(order.customerId);
           if (customer) {
-            const newTotal = Number(customer.totalSpent || 0) + Number(order.totalAmount);
-            await updateCustomer(order.customerId, { totalSpent: String(newTotal) });
+            const newTotal =
+              Number(customer.totalSpent || 0) + Number(order.totalAmount);
+            await updateCustomer(order.customerId, {
+              totalSpent: String(newTotal),
+            });
           }
         }
       }
@@ -523,15 +642,19 @@ const ordersRouter = router({
 // ─── Payments Router ───────────────────────────────────────────────────────
 const paymentsRouter = router({
   initiateMpesa: protectedProcedure
-    .input(z.object({
-      phone: z.string(),
-      amount: z.number(),
-      id: z.number(),
-      orderNumber: z.string(),
-      callbackUrl: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        phone: z.string(),
+        amount: z.number(),
+        id: z.number(),
+        orderNumber: z.string(),
+        callbackUrl: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
-      const callbackUrl = input.callbackUrl ?? `${process.env.APP_URL ?? "https://example.com"}/api/mpesa/callback`;
+      const callbackUrl =
+        input.callbackUrl ??
+        `${process.env.APP_URL ?? "https://example.com"}/api/mpesa/callback`;
       try {
         const result = await initiateStkPush({
           phone: input.phone,
@@ -548,7 +671,10 @@ const paymentsRouter = router({
         };
       } catch (error: any) {
         // In sandbox/dev mode without real credentials, simulate success
-        if (process.env.MPESA_CONSUMER_KEY === "sandbox" || !process.env.MPESA_CONSUMER_KEY) {
+        if (
+          process.env.MPESA_CONSUMER_KEY === "sandbox" ||
+          !process.env.MPESA_CONSUMER_KEY
+        ) {
           return {
             success: true,
             checkoutRequestId: `sim_${Date.now()}`,
@@ -557,7 +683,10 @@ const paymentsRouter = router({
             simulated: true,
           };
         }
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error.message,
+        });
       }
     }),
 
@@ -568,16 +697,24 @@ const paymentsRouter = router({
         const result = await queryStkStatus(input.checkoutRequestId);
         return result;
       } catch (error: any) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error.message,
+        });
       }
     }),
 
   createStripeIntent: protectedProcedure
-    .input(z.object({ amount: z.number(), id: z.number(), orderNumber: z.string() }))
+    .input(
+      z.object({ amount: z.number(), id: z.number(), orderNumber: z.string() })
+    )
     .mutation(async ({ input }) => {
       const stripeKey = process.env.STRIPE_SECRET_KEY;
       if (!stripeKey) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Stripe not configured" });
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Stripe not configured",
+        });
       }
       const stripe = new Stripe(stripeKey);
       const intent = await stripe.paymentIntents.create({
@@ -589,11 +726,13 @@ const paymentsRouter = router({
     }),
 
   addMethod: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      method: z.enum(["cash", "mpesa", "wallet", "card"]),
-      amount: z.number().positive(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        method: z.enum(["cash", "mpesa", "wallet", "card"]),
+        amount: z.number().positive(),
+      })
+    )
     .mutation(async ({ input }) => {
       await addPaymentMethod(input.id, {
         methodType: input.method as any,
@@ -615,21 +754,44 @@ const paymentsRouter = router({
 
 // ─── Reports Router ────────────────────────────────────────────────────────
 const reportsRouter = router({
-  dashboard: protectedProcedure.query(() => getDashboardStats()),
+  dashboard: protectedProcedure
+    .input(
+      z.object({ branchId: z.number().int().positive().optional() }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      if (input?.branchId && ctx.user.role !== "admin") {
+        const assignedBranches = await getUserBranches(ctx.user.id);
+        const canAccess = assignedBranches.some(
+          branch => branch.branchId === input.branchId
+        );
+        if (!canAccess) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to this branch",
+          });
+        }
+      }
+
+      return getDashboardStats(input?.branchId);
+    }),
 
   sales: protectedProcedure
-    .input(z.object({
-      fromDate: z.date(),
-      toDate: z.date(),
-    }))
+    .input(
+      z.object({
+        fromDate: z.date(),
+        toDate: z.date(),
+      })
+    )
     .query(({ input }) => getSalesReport(input.fromDate, input.toDate)),
 
   salesReport: protectedProcedure
-    .input(z.object({
-      startDate: z.string(),
-      endDate: z.string(),
-      groupBy: z.enum(["day", "week", "month"]).default("day"),
-    }))
+    .input(
+      z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+        groupBy: z.enum(["day", "week", "month"]).default("day"),
+      })
+    )
     .query(async ({ input }) => {
       const from = new Date(input.startDate + "T00:00:00");
       const to = new Date(input.endDate + "T23:59:59");
@@ -639,7 +801,7 @@ const reportsRouter = router({
         date: d.date,
         revenue: d.totalRevenue,
         orderCount: d.totalOrders,
-        tax: Number(d.totalRevenue) * 0.16 / 1.16,
+        tax: (Number(d.totalRevenue) * 0.16) / 1.16,
       }));
       return {
         totalRevenue: data.summary?.totalRevenue ?? 0,
@@ -665,18 +827,26 @@ const reportsRouter = router({
     }),
 
   topProducts: protectedProcedure
-    .input(z.object({ startDate: z.string(), endDate: z.string(), limit: z.number().optional() }))
+    .input(
+      z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+        limit: z.number().optional(),
+      })
+    )
     .query(async ({ input }) => {
       const from = new Date(input.startDate + "T00:00:00");
       const to = new Date(input.endDate + "T23:59:59");
       const data = await getSalesReport(from, to);
       if (!data) return [];
-      return (data.topProducts ?? []).slice(0, input.limit ?? 10).map((p: any) => ({
-        productId: 0,
-        productName: p.productName,
-        totalQuantity: p.totalQty,
-        totalRevenue: p.totalRevenue,
-      }));
+      return (data.topProducts ?? [])
+        .slice(0, input.limit ?? 10)
+        .map((p: any) => ({
+          productId: 0,
+          productName: p.productName,
+          totalQuantity: p.totalQty,
+          totalRevenue: p.totalRevenue,
+        }));
     }),
 
   allProducts: protectedProcedure
@@ -694,21 +864,33 @@ const reportsRouter = router({
     }),
 
   inventoryLogs: protectedProcedure
-    .input(z.object({ productId: z.number().optional(), limit: z.number().optional() }))
+    .input(
+      z.object({
+        productId: z.number().optional(),
+        limit: z.number().optional(),
+      })
+    )
     .query(({ input }) => getInventoryLogs(input.productId, input.limit)),
 
   customerSpendingWeekly: protectedProcedure
-    .input(z.object({ customerId: z.number(), weeksBack: z.number().optional() }))
+    .input(
+      z.object({ customerId: z.number(), weeksBack: z.number().optional() })
+    )
     .query(async ({ input }) => {
       const { getCustomerSpendingByWeek } = await import("./db");
       return getCustomerSpendingByWeek(input.customerId, input.weeksBack ?? 12);
     }),
 
   customerSpendingMonthly: protectedProcedure
-    .input(z.object({ customerId: z.number(), monthsBack: z.number().optional() }))
+    .input(
+      z.object({ customerId: z.number(), monthsBack: z.number().optional() })
+    )
     .query(async ({ input }) => {
       const { getCustomerSpendingByMonth } = await import("./db");
-      return getCustomerSpendingByMonth(input.customerId, input.monthsBack ?? 12);
+      return getCustomerSpendingByMonth(
+        input.customerId,
+        input.monthsBack ?? 12
+      );
     }),
 
   customerSpendingTrends: protectedProcedure
@@ -726,16 +908,18 @@ const reportsRouter = router({
     }),
 
   topCustomers: protectedProcedure
-    .input(z.object({ 
-      limit: z.number().optional(), 
-      monthsBack: z.number().optional(),
-      startDate: z.date().optional(),
-      endDate: z.date().optional()
-    }))
+    .input(
+      z.object({
+        limit: z.number().optional(),
+        monthsBack: z.number().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      })
+    )
     .query(async ({ input }) => {
       const { getTopCustomersBySpending } = await import("./db");
       return getTopCustomersBySpending(
-        input.limit || 10, 
+        input.limit || 10,
         input.monthsBack,
         input.startDate,
         input.endDate
@@ -760,41 +944,62 @@ const reportsRouter = router({
     .input(z.object({ fromDate: z.string(), toDate: z.string() }))
     .query(async ({ input }) => {
       const { getSalesByPaymentMethod } = await import("./db");
-      return getSalesByPaymentMethod(new Date(input.fromDate), new Date(input.toDate));
+      return getSalesByPaymentMethod(
+        new Date(input.fromDate),
+        new Date(input.toDate)
+      );
     }),
 
   dailySalesByPaymentMethod: protectedProcedure
     .input(z.object({ fromDate: z.string(), toDate: z.string() }))
     .query(async ({ input }) => {
       const { getDailySalesByPaymentMethod } = await import("./db");
-      return getDailySalesByPaymentMethod(new Date(input.fromDate), new Date(input.toDate));
+      return getDailySalesByPaymentMethod(
+        new Date(input.fromDate),
+        new Date(input.toDate)
+      );
     }),
 
   paymentMethodComparison: protectedProcedure
     .input(z.object({ fromDate: z.string(), toDate: z.string() }))
     .query(async ({ input }) => {
       const { getPaymentMethodComparison } = await import("./db");
-      return getPaymentMethodComparison(new Date(input.fromDate), new Date(input.toDate));
+      return getPaymentMethodComparison(
+        new Date(input.fromDate),
+        new Date(input.toDate)
+      );
     }),
   transactionLogs: protectedProcedure
-    .input(z.object({
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-      customerName: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        customerName: z.string().optional(),
+      })
+    )
     .query(async ({ input }) => {
-      const startDate = input.startDate ? new Date(input.startDate + "T00:00:00") : undefined;
-      const endDate = input.endDate ? new Date(input.endDate + "T23:59:59") : undefined;
+      const startDate = input.startDate
+        ? new Date(input.startDate + "T00:00:00")
+        : undefined;
+      const endDate = input.endDate
+        ? new Date(input.endDate + "T23:59:59")
+        : undefined;
       return getTransactionLogs(startDate, endDate, input.customerName);
     }),
   paymentTotals: protectedProcedure
-    .input(z.object({
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+    )
     .query(async ({ input }) => {
-      const startDate = input.startDate ? new Date(input.startDate + "T00:00:00") : undefined;
-      const endDate = input.endDate ? new Date(input.endDate + "T23:59:59") : undefined;
+      const startDate = input.startDate
+        ? new Date(input.startDate + "T00:00:00")
+        : undefined;
+      const endDate = input.endDate
+        ? new Date(input.endDate + "T23:59:59")
+        : undefined;
       return getPaymentTotals(startDate, endDate);
     }),
 });
@@ -817,7 +1022,7 @@ const settingsRouter = router({
   setMany: protectedProcedure
     .input(z.array(z.object({ key: z.string(), value: z.string() })))
     .mutation(async ({ input }) => {
-      await Promise.all(input.map((s) => setSetting(s.key, s.value)));
+      await Promise.all(input.map(s => setSetting(s.key, s.value)));
       return { success: true };
     }),
 });
@@ -832,9 +1037,19 @@ const walletRouter = router({
     }),
 
   load: protectedProcedure
-    .input(z.object({ customerId: z.number(), amount: z.number().positive(), description: z.string().optional() }))
+    .input(
+      z.object({
+        customerId: z.number(),
+        amount: z.number().positive(),
+        description: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
-      const newBalance = await loadWalletBalance(input.customerId, input.amount, input.description || "Wallet load");
+      const newBalance = await loadWalletBalance(
+        input.customerId,
+        input.amount,
+        input.description || "Wallet load"
+      );
       await notifyOwner({
         title: "Wallet Loaded",
         content: `Customer wallet loaded with KES ${input.amount}. New balance: KES ${newBalance}`,
@@ -901,20 +1116,34 @@ const transactionsRouter = router({
     }),
 
   byAmount: protectedProcedure
-    .input(z.object({ amount: z.number().positive(), method: z.string().optional() }))
+    .input(
+      z.object({ amount: z.number().positive(), method: z.string().optional() })
+    )
     .query(async ({ input }) => {
       return getTransactionsByAmount(input.amount, input.method);
     }),
 
   match: protectedProcedure
-    .input(z.object({ transactionId: z.string(), customerId: z.number(), id: z.number() }))
+    .input(
+      z.object({
+        transactionId: z.string(),
+        customerId: z.number(),
+        id: z.number(),
+      })
+    )
     .mutation(async ({ input }) => {
       await matchTransaction(input.transactionId, input.customerId, input.id);
       return { success: true };
     }),
 
   history: protectedProcedure
-    .input(z.object({ customerId: z.number().optional(), method: z.string().optional(), limit: z.number().optional() }))
+    .input(
+      z.object({
+        customerId: z.number().optional(),
+        method: z.string().optional(),
+        limit: z.number().optional(),
+      })
+    )
     .query(async ({ input }) => {
       return getTransactionHistory(input.customerId, input.method, input.limit);
     }),
@@ -929,7 +1158,15 @@ const transactionsRouter = router({
 // ─── Forms Router ──────────────────────────────────────────────────────────
 const formsRouter = router({
   create: protectedProcedure
-    .input(z.object({ title: z.string(), code: z.string(), amount: z.number().positive(), servingDate: z.date().optional(), servingPointId: z.number().optional() }))
+    .input(
+      z.object({
+        title: z.string(),
+        code: z.string(),
+        amount: z.number().positive(),
+        servingDate: z.date().optional(),
+        servingPointId: z.number().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await createForm({
         title: input.title,
@@ -974,7 +1211,15 @@ const formsRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.number(), title: z.string(), code: z.string(), amount: z.number().positive(), servingDate: z.date().optional() }))
+    .input(
+      z.object({
+        id: z.number(),
+        title: z.string(),
+        code: z.string(),
+        amount: z.number().positive(),
+        servingDate: z.date().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
       const result = await updateForm(id, {
@@ -998,29 +1243,38 @@ const formsRouter = router({
 // ─── Credit Router ──────────────────────────────────────────────────────────
 const creditRouter = router({
   create: protectedProcedure
-    .input(z.object({ studentName: z.string(), studentId: z.string().optional(), customerId: z.number().optional() }))
+    .input(
+      z.object({
+        studentName: z.string(),
+        studentId: z.string().optional(),
+        customerId: z.number().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       let customerId = input.customerId;
-      
+
       // If no customerId provided, create a new customer for the student
       if (!customerId) {
         const db = await getDb();
         if (!db) throw new Error("DB unavailable");
-        
+
         try {
           const customerResult = await db.insert(customers).values({
             name: input.studentName,
-            email: `${input.studentId || input.studentName.toLowerCase().replace(/\s+/g, '.')}@student.local`,
+            email: `${input.studentId || input.studentName.toLowerCase().replace(/\s+/g, ".")}@student.local`,
             phone: input.studentId || "",
           });
-          
+
           // Get the inserted customer ID
-          const insertedCustomer = await db.select().from(customers)
+          const insertedCustomer = await db
+            .select()
+            .from(customers)
             .where(eq(customers.name, input.studentName))
             .orderBy(desc(customers.id))
             .limit(1);
-          
-          if (!insertedCustomer[0]) throw new Error("Failed to create customer");
+
+          if (!insertedCustomer[0])
+            throw new Error("Failed to create customer");
           customerId = insertedCustomer[0].id;
         } catch (err) {
           console.error("Failed to create customer:", err);
@@ -1030,12 +1284,12 @@ const creditRouter = router({
           });
         }
       }
-      
+
       if (!customerId) throw new Error("Failed to create or find customer");
-      
+
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      
+
       try {
         const result = await db.insert(creditAccounts).values({
           customerId: customerId,
@@ -1046,7 +1300,7 @@ const creditRouter = router({
           totalPaid: 0,
           status: "active",
         } as any);
-        
+
         await recordAuditLog({
           module: "POS",
           userId: ctx.user?.id,
@@ -1054,7 +1308,7 @@ const creditRouter = router({
           entityType: "CreditAccount",
           beforeValue: input,
         });
-        
+
         return { success: true, id: customerId };
       } catch (err) {
         console.error("Failed to create credit account:", err);
@@ -1083,13 +1337,15 @@ const creditRouter = router({
       return getCreditTransactionHistory(input.creditAccountId);
     }),
   update: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      balance: z.number().optional(),
-      totalCredit: z.number().optional(),
-      totalPaid: z.number().optional(),
-      status: z.enum(["active", "settled", "suspended"]).optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        balance: z.number().optional(),
+        totalCredit: z.number().optional(),
+        totalPaid: z.number().optional(),
+        status: z.enum(["active", "settled", "suspended"]).optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       try {
         if (input.balance !== undefined) {
@@ -1127,25 +1383,29 @@ const creditRouter = router({
 // ─── Audit Router ──────────────────────────────────────────────────────────
 const auditRouter = router({
   list: protectedProcedure
-    .input(z.object({
-      userId: z.number().optional(),
-      action: z.string().optional(),
-      module: z.string().optional(),
-      limit: z.number().optional(),
-      startDate: z.number().optional(),
-      endDate: z.number().optional(),
-      search: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        userId: z.number().optional(),
+        action: z.string().optional(),
+        module: z.string().optional(),
+        limit: z.number().optional(),
+        startDate: z.number().optional(),
+        endDate: z.number().optional(),
+        search: z.string().optional(),
+      })
+    )
     .query(async ({ input }) => {
       return getAuditLogs(input);
     }),
 
   topUsers: protectedProcedure
-    .input(z.object({
-      limit: z.number().default(5),
-      startDate: z.number().optional(),
-      endDate: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        limit: z.number().default(5),
+        startDate: z.number().optional(),
+        endDate: z.number().optional(),
+      })
+    )
     .query(async ({ input }) => {
       return getTopActiveUsers(input);
     }),
@@ -1158,7 +1418,13 @@ const auditRouter = router({
 // ─── Serving Points Router ─────────────────────────────────────────────────
 const servingPointsRouter = router({
   create: protectedProcedure
-    .input(z.object({ branchId: z.number(), name: z.string(), description: z.string().optional() }))
+    .input(
+      z.object({
+        branchId: z.number(),
+        name: z.string(),
+        description: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       return createServingPoint(input);
     }),
@@ -1173,7 +1439,13 @@ const servingPointsRouter = router({
 // ─── Suppliers Router ──────────────────────────────────────────────────────
 const suppliersRouter = router({
   create: protectedProcedure
-    .input(z.object({ name: z.string(), phone: z.string().optional(), email: z.string().optional() }))
+    .input(
+      z.object({
+        name: z.string(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       return createSupplier(input);
     }),
@@ -1183,7 +1455,13 @@ const suppliersRouter = router({
   }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.number(), name: z.string(), email: z.string().optional() }))
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        email: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       const { updateSupplier } = await import("./db");
       return updateSupplier(input.id, { name: input.name, email: input.email });
@@ -1205,7 +1483,13 @@ const kdsRouter = router({
     }),
 
   updateOrderStatus: protectedProcedure
-    .input(z.object({ id: z.number(), status: z.string(), staffId: z.number().optional() }))
+    .input(
+      z.object({
+        id: z.number(),
+        status: z.string(),
+        staffId: z.number().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       await updateOrderStatusInKDS(input.id, input.status, input.staffId);
       await recordAuditLog({
@@ -1235,17 +1519,19 @@ const kdsRouter = router({
 // ─── Staff Management Router ───────────────────────────────────────────────
 const staffRouter = router({
   createProfile: protectedProcedure
-    .input(z.object({
-      userId: z.number(),
-      firstName: z.string().min(1),
-      lastName: z.string().min(1),
-      phoneNumber: z.string().optional(),
-      employeeId: z.string().optional(),
-      department: z.string().optional(),
-      position: z.string().optional(),
-      hireDate: z.date().optional(),
-      branchId: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        userId: z.number(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        phoneNumber: z.string().optional(),
+        employeeId: z.string().optional(),
+        department: z.string().optional(),
+        position: z.string().optional(),
+        hireDate: z.date().optional(),
+        branchId: z.number().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const profile = await createStaffProfile(input);
       await recordStaffActivity({
@@ -1270,27 +1556,33 @@ const staffRouter = router({
     }),
 
   list: protectedProcedure
-    .input(z.object({
-      status: z.string().optional(),
-      branchId: z.number().optional(),
-      department: z.string().optional(),
-      search: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        status: z.string().optional(),
+        branchId: z.number().optional(),
+        department: z.string().optional(),
+        search: z.string().optional(),
+      })
+    )
     .query(async ({ input }) => {
       return listStaffProfiles(input);
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      firstName: z.string().optional(),
-      lastName: z.string().optional(),
-      phoneNumber: z.string().optional(),
-      department: z.string().optional(),
-      position: z.string().optional(),
-      status: z.enum(["active", "inactive", "suspended", "on_leave"]).optional(),
-      branchId: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        phoneNumber: z.string().optional(),
+        department: z.string().optional(),
+        position: z.string().optional(),
+        status: z
+          .enum(["active", "inactive", "suspended", "on_leave"])
+          .optional(),
+        branchId: z.number().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { id, ...updateData } = input;
       await updateStaffProfile(id, updateData as any);
@@ -1321,12 +1613,14 @@ const staffRouter = router({
     }),
 
   getActivityLogs: protectedProcedure
-    .input(z.object({
-      userId: z.number().optional(),
-      activityType: z.string().optional(),
-      days: z.number().optional(),
-      limit: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        userId: z.number().optional(),
+        activityType: z.string().optional(),
+        days: z.number().optional(),
+        limit: z.number().optional(),
+      })
+    )
     .query(async ({ input }) => {
       if (input.userId && input.days) {
         return getUserActivitySummary(input.userId, input.days);
@@ -1342,19 +1636,21 @@ const staffRouter = router({
 // ─── Payroll Router ──────────────────────────────────────────────────────────
 const payrollRouter = router({
   createEmployment: protectedProcedure
-    .input(z.object({
-      staffProfileId: z.number(),
-      employmentTypeId: z.number(),
-      baseSalary: z.number().optional(),
-      hourlyRate: z.number().optional(),
-      dailyRate: z.number().optional(),
-      bankAccount: z.string().optional(),
-      bankName: z.string().optional(),
-      nssf: z.string().optional(),
-      nhif: z.string().optional(),
-      kra: z.string().optional(),
-      startDate: z.date(),
-    }))
+    .input(
+      z.object({
+        staffProfileId: z.number(),
+        employmentTypeId: z.number(),
+        baseSalary: z.number().optional(),
+        hourlyRate: z.number().optional(),
+        dailyRate: z.number().optional(),
+        bankAccount: z.string().optional(),
+        bankName: z.string().optional(),
+        nssf: z.string().optional(),
+        nhif: z.string().optional(),
+        kra: z.string().optional(),
+        startDate: z.date(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await createEmploymentRecord(input);
       await recordStaffActivity({
@@ -1377,13 +1673,15 @@ const payrollRouter = router({
   }),
 
   recordAttendance: protectedProcedure
-    .input(z.object({
-      staffProfileId: z.number(),
-      date: z.date(),
-      hoursWorked: z.number(),
-      status: z.enum(["present", "absent", "late", "half_day", "leave"]),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        staffProfileId: z.number(),
+        date: z.date(),
+        hoursWorked: z.number(),
+        status: z.enum(["present", "absent", "late", "half_day", "leave"]),
+        notes: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await recordAttendance(input);
       await recordStaffActivity({
@@ -1396,24 +1694,32 @@ const payrollRouter = router({
     }),
 
   getAttendance: protectedProcedure
-    .input(z.object({
-      staffProfileId: z.number(),
-      startDate: z.date(),
-      endDate: z.date(),
-    }))
+    .input(
+      z.object({
+        staffProfileId: z.number(),
+        startDate: z.date(),
+        endDate: z.date(),
+      })
+    )
     .query(async ({ input }) => {
-      return getAttendanceRecords(input.staffProfileId, input.startDate, input.endDate);
+      return getAttendanceRecords(
+        input.staffProfileId,
+        input.startDate,
+        input.endDate
+      );
     }),
 
   addDeduction: protectedProcedure
-    .input(z.object({
-      staffEmploymentId: z.number(),
-      deductionTypeId: z.number(),
-      amount: z.number().optional(),
-      percentage: z.number().optional(),
-      startDate: z.date(),
-      endDate: z.date().optional(),
-    }))
+    .input(
+      z.object({
+        staffEmploymentId: z.number(),
+        deductionTypeId: z.number(),
+        amount: z.number().optional(),
+        percentage: z.number().optional(),
+        startDate: z.date(),
+        endDate: z.date().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await addPayrollDeduction(input);
       await recordStaffActivity({
@@ -1432,14 +1738,16 @@ const payrollRouter = router({
     }),
 
   addBonus: protectedProcedure
-    .input(z.object({
-      staffEmploymentId: z.number(),
-      bonusTypeId: z.number(),
-      amount: z.number(),
-      paymentDate: z.date(),
-      reason: z.string().optional(),
-      approvedBy: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        staffEmploymentId: z.number(),
+        bonusTypeId: z.number(),
+        amount: z.number(),
+        paymentDate: z.date(),
+        reason: z.string().optional(),
+        approvedBy: z.number().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await addPayrollBonus(input);
       await recordStaffActivity({
@@ -1452,27 +1760,37 @@ const payrollRouter = router({
     }),
 
   getBonuses: protectedProcedure
-    .input(z.object({
-      staffEmploymentId: z.number(),
-      startDate: z.date().optional(),
-      endDate: z.date().optional(),
-    }))
+    .input(
+      z.object({
+        staffEmploymentId: z.number(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      })
+    )
     .query(async ({ input }) => {
-      return getPayrollBonuses(input.staffEmploymentId, input.startDate, input.endDate);
+      return getPayrollBonuses(
+        input.staffEmploymentId,
+        input.startDate,
+        input.endDate
+      );
     }),
 
   createPayroll: protectedProcedure
-    .input(z.object({
-      staffEmploymentId: z.number(),
-      payrollPeriodStart: z.date(),
-      payrollPeriodEnd: z.date(),
-      grossSalary: z.number(),
-      totalDeductions: z.number(),
-      totalBonuses: z.number(),
-      netPay: z.number(),
-      paymentMethod: z.enum(["bank_transfer", "cash", "mpesa", "check"]).optional(),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        staffEmploymentId: z.number(),
+        payrollPeriodStart: z.date(),
+        payrollPeriodEnd: z.date(),
+        grossSalary: z.number(),
+        totalDeductions: z.number(),
+        totalBonuses: z.number(),
+        netPay: z.number(),
+        paymentMethod: z
+          .enum(["bank_transfer", "cash", "mpesa", "check"])
+          .optional(),
+        notes: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await createPayrollRecord(input);
       await recordStaffActivity({
@@ -1485,19 +1803,27 @@ const payrollRouter = router({
     }),
 
   getPayroll: protectedProcedure
-    .input(z.object({ staffEmploymentId: z.number(), limit: z.number().optional() }))
+    .input(
+      z.object({ staffEmploymentId: z.number(), limit: z.number().optional() })
+    )
     .query(async ({ input }) => {
       return getPayrollRecords(input.staffEmploymentId, input.limit);
     }),
 
   updatePayrollStatus: protectedProcedure
-    .input(z.object({
-      payrollRecordId: z.number(),
-      status: z.enum(["pending", "paid", "failed", "cancelled"]),
-      paymentDate: z.date().optional(),
-    }))
+    .input(
+      z.object({
+        payrollRecordId: z.number(),
+        status: z.enum(["pending", "paid", "failed", "cancelled"]),
+        paymentDate: z.date().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
-      const result = await updatePayrollRecordStatus(input.payrollRecordId, input.status, input.paymentDate);
+      const result = await updatePayrollRecordStatus(
+        input.payrollRecordId,
+        input.status,
+        input.paymentDate
+      );
       await recordStaffActivity({
         userId: ctx.user?.id,
         activityType: "manage_user",
@@ -1508,13 +1834,19 @@ const payrollRouter = router({
     }),
 
   generatePayslip: protectedProcedure
-    .input(z.object({
-      payrollRecordId: z.number(),
-      payslipNumber: z.string(),
-      payslipUrl: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        payrollRecordId: z.number(),
+        payslipNumber: z.string(),
+        payslipUrl: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
-      const result = await generatePayslip(input.payrollRecordId, input.payslipNumber, input.payslipUrl);
+      const result = await generatePayslip(
+        input.payrollRecordId,
+        input.payslipNumber,
+        input.payslipUrl
+      );
       await recordStaffActivity({
         userId: ctx.user?.id,
         activityType: "manage_user",
@@ -1525,7 +1857,9 @@ const payrollRouter = router({
     }),
 
   getPayslips: protectedProcedure
-    .input(z.object({ staffEmploymentId: z.number(), limit: z.number().optional() }))
+    .input(
+      z.object({ staffEmploymentId: z.number(), limit: z.number().optional() })
+    )
     .query(async ({ input }) => {
       return getPayslips(input.staffEmploymentId, input.limit);
     }),
@@ -1543,15 +1877,17 @@ const payrollRouter = router({
     }),
 
   updateSettings: protectedProcedure
-    .input(z.object({
-      branchId: z.number().optional(),
-      nssfRate: z.number().optional(),
-      nhifRate: z.number().optional(),
-      payeTaxThreshold: z.number().optional(),
-      payeRate: z.number().optional(),
-      payrollCycle: z.enum(["weekly", "biweekly", "monthly"]).optional(),
-      paymentDay: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        branchId: z.number().optional(),
+        nssfRate: z.number().optional(),
+        nhifRate: z.number().optional(),
+        payeTaxThreshold: z.number().optional(),
+        payeRate: z.number().optional(),
+        payrollCycle: z.enum(["weekly", "biweekly", "monthly"]).optional(),
+        paymentDay: z.number().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await updatePayrollSettings(input);
       await recordStaffActivity({
@@ -1564,20 +1900,28 @@ const payrollRouter = router({
     }),
 
   calculateCasualPay: protectedProcedure
-    .input(z.object({
-      staffEmploymentId: z.number(),
-      startDate: z.date(),
-      endDate: z.date(),
-    }))
+    .input(
+      z.object({
+        staffEmploymentId: z.number(),
+        startDate: z.date(),
+        endDate: z.date(),
+      })
+    )
     .query(async ({ input }) => {
-      return calculateCasualLaborerPay(input.staffEmploymentId, input.startDate, input.endDate);
+      return calculateCasualLaborerPay(
+        input.staffEmploymentId,
+        input.startDate,
+        input.endDate
+      );
     }),
 
   calculatePermanentPay: protectedProcedure
-    .input(z.object({
-      staffEmploymentId: z.number(),
-      branchId: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        staffEmploymentId: z.number(),
+        branchId: z.number().optional(),
+      })
+    )
     .query(async ({ input }) => {
       const settings = await getPayrollSettings(input.branchId);
       if (!settings) return null;
@@ -1596,36 +1940,51 @@ const userRouter = router({
     .query(({ input }) => getUserById(input.id)),
 
   create: protectedProcedure
-    .input(z.object({
-      name: z.string().min(1),
-      email: z.string().email(),
-      role: z.enum(["admin", "manager", "supervisor", "cashier", "waiter", "inventory_manager", "kitchen_staff"]),
-    }))
+    .input(
+      z.object({
+        name: z.string().min(1),
+        email: z.string().email(),
+        role: z.enum([
+          "admin",
+          "manager",
+          "supervisor",
+          "cashier",
+          "waiter",
+          "inventory_manager",
+          "kitchen_staff",
+        ]),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await createUser(input);
-      
+
       if (ctx.user && result) {
-        await logUserCreation(
-          ctx.user.id,
-          result.id || 0,
-          input,
-          ctx.req?.ip
-        );
+        await logUserCreation(ctx.user.id, result.id || 0, input, ctx.req?.ip);
       }
-      
+
       return { success: true };
     }),
 
   updateRole: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      role: z.enum(["admin", "manager", "supervisor", "cashier", "waiter", "inventory_manager", "kitchen_staff"]),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        role: z.enum([
+          "admin",
+          "manager",
+          "supervisor",
+          "cashier",
+          "waiter",
+          "inventory_manager",
+          "kitchen_staff",
+        ]),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const user = await getUserById(input.id);
-      const previousRole = user?.role || 'unknown';
+      const previousRole = user?.role || "unknown";
       await updateUserRole(input.id, input.role);
-      
+
       if (ctx.user) {
         await logRoleAssignment(
           ctx.user.id,
@@ -1635,7 +1994,7 @@ const userRouter = router({
           ctx.req?.ip
         );
       }
-      
+
       return { success: true };
     }),
 
@@ -1644,16 +2003,11 @@ const userRouter = router({
     .mutation(async ({ input, ctx }) => {
       const user = await getUserById(input.id);
       await deleteUser(input.id);
-      
+
       if (ctx.user && user) {
-        await logUserDeletion(
-          ctx.user.id,
-          input.id,
-          user,
-          ctx.req?.ip
-        );
+        await logUserDeletion(ctx.user.id, input.id, user, ctx.req?.ip);
       }
-      
+
       return { success: true };
     }),
 
@@ -1680,26 +2034,27 @@ const userRouter = router({
 
 // --- Notification Preferences Router ---
 const notificationPreferencesRouter = router({
-  getPreferences: protectedProcedure
-    .query(async ({ ctx }) => {
-      if (!ctx.user) throw new Error("Not authenticated");
-      const { getUserNotificationPreferences } = await import("./db");
-      return getUserNotificationPreferences(ctx.user.id);
-    }),
+  getPreferences: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user) throw new Error("Not authenticated");
+    const { getUserNotificationPreferences } = await import("./db");
+    return getUserNotificationPreferences(ctx.user.id);
+  }),
 
   updatePreference: protectedProcedure
-    .input(z.object({
-      notificationType: z.enum([
-        "low_stock_alert",
-        "large_transaction",
-        "new_form_creation",
-        "new_user_login",
-        "payment_failure",
-        "daily_summary"
-      ]),
-      enabled: z.boolean(),
-      frequency: z.enum(["instant", "daily", "weekly"]).optional(),
-    }))
+    .input(
+      z.object({
+        notificationType: z.enum([
+          "low_stock_alert",
+          "large_transaction",
+          "new_form_creation",
+          "new_user_login",
+          "payment_failure",
+          "daily_summary",
+        ]),
+        enabled: z.boolean(),
+        frequency: z.enum(["instant", "daily", "weekly"]).optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
       const { updateNotificationPreference } = await import("./db");
@@ -1713,40 +2068,44 @@ const notificationPreferencesRouter = router({
     }),
 
   // Admin procedures
-  getAllUserPreferences: protectedProcedure
-    .query(async ({ ctx }) => {
-      if (!ctx.user) throw new Error("Not authenticated");
-      if (ctx.user.role !== "admin") throw new Error("Only admins can view all user preferences");
-      const { getAllUserNotificationPreferences } = await import("./db");
-      return getAllUserNotificationPreferences();
-    }),
+  getAllUserPreferences: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user) throw new Error("Not authenticated");
+    if (ctx.user.role !== "admin")
+      throw new Error("Only admins can view all user preferences");
+    const { getAllUserNotificationPreferences } = await import("./db");
+    return getAllUserNotificationPreferences();
+  }),
 
   getUserPreferencesById: protectedProcedure
     .input(z.object({ userId: z.number() }))
     .query(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
-      if (ctx.user.role !== "admin") throw new Error("Only admins can view user preferences");
+      if (ctx.user.role !== "admin")
+        throw new Error("Only admins can view user preferences");
       const { getUserNotificationPreferences } = await import("./db");
       return getUserNotificationPreferences(input.userId);
     }),
 
   adminUpdateUserPreference: protectedProcedure
-    .input(z.object({
-      userId: z.number(),
-      notificationType: z.enum([
-        "low_stock_alert",
-        "large_transaction",
-        "new_form_creation",
-        "new_user_login",
-        "payment_failure",
-        "daily_summary"
-      ]),
-      enabled: z.boolean(),
-      frequency: z.enum(["instant", "daily", "weekly"]).optional(),
-    }))
+    .input(
+      z.object({
+        userId: z.number(),
+        notificationType: z.enum([
+          "low_stock_alert",
+          "large_transaction",
+          "new_form_creation",
+          "new_user_login",
+          "payment_failure",
+          "daily_summary",
+        ]),
+        enabled: z.boolean(),
+        frequency: z.enum(["instant", "daily", "weekly"]).optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
-      if (ctx.user.role !== "admin") throw new Error("Only admins can update user preferences");
+      if (ctx.user.role !== "admin")
+        throw new Error("Only admins can update user preferences");
       const { updateNotificationPreference } = await import("./db");
       await updateNotificationPreference(
         input.userId,
@@ -1762,8 +2121,8 @@ const notificationPreferencesRouter = router({
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
-    checkStatus: protectedProcedure.query(async (opts) => {
+    me: publicProcedure.query(opts => opts.ctx.user),
+    checkStatus: protectedProcedure.query(async opts => {
       // Get fresh user data from database to check current active status
       const db = await getDb();
       if (!db) {

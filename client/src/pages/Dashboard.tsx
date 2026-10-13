@@ -3,30 +3,54 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
 } from "recharts";
 import {
-  ShoppingCart, TrendingUp, Users, Package, AlertTriangle, ArrowRight, Eye
+  ShoppingCart,
+  TrendingUp,
+  Users,
+  Package,
+  AlertTriangle,
+  ArrowRight,
+  Eye,
 } from "lucide-react";
 import { Link } from "wouter";
-import { BranchSwitcher } from "@/components/BranchSwitcher";
-import { BranchProvider, useBranch } from "@/contexts/BranchContext";
+import { useBranch } from "@/contexts/BranchContext";
 
 function DashboardContent() {
   const { selectedBranch } = useBranch();
-  const { data: stats, isLoading } = trpc.reports.dashboard.useQuery();
+  const { data: stats, isLoading } = trpc.reports.dashboard.useQuery(
+    selectedBranch?.branchId
+      ? { branchId: selectedBranch.branchId }
+      : undefined,
+    { enabled: Boolean(selectedBranch?.branchId) }
+  );
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-xl bg-secondary/50 animate-pulse" />
+            <div
+              key={i}
+              className="h-28 rounded-xl bg-secondary/50 animate-pulse"
+            />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-64 rounded-xl bg-secondary/50 animate-pulse" />
+            <div
+              key={i}
+              className="h-64 rounded-xl bg-secondary/50 animate-pulse"
+            />
           ))}
         </div>
       </div>
@@ -68,11 +92,16 @@ function DashboardContent() {
     },
   ];
 
-  const weeklyData = stats?.weeklyRevenue?.map((d) => ({
-    date: new Date(d.date).toLocaleDateString("en-KE", { weekday: "short", month: "short", day: "numeric" }),
-    revenue: Number(d.revenue),
-    orders: Number(d.orderCount),
-  })) ?? [];
+  const weeklyData =
+    stats?.weeklyRevenue?.map(d => ({
+      date: new Date(d.date).toLocaleDateString("en-KE", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      revenue: Number(d.revenue),
+      orders: Number(d.orderCount),
+    })) ?? [];
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -82,11 +111,15 @@ function DashboardContent() {
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             {selectedBranch && <span>{selectedBranch.branchName} • </span>}
-            {new Date().toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            {new Date().toLocaleDateString("en-KE", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <BranchSwitcher />
           <Link href="/sales/pos">
             <Button>
               <ShoppingCart size={16} className="mr-2" />
@@ -98,16 +131,24 @@ function DashboardContent() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi) => (
+        {kpis.map(kpi => (
           <Card key={kpi.label} className="border-border">
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground font-medium">{kpi.label}</p>
-                  <p className="text-xl font-bold text-foreground mt-1 truncate">{kpi.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {kpi.label}
+                  </p>
+                  <p className="text-xl font-bold text-foreground mt-1 truncate">
+                    {kpi.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {kpi.sub}
+                  </p>
                 </div>
-                <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center flex-shrink-0 ${kpi.color}`}>
+                <div
+                  className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center flex-shrink-0 ${kpi.color}`}
+                >
                   {kpi.icon}
                 </div>
               </div>
@@ -127,20 +168,42 @@ function DashboardContent() {
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={weeklyData}>
                   <defs>
-                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
+                    <linearGradient
+                      id="revenueGrad"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#3B82F6"
+                        stopOpacity={0.15}
+                      />
                       <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                  <YAxis
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={v => `${(v / 1000).toFixed(0)}K`}
+                  />
                   <Tooltip
-                    formatter={(value: number) => [`KES ${value.toLocaleString()}`, "Revenue"]}
+                    formatter={(value: number) => [
+                      `KES ${value.toLocaleString()}`,
+                      "Revenue",
+                    ]}
                     labelStyle={{ fontSize: 11 }}
                     contentStyle={{ fontSize: 11 }}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#3B82F6" fill="url(#revenueGrad)" strokeWidth={2} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#3B82F6"
+                    fill="url(#revenueGrad)"
+                    strokeWidth={2}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -149,7 +212,9 @@ function DashboardContent() {
                   <TrendingUp size={32} className="mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No sales data yet</p>
                   <Link href="/sales/pos">
-                    <Button size="sm" variant="outline" className="mt-2">Make your first sale</Button>
+                    <Button size="sm" variant="outline" className="mt-2">
+                      Make your first sale
+                    </Button>
                   </Link>
                 </div>
               </div>
@@ -175,19 +240,28 @@ function DashboardContent() {
           <CardContent>
             {stats?.lowStockProducts && stats.lowStockProducts.length > 0 ? (
               <div className="space-y-2">
-                {stats.lowStockProducts.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                {stats.lowStockProducts.map(p => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
+                  >
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground">SKU: {p.sku ?? "N/A"}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        SKU: {p.sku ?? "N/A"}
+                      </p>
                     </div>
                     <Badge
                       variant="secondary"
                       className={`text-[10px] flex-shrink-0 ml-2 ${
-                        p.stockQuantity === 0 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                        p.stockQuantity === 0
+                          ? "bg-red-100 text-red-700"
+                          : "bg-orange-100 text-orange-700"
                       }`}
                     >
-                      {p.stockQuantity === 0 ? "Out of stock" : `${p.stockQuantity} left`}
+                      {p.stockQuantity === 0
+                        ? "Out of stock"
+                        : `${p.stockQuantity} left`}
                     </Badge>
                   </div>
                 ))}
@@ -215,36 +289,52 @@ function DashboardContent() {
               {stats.paymentBreakdown.map((payment: any) => {
                 const formatPaymentMethod = (method: string) => {
                   const methodMap: Record<string, string> = {
-                    'cash': 'Cash',
-                    'mpesa': 'M-Pesa',
-                    'stripe': 'Card (Stripe)',
-                    'wallet': 'Wallet',
-                    'mixed': 'Mixed Payment',
-                    'card': 'Card',
-                    'check': 'Check',
+                    cash: "Cash",
+                    mpesa: "M-Pesa",
+                    stripe: "Card (Stripe)",
+                    wallet: "Wallet",
+                    mixed: "Mixed Payment",
+                    card: "Card",
+                    check: "Check",
                   };
-                  return methodMap[method.toLowerCase()] || method.charAt(0).toUpperCase() + method.slice(1);
+                  return (
+                    methodMap[method.toLowerCase()] ||
+                    method.charAt(0).toUpperCase() + method.slice(1)
+                  );
                 };
                 const paymentLabel = formatPaymentMethod(payment.paymentMethod);
                 const colors: Record<string, string> = {
-                  'wallet': 'bg-purple-100 text-purple-700',
-                  'cash': 'bg-green-100 text-green-700',
-                  'stripe': 'bg-blue-100 text-blue-700',
-                  'mpesa': 'bg-yellow-100 text-yellow-700',
-                  'mixed': 'bg-gray-100 text-gray-700',
+                  wallet: "bg-purple-100 text-purple-700",
+                  cash: "bg-green-100 text-green-700",
+                  stripe: "bg-blue-100 text-blue-700",
+                  mpesa: "bg-yellow-100 text-yellow-700",
+                  mixed: "bg-gray-100 text-gray-700",
                 };
-                const color = colors[payment.paymentMethod] || 'bg-gray-100 text-gray-700';
-                
+                const color =
+                  colors[payment.paymentMethod] || "bg-gray-100 text-gray-700";
+
                 return (
-                  <div key={payment.paymentMethod} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div
+                    key={payment.paymentMethod}
+                    className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                  >
                     <div className="flex items-center gap-3">
-                      <Badge className={`${color} text-xs`}>{paymentLabel}</Badge>
+                      <Badge className={`${color} text-xs`}>
+                        {paymentLabel}
+                      </Badge>
                       <div>
-                        <p className="text-xs text-muted-foreground">{payment.count} transactions</p>
+                        <p className="text-xs text-muted-foreground">
+                          {payment.count} transactions
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">KES {Number(payment.total).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                      <p className="text-sm font-medium">
+                        KES{" "}
+                        {Number(payment.total).toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}
+                      </p>
                     </div>
                   </div>
                 );
@@ -285,24 +375,38 @@ function DashboardContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recentOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                      <td className="py-2 font-mono text-xs text-primary">{order.orderNumber}</td>
-                      <td className="py-2 text-xs">{order.customerName ?? "Walk-in"}</td>
-                      <td className="py-2">
-                        <p className="text-xs uppercase font-medium">{(() => {
-                          const methodMap: Record<string, string> = {
-                            'cash': 'Cash',
-                            'mpesa': 'M-Pesa',
-                            'stripe': 'Card',
-                            'wallet': 'Wallet',
-                            'mixed': 'Mixed',
-                          };
-                          return methodMap[order.paymentMethod] || order.paymentMethod;
-                        })()}</p>
+                  {stats.recentOrders.map(order => (
+                    <tr
+                      key={order.id}
+                      className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                    >
+                      <td className="py-2 font-mono text-xs text-primary">
+                        {order.orderNumber}
+                      </td>
+                      <td className="py-2 text-xs">
+                        {order.customerName ?? "Walk-in"}
                       </td>
                       <td className="py-2">
-                        <span className={`status-${order.paymentStatus}`}>{order.paymentStatus}</span>
+                        <p className="text-xs uppercase font-medium">
+                          {(() => {
+                            const methodMap: Record<string, string> = {
+                              cash: "Cash",
+                              mpesa: "M-Pesa",
+                              stripe: "Card",
+                              wallet: "Wallet",
+                              mixed: "Mixed",
+                            };
+                            return (
+                              methodMap[order.paymentMethod] ||
+                              order.paymentMethod
+                            );
+                          })()}
+                        </p>
+                      </td>
+                      <td className="py-2">
+                        <span className={`status-${order.paymentStatus}`}>
+                          {order.paymentStatus}
+                        </span>
                       </td>
                       <td className="py-2 text-right font-medium text-xs">
                         KES {Number(order.totalAmount).toLocaleString()}
@@ -327,9 +431,5 @@ function DashboardContent() {
 }
 
 export default function Dashboard() {
-  return (
-    <BranchProvider>
-      <DashboardContent />
-    </BranchProvider>
-  );
+  return <DashboardContent />;
 }

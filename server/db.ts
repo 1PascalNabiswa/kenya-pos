@@ -1,4 +1,16 @@
-import { and, desc, eq, gte, ilike, inArray, like, lt, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  like,
+  lt,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   Category,
@@ -106,7 +118,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     const values: InsertUser = { openId: user.openId };
     const updateSet: Record<string, unknown> = {};
     const textFields = ["name", "email", "loginMethod"] as const;
-    textFields.forEach((field) => {
+    textFields.forEach(field => {
       const value = user[field];
       if (value === undefined) return;
       const normalized = value ?? null;
@@ -125,8 +137,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.role = "admin";
     }
     if (!values.lastSignedIn) values.lastSignedIn = new Date();
-    if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    if (Object.keys(updateSet).length === 0)
+      updateSet.lastSignedIn = new Date();
+    await db
+      .insert(users)
+      .values(values)
+      .onDuplicateKeyUpdate({ set: updateSet });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -136,7 +152,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -154,7 +174,10 @@ export async function createCategory(data: InsertCategory) {
   return result;
 }
 
-export async function updateCategory(id: number, data: Partial<InsertCategory>) {
+export async function updateCategory(
+  id: number,
+  data: Partial<InsertCategory>
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   await db.update(categories).set(data).where(eq(categories.id, id));
@@ -181,8 +204,10 @@ export async function getProducts(opts?: {
   const offset = (page - 1) * limit;
 
   const conditions = [];
-  if (opts?.categoryId) conditions.push(eq(products.categoryId, opts.categoryId));
-  if (opts?.isActive !== undefined) conditions.push(eq(products.isActive, opts.isActive));
+  if (opts?.categoryId)
+    conditions.push(eq(products.categoryId, opts.categoryId));
+  if (opts?.isActive !== undefined)
+    conditions.push(eq(products.isActive, opts.isActive));
   if (opts?.search) {
     // Case-insensitive search: find letters anywhere in name or SKU
     const searchLower = opts.search.toLowerCase();
@@ -199,7 +224,7 @@ export async function getProducts(opts?: {
   if (conditions.length > 0) {
     query = query.where(and(...conditions));
   }
-  
+
   let countQuery = db.select({ count: sql<number>`count(*)` }).from(products);
   if (conditions.length > 0) {
     countQuery = countQuery.where(and(...conditions));
@@ -216,7 +241,11 @@ export async function getProducts(opts?: {
 export async function getProductById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, id))
+    .limit(1);
   return result[0];
 }
 
@@ -294,7 +323,11 @@ export async function adjustStock(
 }
 
 // ─── Customers ─────────────────────────────────────────────────────────────
-export async function getCustomers(opts?: { search?: string; page?: number; limit?: number }) {
+export async function getCustomers(opts?: {
+  search?: string;
+  page?: number;
+  limit?: number;
+}) {
   const db = await getDb();
   if (!db) return { items: [], total: 0 };
   const page = opts?.page ?? 1;
@@ -313,14 +346,23 @@ export async function getCustomers(opts?: { search?: string; page?: number; limi
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult, walletData] = await Promise.all([
-    db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt)).limit(limit).offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause),
+    db
+      .select()
+      .from(customers)
+      .where(whereClause)
+      .orderBy(desc(customers.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(customers)
+      .where(whereClause),
     db.select().from(customerWallets),
   ]);
-  
+
   // Create a map of customer ID to wallet data for quick lookup
   const walletMap = new Map(walletData.map(w => [w.customerId, w]));
-  
+
   // Merge wallet balance and totalSpent with customer data
   const itemsWithWalletData = items.map(customer => {
     const wallet = walletMap.get(customer.id);
@@ -330,14 +372,21 @@ export async function getCustomers(opts?: { search?: string; page?: number; limi
       totalSpent: wallet?.totalSpent ? Number(wallet.totalSpent) : 0,
     };
   });
-  
-  return { items: itemsWithWalletData, total: Number(countResult[0]?.count ?? 0) };
+
+  return {
+    items: itemsWithWalletData,
+    total: Number(countResult[0]?.count ?? 0),
+  };
 }
 
 export async function getCustomerById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(customers)
+    .where(eq(customers.id, id))
+    .limit(1);
   return result[0];
 }
 
@@ -348,7 +397,10 @@ export async function createCustomer(data: InsertCustomer) {
   return result;
 }
 
-export async function updateCustomer(id: number, data: Partial<InsertCustomer>) {
+export async function updateCustomer(
+  id: number,
+  data: Partial<InsertCustomer>
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   await db.update(customers).set(data).where(eq(customers.id, id));
@@ -376,14 +428,16 @@ export async function generateOrderNumber() {
 
 export async function createOrder(
   orderData: InsertOrder,
-  items: Omit<InsertOrderItem, 'orderId' | 'id'>[]
+  items: Omit<InsertOrderItem, "orderId" | "id">[]
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   const result = await db.insert(orders).values(orderData);
   const id = (result as any)[0]?.insertId as number;
   if (items.length > 0) {
-    await db.insert(orderItems).values(items.map((item) => ({ ...item, orderId: id })));
+    await db
+      .insert(orderItems)
+      .values(items.map(item => ({ ...item, orderId: id })));
   }
   // Deduct stock for each item
   for (const item of items) {
@@ -412,26 +466,39 @@ export async function getOrders(opts?: {
   const offset = (page - 1) * limit;
   const conditions = [];
   if (opts?.status) conditions.push(eq(orders.orderStatus, opts.status as any));
-  if (opts?.paymentStatus) conditions.push(eq(orders.paymentStatus, opts.paymentStatus as any));
-  if (opts?.paymentMethod) conditions.push(eq(orders.paymentMethod, opts.paymentMethod as any));
+  if (opts?.paymentStatus)
+    conditions.push(eq(orders.paymentStatus, opts.paymentStatus as any));
+  if (opts?.paymentMethod)
+    conditions.push(eq(orders.paymentMethod, opts.paymentMethod as any));
   if (opts?.customerId) conditions.push(eq(orders.customerId, opts.customerId));
   if (opts?.fromDate) conditions.push(gte(orders.createdAt, opts.fromDate));
   if (opts?.toDate) conditions.push(lte(orders.createdAt, opts.toDate));
-  if (opts?.search) conditions.push(like(orders.orderNumber, `%${opts.search}%`));
+  if (opts?.search)
+    conditions.push(like(orders.orderNumber, `%${opts.search}%`));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const [items, countResult] = await Promise.all([
-    db.select({
-      id: orders.id,
-      orderNumber: orders.orderNumber,
-      customerId: orders.customerId,
-      customerName: customers.name,
-      paymentMethod: orders.paymentMethod,
-      paymentStatus: orders.paymentStatus,
-      orderStatus: orders.orderStatus,
-      totalAmount: orders.totalAmount,
-      createdAt: orders.createdAt,
-    }).from(orders).leftJoin(customers, eq(orders.customerId, customers.id)).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(orders).where(whereClause),
+    db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        customerId: orders.customerId,
+        customerName: customers.name,
+        paymentMethod: orders.paymentMethod,
+        paymentStatus: orders.paymentStatus,
+        orderStatus: orders.orderStatus,
+        totalAmount: orders.totalAmount,
+        createdAt: orders.createdAt,
+      })
+      .from(orders)
+      .leftJoin(customers, eq(orders.customerId, customers.id))
+      .where(whereClause)
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(orders)
+      .where(whereClause),
   ]);
   return { items, total: Number(countResult[0]?.count ?? 0) };
 }
@@ -439,15 +506,22 @@ export async function getOrders(opts?: {
 export async function getOrderById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, id))
+    .limit(1);
   if (!order) return undefined;
-  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+  const items = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.orderId, id));
   return { ...order, items };
 }
 
 export async function updateOrderStatus(
   id: number,
-  data: Partial<InsertOrder>,
+  data: Partial<InsertOrder>
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
@@ -459,7 +533,7 @@ export async function updateOrderStatus(
 export async function getAllProductsSold(fromDate: Date, toDate: Date) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const allProducts = await db
     .select({
       productName: orderItems.productName,
@@ -468,15 +542,10 @@ export async function getAllProductsSold(fromDate: Date, toDate: Date) {
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(
-      and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
-      )
-    )
+    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
     .groupBy(orderItems.productName)
     .orderBy(desc(sql`sum(${orderItems.totalPrice})`));
-  
+
   return allProducts;
 }
 
@@ -491,12 +560,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       avgOrderValue: sql<number>`avg(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(
-      and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
-      )
-    );
+    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)));
 
   const paymentBreakdown = await db
     .select({
@@ -505,12 +569,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       total: sql<number>`sum(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(
-      and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
-      )
-    )
+    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
     .groupBy(orders.paymentMethod);
 
   const topProducts = await db
@@ -521,12 +580,7 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(
-      and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
-      )
-    )
+    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
     .groupBy(orderItems.productName)
     .orderBy(desc(sql`sum(${orderItems.totalPrice})`))
     .limit(10);
@@ -538,19 +592,14 @@ export async function getSalesReport(fromDate: Date, toDate: Date) {
       totalRevenue: sql<number>`sum(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(
-      and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
-      )
-    )
+    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
     .groupBy(sql`DATE(orders.createdAt)`)
     .orderBy(sql`DATE(orders.createdAt)`);
 
   return { summary, paymentBreakdown, topProducts, dailySales };
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(branchId?: number) {
   const db = await getDb();
   if (!db) return null;
   const today = new Date();
@@ -560,6 +609,10 @@ export async function getDashboardStats() {
   const weekAgo = new Date(today);
   weekAgo.setDate(weekAgo.getDate() - 7);
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const scopedOrderWhere = (conditions: any[]) =>
+    branchId
+      ? and(...conditions, eq(orders.branchId, branchId))
+      : and(...conditions);
 
   const [todayStats] = await db
     .select({
@@ -568,11 +621,11 @@ export async function getDashboardStats() {
     })
     .from(orders)
     .where(
-      and(
-        eq(orders.orderStatus, 'completed'),
+      scopedOrderWhere([
+        eq(orders.orderStatus, "completed"),
         gte(orders.createdAt, today),
-        lt(orders.createdAt, tomorrow)
-      )
+        lt(orders.createdAt, tomorrow),
+      ])
     );
 
   const [monthStats] = await db
@@ -582,11 +635,11 @@ export async function getDashboardStats() {
     })
     .from(orders)
     .where(
-      and(
-        eq(orders.orderStatus, 'completed'),
-        gte(orders.createdAt, monthStart)
-      )
-    )
+      scopedOrderWhere([
+        eq(orders.orderStatus, "completed"),
+        gte(orders.createdAt, monthStart),
+      ])
+    );
 
   const [productCount] = await db
     .select({ count: sql<number>`count(*)` })
@@ -606,6 +659,7 @@ export async function getDashboardStats() {
       orderCount: sql<number>`count(*)`,
     })
     .from(orders)
+    .where(branchId ? eq(orders.branchId, branchId) : undefined)
     .groupBy(sql`DATE(orders.createdAt)`)
     .orderBy(sql`DATE(orders.createdAt)`);
 
@@ -623,6 +677,7 @@ export async function getDashboardStats() {
     })
     .from(orders)
     .leftJoin(customers, eq(orders.customerId, customers.id))
+    .where(branchId ? eq(orders.branchId, branchId) : undefined)
     .orderBy(desc(orders.createdAt))
     .limit(5);
 
@@ -634,11 +689,11 @@ export async function getDashboardStats() {
     })
     .from(orders)
     .where(
-      and(
-        eq(orders.orderStatus, 'completed'),
+      scopedOrderWhere([
+        eq(orders.orderStatus, "completed"),
         gte(orders.createdAt, today),
-        lt(orders.createdAt, tomorrow)
-      )
+        lt(orders.createdAt, tomorrow),
+      ])
     )
     .groupBy(orders.paymentMethod);
 
@@ -661,14 +716,21 @@ export async function getDashboardStats() {
 export async function getSetting(key: string) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+  const result = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, key))
+    .limit(1);
   return result[0]?.value ?? null;
 }
 
 export async function setSetting(key: string, value: string) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  await db.insert(settings).values({ key, value }).onDuplicateKeyUpdate({ set: { value } });
+  await db
+    .insert(settings)
+    .values({ key, value })
+    .onDuplicateKeyUpdate({ set: { value } });
 }
 
 export async function getAllSettings() {
@@ -690,33 +752,32 @@ export async function getInventoryLogs(productId?: number, limit = 50) {
     .limit(limit);
 }
 
-
 // ─── Customer Wallets ──────────────────────────────────────────────────────
 export async function getOrCreateWallet(customerId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const existing = await db
     .select()
     .from(customerWallets)
     .where(eq(customerWallets.customerId, customerId))
     .limit(1);
-  
+
   if (existing.length > 0) return existing[0];
-  
+
   const result = await db.insert(customerWallets).values({
     customerId,
     creditLimit: "0",
     totalLoaded: "0",
     totalSpent: "0",
   });
-  
+
   return db
     .select()
     .from(customerWallets)
     .where(eq(customerWallets.customerId, customerId))
     .limit(1)
-    .then((rows) => rows[0]);
+    .then(rows => rows[0]);
 }
 
 export async function getWallet(customerId: number) {
@@ -730,14 +791,18 @@ export async function getWallet(customerId: number) {
   return result[0] ?? null;
 }
 
-export async function loadWalletBalance(customerId: number, amount: number, description: string) {
+export async function loadWalletBalance(
+  customerId: number,
+  amount: number,
+  description: string
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const wallet = await getOrCreateWallet(customerId);
   const newTotalLoaded = Number(wallet.totalLoaded) + amount;
   const newBalance = newTotalLoaded - Number(wallet.totalSpent);
-  
+
   await db
     .update(customerWallets)
     .set({
@@ -745,7 +810,7 @@ export async function loadWalletBalance(customerId: number, amount: number, desc
       totalLoaded: newTotalLoaded.toString(),
     })
     .where(eq(customerWallets.id, wallet.id));
-  
+
   await db.insert(walletTransactions).values({
     walletId: wallet.id,
     customerId,
@@ -753,25 +818,31 @@ export async function loadWalletBalance(customerId: number, amount: number, desc
     amount: amount.toString(),
     description,
   });
-  
+
   return newBalance;
 }
 
-export async function spendFromWallet(customerId: number, amount: number, id: number) {
+export async function spendFromWallet(
+  customerId: number,
+  amount: number,
+  id: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const wallet = await getWallet(customerId);
   if (!wallet) throw new Error("Wallet not found");
-  
+
   const currentBalance = Number(wallet.balance);
   if (currentBalance < amount) {
-    throw new Error(`Insufficient wallet balance. Available: KES ${currentBalance}, Required: KES ${amount}`);
+    throw new Error(
+      `Insufficient wallet balance. Available: KES ${currentBalance}, Required: KES ${amount}`
+    );
   }
-  
+
   const newTotalSpent = Number(wallet.totalSpent) + amount;
   const newBalance = currentBalance - amount;
-  
+
   await db
     .update(customerWallets)
     .set({
@@ -779,7 +850,7 @@ export async function spendFromWallet(customerId: number, amount: number, id: nu
       totalSpent: newTotalSpent.toString(),
     })
     .where(eq(customerWallets.id, wallet.id));
-  
+
   await db.insert(walletTransactions).values({
     walletId: wallet.id,
     customerId,
@@ -787,7 +858,7 @@ export async function spendFromWallet(customerId: number, amount: number, id: nu
     amount: amount.toString(),
     orderId: id,
   });
-  
+
   return newBalance;
 }
 
@@ -813,7 +884,10 @@ export async function getWalletTransactions(customerId: number, limit = 50) {
 }
 
 // ─── Payment Methods (Combined Payments) ────────────────────────────────────
-export async function addPaymentMethod(id: number, data: Omit<InsertPaymentMethod, 'id'>) {
+export async function addPaymentMethod(
+  id: number,
+  data: Omit<InsertPaymentMethod, "id">
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   await db.insert(paymentMethods).values({ id, ...data });
@@ -836,36 +910,34 @@ export async function recordTransaction(data: InsertTransactionReconciliation) {
 export async function getUnusedTransactions(search?: string) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions: any[] = [eq(transactionReconciliation.status, "unused")];
   if (search) {
     conditions.push(
-      or(
-        like(transactionReconciliation.transactionId, `%${search}%`)
-      )
+      or(like(transactionReconciliation.transactionId, `%${search}%`))
     );
   }
-  
+
   return db
     .select()
     .from(transactionReconciliation)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(transactionReconciliation.createdAt))
+    .orderBy(desc(transactionReconciliation.createdAt));
 }
 
 export async function getTransactionsByAmount(amount: number, method?: string) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [
     eq(transactionReconciliation.amount, amount.toString()),
     eq(transactionReconciliation.status, "unused"),
   ];
-  
+
   if (method) {
     conditions.push(eq(transactionReconciliation.paymentMethod, method as any));
   }
-  
+
   return db
     .select()
     .from(transactionReconciliation)
@@ -873,10 +945,14 @@ export async function getTransactionsByAmount(amount: number, method?: string) {
     .orderBy(desc(transactionReconciliation.createdAt));
 }
 
-export async function matchTransaction(transactionId: string, customerId: number, id: number) {
+export async function matchTransaction(
+  transactionId: string,
+  customerId: number,
+  id: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   await db
     .update(transactionReconciliation)
     .set({
@@ -887,14 +963,20 @@ export async function matchTransaction(transactionId: string, customerId: number
     .where(eq(transactionReconciliation.transactionId, transactionId));
 }
 
-export async function getTransactionHistory(customerId?: number, method?: string, limit = 100) {
+export async function getTransactionHistory(
+  customerId?: number,
+  method?: string,
+  limit = 100
+) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
-  if (customerId) conditions.push(eq(transactionReconciliation.customerId, customerId));
-  if (method) conditions.push(eq(transactionReconciliation.paymentMethod, method as any));
-  
+  if (customerId)
+    conditions.push(eq(transactionReconciliation.customerId, customerId));
+  if (method)
+    conditions.push(eq(transactionReconciliation.paymentMethod, method as any));
+
   return db
     .select()
     .from(transactionReconciliation)
@@ -906,24 +988,19 @@ export async function getTransactionHistory(customerId?: number, method?: string
 export async function getUnusedTransactionReconciliation() {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db
     .select()
     .from(transactionReconciliation)
-    .where(
-      and(
-        eq(transactionReconciliation.status, "unused")
-      )
-    )
+    .where(and(eq(transactionReconciliation.status, "unused")))
     .orderBy(desc(transactionReconciliation.createdAt));
 }
-
 
 // ─── Forms (Group Feeding) ─────────────────────────────────────────────────
 export async function createForm(data: InsertForm) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(forms).values(data);
   return result;
 }
@@ -931,7 +1008,7 @@ export async function createForm(data: InsertForm) {
 export async function getForm(id: number) {
   const db = await getDb();
   if (!db) return null;
-  
+
   const result = await db.select().from(forms).where(eq(forms.id, id)).limit(1);
   return result[0] || null;
 }
@@ -939,38 +1016,47 @@ export async function getForm(id: number) {
 export async function listForms() {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(forms).orderBy(desc(forms.createdAt));
 }
 
 export async function updateFormSpent(id: number, amount: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(forms).set({ spent: amount.toString() }).where(eq(forms.id, id));
+
+  await db
+    .update(forms)
+    .set({ spent: amount.toString() })
+    .where(eq(forms.id, id));
 }
 
 export async function updateFormStatus(id: number, status: string) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(forms).set({ status: status as any }).where(eq(forms.id, id));
+
+  await db
+    .update(forms)
+    .set({ status: status as any })
+    .where(eq(forms.id, id));
 }
 
-export async function updateForm(id: number, data: { title: string; code: string; amount: string; servingDate?: Date }) {
+export async function updateForm(
+  id: number,
+  data: { title: string; code: string; amount: string; servingDate?: Date }
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const updateData: any = {
     title: data.title,
     code: data.code,
     amount: data.amount,
   };
-  
+
   if (data.servingDate) {
     updateData.servingDate = data.servingDate;
   }
-  
+
   await db.update(forms).set(updateData).where(eq(forms.id, id));
   return getForm(id);
 }
@@ -979,7 +1065,7 @@ export async function updateForm(id: number, data: { title: string; code: string
 export async function createCreditAccount(data: InsertCreditAccount) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(creditAccounts).values(data);
   return result;
 }
@@ -987,18 +1073,22 @@ export async function createCreditAccount(data: InsertCreditAccount) {
 export async function getCreditAccount(id: number) {
   const db = await getDb();
   if (!db) return null;
-  
-  const result = await db.select().from(creditAccounts).where(eq(creditAccounts.id, id)).limit(1);
+
+  const result = await db
+    .select()
+    .from(creditAccounts)
+    .where(eq(creditAccounts.id, id))
+    .limit(1);
   return result[0] || null;
 }
 
 export async function listCreditAccounts(status?: string) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
   if (status) conditions.push(eq(creditAccounts.status, status as any));
-  
+
   return db
     .select()
     .from(creditAccounts)
@@ -1009,15 +1099,18 @@ export async function listCreditAccounts(status?: string) {
 export async function updateCreditBalance(id: number, newBalance: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(creditAccounts).set({ creditLimit: newBalance.toString() }).where(eq(creditAccounts.id, id));
+
+  await db
+    .update(creditAccounts)
+    .set({ creditLimit: newBalance.toString() })
+    .where(eq(creditAccounts.id, id));
 }
 
 // ─── Credit Transactions ───────────────────────────────────────────────────
 export async function recordCreditTransaction(data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(creditTransactions).values(data);
   return result;
 }
@@ -1025,7 +1118,7 @@ export async function recordCreditTransaction(data: any) {
 export async function getCreditTransactionHistory(creditAccountId: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db
     .select()
     .from(creditTransactions)
@@ -1040,7 +1133,7 @@ export async function recordAuditLog(data: InsertAuditLog) {
     console.warn("[Audit] DB unavailable, log not recorded");
     return;
   }
-  
+
   try {
     await db.insert(auditLogs).values(data);
   } catch (error) {
@@ -1059,14 +1152,16 @@ export async function getAuditLogs(filters?: {
 }) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
   if (filters?.userId) conditions.push(eq(auditLogs.userId, filters.userId));
   if (filters?.action) conditions.push(eq(auditLogs.action, filters.action));
   if (filters?.module) conditions.push(eq(auditLogs.module, filters.module));
-  if (filters?.startDate) conditions.push(gte(auditLogs.timestamp, new Date(filters.startDate)));
-  if (filters?.endDate) conditions.push(lte(auditLogs.timestamp, new Date(filters.endDate)));
-  
+  if (filters?.startDate)
+    conditions.push(gte(auditLogs.timestamp, new Date(filters.startDate)));
+  if (filters?.endDate)
+    conditions.push(lte(auditLogs.timestamp, new Date(filters.endDate)));
+
   let query = db
     .select({
       id: auditLogs.id,
@@ -1085,22 +1180,23 @@ export async function getAuditLogs(filters?: {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(auditLogs.timestamp))
     .limit(filters?.limit || 1000);
-  
+
   const results = await query;
-  
+
   // Client-side search filtering
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase();
-    return results.filter((log: any) => 
-      (log.userName || '').toLowerCase().includes(searchLower) ||
-      (log.userId?.toString() || '').includes(searchLower) ||
-      (log.action || '').toLowerCase().includes(searchLower) ||
-      (log.module || '').toLowerCase().includes(searchLower) ||
-      (log.entityType || '').toLowerCase().includes(searchLower) ||
-      (log.entityId?.toString() || '').includes(searchLower)
+    return results.filter(
+      (log: any) =>
+        (log.userName || "").toLowerCase().includes(searchLower) ||
+        (log.userId?.toString() || "").includes(searchLower) ||
+        (log.action || "").toLowerCase().includes(searchLower) ||
+        (log.module || "").toLowerCase().includes(searchLower) ||
+        (log.entityType || "").toLowerCase().includes(searchLower) ||
+        (log.entityId?.toString() || "").includes(searchLower)
     );
   }
-  
+
   return results;
 }
 
@@ -1111,11 +1207,13 @@ export async function getTopActiveUsers(filters?: {
 }) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
-  if (filters?.startDate) conditions.push(gte(auditLogs.timestamp, new Date(filters.startDate)));
-  if (filters?.endDate) conditions.push(lte(auditLogs.timestamp, new Date(filters.endDate)));
-  
+  if (filters?.startDate)
+    conditions.push(gte(auditLogs.timestamp, new Date(filters.startDate)));
+  if (filters?.endDate)
+    conditions.push(lte(auditLogs.timestamp, new Date(filters.endDate)));
+
   const results = await db
     .select({
       userId: auditLogs.userId,
@@ -1125,7 +1223,7 @@ export async function getTopActiveUsers(filters?: {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .groupBy(auditLogs.userId)
     .orderBy(desc(sql<number>`COUNT(*)`));
-  
+
   return results.slice(0, filters?.limit || 5);
 }
 
@@ -1164,7 +1262,9 @@ export async function createBranch(data: CreateBranchInput) {
     manager: optionalBranchText(data.manager),
   });
 
-  const insertId = Number((result as any).insertId ?? (result as any)[0]?.insertId ?? 0);
+  const insertId = Number(
+    (result as any).insertId ?? (result as any)[0]?.insertId ?? 0
+  );
   if (!insertId) return result;
 
   const [createdBranch] = await db
@@ -1178,7 +1278,7 @@ export async function createBranch(data: CreateBranchInput) {
 export async function listBranches() {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(branches).orderBy(desc(branches.createdAt));
 }
 
@@ -1186,7 +1286,7 @@ export async function listBranches() {
 export async function createServingPoint(data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(servingPoints).values(data);
   return result;
 }
@@ -1194,10 +1294,10 @@ export async function createServingPoint(data: any) {
 export async function listServingPoints(branchId?: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
   if (branchId) conditions.push(eq(servingPoints.branchId, branchId));
-  
+
   return db
     .select()
     .from(servingPoints)
@@ -1209,48 +1309,55 @@ export async function listServingPoints(branchId?: number) {
 export async function createSupplier(data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Use Drizzle insert with only the fields that exist in the database
   const result = await db.insert(suppliers).values({
     name: data.name,
     email: data.email,
   });
-  
+
   return result;
 }
 
 export async function listSuppliers() {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
 }
 
 export async function updateSupplier(id: number, data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  const result = await db.update(suppliers).set({
-    name: data.name,
-    email: data.email,
-  }).where(eq(suppliers.id, id));
-  
+
+  const result = await db
+    .update(suppliers)
+    .set({
+      name: data.name,
+      email: data.email,
+    })
+    .where(eq(suppliers.id, id));
+
   return result;
 }
 
 export async function deleteSupplier(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.delete(suppliers).where(eq(suppliers.id, id));
   return result;
 }
 
 // ─── User Roles ────────────────────────────────────────────────────────────
-export async function assignUserRole(userId: number, role: string, branchId?: number) {
+export async function assignUserRole(
+  userId: number,
+  role: string,
+  branchId?: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(userRoles).values({
     userId,
     role: role as any,
@@ -1262,16 +1369,15 @@ export async function assignUserRole(userId: number, role: string, branchId?: nu
 export async function getUserRoles(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(userRoles).where(eq(userRoles.userId, userId));
 }
-
 
 // ─── Kitchen Display System (KDS) ──────────────────────────────────────────
 export async function createKitchenStaff(data: InsertKitchenStaff) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(kitchenStaff).values(data);
   return result;
 }
@@ -1279,18 +1385,22 @@ export async function createKitchenStaff(data: InsertKitchenStaff) {
 export async function getKitchenStaff(id: number) {
   const db = await getDb();
   if (!db) return null;
-  
-  const result = await db.select().from(kitchenStaff).where(eq(kitchenStaff.id, id)).limit(1);
+
+  const result = await db
+    .select()
+    .from(kitchenStaff)
+    .where(eq(kitchenStaff.id, id))
+    .limit(1);
   return result[0] || null;
 }
 
 export async function listKitchenStaff(active?: boolean) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
   if (active !== undefined) conditions.push(eq(kitchenStaff.isActive, active));
-  
+
   return db
     .select()
     .from(kitchenStaff)
@@ -1301,15 +1411,23 @@ export async function listKitchenStaff(active?: boolean) {
 export async function updateKitchenStaffStatus(id: number, isActive: boolean) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(kitchenStaff).set({ isActive }).where(eq(kitchenStaff.id, id));
+
+  await db
+    .update(kitchenStaff)
+    .set({ isActive })
+    .where(eq(kitchenStaff.id, id));
 }
 
-export async function updateKitchenStaffMetrics(id: number, ordersCompleted: number, avgPrepTime: number) {
+export async function updateKitchenStaffMetrics(
+  id: number,
+  ordersCompleted: number,
+  avgPrepTime: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(kitchenStaff)
+
+  await db
+    .update(kitchenStaff)
     .set({ ordersCompleted, averagePrepTime: avgPrepTime })
     .where(eq(kitchenStaff.id, id));
 }
@@ -1318,7 +1436,7 @@ export async function updateKitchenStaffMetrics(id: number, ordersCompleted: num
 export async function recordOrderStatus(data: InsertOrderStatusHistory) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(orderStatusHistory).values(data);
   return result;
 }
@@ -1326,7 +1444,7 @@ export async function recordOrderStatus(data: InsertOrderStatusHistory) {
 export async function getOrderStatusHistory(id: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db
     .select()
     .from(orderStatusHistory)
@@ -1337,10 +1455,10 @@ export async function getOrderStatusHistory(id: number) {
 export async function getKitchenQueue(status?: string) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [eq(orders.orderStatus, "processing" as any)];
   if (status) conditions.push(eq(orderStatusHistory.status, status as any));
-  
+
   return db
     .select({
       order: orders,
@@ -1353,27 +1471,34 @@ export async function getKitchenQueue(status?: string) {
     .orderBy(orders.createdAt);
 }
 
-export async function updateOrderStatusInKDS(id: number, newStatus: string, staffId?: number) {
+export async function updateOrderStatusInKDS(
+  id: number,
+  newStatus: string,
+  staffId?: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Record status change
   await db.insert(orderStatusHistory).values({
     id,
     kitchenStaffId: staffId,
     startTime: new Date(),
   });
-  
+
   // Update order status
   const statusMap: Record<string, any> = {
-    "preparing": "processing",
-    "ready": "processing",
-    "served": "completed",
-    "completed": "completed",
+    preparing: "processing",
+    ready: "processing",
+    served: "completed",
+    completed: "completed",
   };
-  
+
   if (statusMap[newStatus]) {
-    await db.update(orders).set({ orderStatus: statusMap[newStatus] }).where(eq(orders.id, id));
+    await db
+      .update(orders)
+      .set({ orderStatus: statusMap[newStatus] })
+      .where(eq(orders.id, id));
   }
 }
 
@@ -1381,43 +1506,42 @@ export async function updateOrderStatusInKDS(id: number, newStatus: string, staf
 export async function getKdsSettings(branchId?: number) {
   const db = await getDb();
   if (!db) return null;
-  
+
   const conditions = [];
   if (branchId) conditions.push(eq(kdsSettings.branchId, branchId));
-  
+
   const result = await db
     .select()
     .from(kdsSettings)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .limit(1);
-  
+
   return result[0] || null;
 }
 
 export async function updateKdsSettings(data: Partial<KdsSettings>) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const { id, ...updateData } = data as any;
   if (!id) throw new Error("KDS Settings ID required");
-  
+
   await db.update(kdsSettings).set(updateData).where(eq(kdsSettings.id, id));
 }
 
 export async function createKdsSettings(data: InsertKdsSettings) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(kdsSettings).values(data);
   return result;
 }
-
 
 // ─── Staff Management ──────────────────────────────────────────────────────
 export async function createStaffProfile(data: InsertStaffProfile) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const result = await db.insert(staffProfiles).values(data);
   return result;
 }
@@ -1425,16 +1549,24 @@ export async function createStaffProfile(data: InsertStaffProfile) {
 export async function getStaffProfile(id: number) {
   const db = await getDb();
   if (!db) return null;
-  
-  const result = await db.select().from(staffProfiles).where(eq(staffProfiles.id, id)).limit(1);
+
+  const result = await db
+    .select()
+    .from(staffProfiles)
+    .where(eq(staffProfiles.id, id))
+    .limit(1);
   return result[0] || null;
 }
 
 export async function getStaffProfileByUserId(userId: number) {
   const db = await getDb();
   if (!db) return null;
-  
-  const result = await db.select().from(staffProfiles).where(eq(staffProfiles.userId, userId)).limit(1);
+
+  const result = await db
+    .select()
+    .from(staffProfiles)
+    .where(eq(staffProfiles.userId, userId))
+    .limit(1);
   return result[0] || null;
 }
 
@@ -1446,11 +1578,14 @@ export async function listStaffProfiles(filters?: {
 }) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
-  if (filters?.status) conditions.push(eq(staffProfiles.status, filters.status as any));
-  if (filters?.branchId) conditions.push(eq(staffProfiles.branchId, filters.branchId));
-  if (filters?.department) conditions.push(eq(staffProfiles.department, filters.department));
+  if (filters?.status)
+    conditions.push(eq(staffProfiles.status, filters.status as any));
+  if (filters?.branchId)
+    conditions.push(eq(staffProfiles.branchId, filters.branchId));
+  if (filters?.department)
+    conditions.push(eq(staffProfiles.department, filters.department));
   if (filters?.search) {
     conditions.push(
       or(
@@ -1461,7 +1596,7 @@ export async function listStaffProfiles(filters?: {
       )
     );
   }
-  
+
   return db
     .select()
     .from(staffProfiles)
@@ -1469,18 +1604,24 @@ export async function listStaffProfiles(filters?: {
     .orderBy(staffProfiles.createdAt);
 }
 
-export async function updateStaffProfile(id: number, data: Partial<StaffProfile>) {
+export async function updateStaffProfile(
+  id: number,
+  data: Partial<StaffProfile>
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   const { id: _, ...updateData } = data as any;
-  await db.update(staffProfiles).set(updateData).where(eq(staffProfiles.id, id));
+  await db
+    .update(staffProfiles)
+    .set(updateData)
+    .where(eq(staffProfiles.id, id));
 }
 
 export async function deleteStaffProfile(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   await db.delete(staffProfiles).where(eq(staffProfiles.id, id));
 }
 
@@ -1491,7 +1632,7 @@ export async function recordStaffActivity(data: InsertStaffActivityLog) {
     console.warn("[Activity] DB unavailable, log not recorded");
     return;
   }
-  
+
   try {
     await db.insert(staffActivityLogs).values(data);
   } catch (error) {
@@ -1508,13 +1649,19 @@ export async function getStaffActivityLogs(filters?: {
 }) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
-  if (filters?.userId) conditions.push(eq(staffActivityLogs.userId, filters.userId));
-  if (filters?.activityType) conditions.push(eq(staffActivityLogs.activityType, filters.activityType as any));
-  if (filters?.startDate) conditions.push(gte(staffActivityLogs.createdAt, filters.startDate));
-  if (filters?.endDate) conditions.push(lte(staffActivityLogs.createdAt, filters.endDate));
-  
+  if (filters?.userId)
+    conditions.push(eq(staffActivityLogs.userId, filters.userId));
+  if (filters?.activityType)
+    conditions.push(
+      eq(staffActivityLogs.activityType, filters.activityType as any)
+    );
+  if (filters?.startDate)
+    conditions.push(gte(staffActivityLogs.createdAt, filters.startDate));
+  if (filters?.endDate)
+    conditions.push(lte(staffActivityLogs.createdAt, filters.endDate));
+
   return db
     .select({
       id: staffActivityLogs.id,
@@ -1537,10 +1684,10 @@ export async function getStaffActivityLogs(filters?: {
 export async function getUserActivitySummary(userId: number, days: number = 7) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
-  
+
   return db
     .select()
     .from(staffActivityLogs)
@@ -1556,7 +1703,7 @@ export async function getUserActivitySummary(userId: number, days: number = 7) {
 export async function searchTransactionsByCustomer(customerName: string) {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db
     .select()
     .from(transactionReconciliation)
@@ -1564,15 +1711,17 @@ export async function searchTransactionsByCustomer(customerName: string) {
     .limit(20);
 }
 
-
 // ─── Customer Spending Reports ─────────────────────────────────────────────────
-export async function getCustomerSpendingByWeek(customerId: number, weeksBack: number = 12) {
+export async function getCustomerSpendingByWeek(
+  customerId: number,
+  weeksBack: number = 12
+) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - (weeksBack * 7));
-  
+  startDate.setDate(startDate.getDate() - weeksBack * 7);
+
   try {
     const result = await db.execute(sql`
       SELECT 
@@ -1592,18 +1741,21 @@ export async function getCustomerSpendingByWeek(customerId: number, weeksBack: n
     `);
     return result as any[];
   } catch (error) {
-    console.error('Error fetching customer spending by week:', error);
+    console.error("Error fetching customer spending by week:", error);
     return [];
   }
 }
 
-export async function getCustomerSpendingByMonth(customerId: number, monthsBack: number = 12) {
+export async function getCustomerSpendingByMonth(
+  customerId: number,
+  monthsBack: number = 12
+) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - monthsBack);
-  
+
   try {
     const result = await db.execute(sql`
       SELECT 
@@ -1625,7 +1777,7 @@ export async function getCustomerSpendingByMonth(customerId: number, monthsBack:
     `);
     return result as any[];
   } catch (error) {
-    console.error('Error fetching customer spending by month:', error);
+    console.error("Error fetching customer spending by month:", error);
     return [];
   }
 }
@@ -1633,7 +1785,7 @@ export async function getCustomerSpendingByMonth(customerId: number, monthsBack:
 export async function getCustomerSpendingTrends(customerId: number) {
   const db = await getDb();
   if (!db) return null;
-  
+
   const result = await db.execute(sql`
     SELECT 
       COUNT(o.id) as totalOrders,
@@ -1648,7 +1800,7 @@ export async function getCustomerSpendingTrends(customerId: number) {
     FROM orders o
     WHERE o.customerId = ${customerId} AND o.orderStatus = 'completed'
   `);
-  
+
   const orderData = result[0] as any;
   return {
     totalSpent: Number(orderData?.totalSpent ?? 0),
@@ -1659,14 +1811,14 @@ export async function getCustomerSpendingTrends(customerId: number) {
     spendingVariance: Number(orderData?.spendingVariance ?? 0),
     daysSinceFirstOrder: Number(orderData?.daysSinceFirstOrder ?? 0),
     firstOrderDate: orderData?.firstOrderDate,
-    lastOrderDate: orderData?.lastOrderDate
+    lastOrderDate: orderData?.lastOrderDate,
   };
 }
 
 export async function getCustomerPaymentMethodBreakdown(customerId: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const result = await db.execute(sql`
     SELECT 
       o.paymentMethod,
@@ -1679,25 +1831,30 @@ export async function getCustomerPaymentMethodBreakdown(customerId: number) {
     GROUP BY o.paymentMethod
     ORDER BY totalAmount DESC
   `);
-  
+
   return result as any[];
 }
 
-export async function getTopCustomersBySpending(limit: number = 10, monthsBack?: number, startDate?: Date, endDate?: Date) {
+export async function getTopCustomersBySpending(
+  limit: number = 10,
+  monthsBack?: number,
+  startDate?: Date,
+  endDate?: Date
+) {
   const db = await getDb();
   if (!db) return [];
-  
+
   // Use custom date range if provided, otherwise use monthsBack
   let queryStartDate: Date;
   let queryEndDate: Date = endDate || new Date();
-  
+
   if (startDate) {
     queryStartDate = startDate;
   } else {
     queryStartDate = new Date();
     queryStartDate.setMonth(queryStartDate.getMonth() - (monthsBack || 3));
   }
-  
+
   // Get all completed orders within the date range
   const allOrders = await db
     .select()
@@ -1706,13 +1863,13 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
       and(
         gte(orders.createdAt, queryStartDate),
         lte(orders.createdAt, queryEndDate),
-        eq(orders.orderStatus, 'completed')
+        eq(orders.orderStatus, "completed")
       )
     );
-  
+
   // Group by customer and calculate order metrics
   const customerSpending: Record<number, any> = {};
-  
+
   for (const order of allOrders) {
     if (!customerSpending[order.customerId]) {
       customerSpending[order.customerId] = {
@@ -1725,29 +1882,29 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
     customerSpending[order.customerId].orderCount += 1;
     const amount = Number(order.totalAmount);
     customerSpending[order.customerId].totalSpent += amount;
-    
+
     if (order.createdAt > customerSpending[order.customerId].lastOrderDate) {
       customerSpending[order.customerId].lastOrderDate = order.createdAt;
     }
   }
-  
+
   // Filter out customers with zero spending
   const spendingCustomers = Object.entries(customerSpending)
     .filter(([_, data]) => data.totalSpent > 0)
     .map(([customerId, data]) => ({ customerId: Number(customerId), ...data }));
-  
+
   if (spendingCustomers.length === 0) return [];
-  
+
   // Get customer details and wallet data
   const customerIds = spendingCustomers.map(c => c.customerId);
   const customerDetails = await db
     .select()
     .from(customers)
     .where(inArray(customers.id, customerIds));
-  
+
   // Get customer details
   const customerMap = new Map(customerDetails.map(c => [c.id, c]));
-  
+
   // Calculate wallet spending from wallet transactions within the date range
   const walletTxns = await db
     .select({
@@ -1758,12 +1915,12 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
     .where(
       and(
         inArray(walletTransactions.customerId, customerIds),
-        eq(walletTransactions.type, 'spend'),
+        eq(walletTransactions.type, "spend"),
         gte(walletTransactions.createdAt, queryStartDate),
         lte(walletTransactions.createdAt, queryEndDate)
       )
     );
-  
+
   // Group wallet transactions by customer
   const walletSpendingByCustomer: Record<number, number> = {};
   for (const txn of walletTxns) {
@@ -1772,7 +1929,7 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
     }
     walletSpendingByCustomer[txn.customerId] += Number(txn.amount);
   }
-  
+
   // Merge and sort
   const result = spendingCustomers
     .map(spending => {
@@ -1788,19 +1945,22 @@ export async function getTopCustomersBySpending(limit: number = 10, monthsBack?:
         walletSpent: walletSpent,
         avgOrderValue: spending.totalSpent / spending.orderCount,
         lastOrderDate: spending.lastOrderDate,
-        daysSinceLastOrder: Math.floor((Date.now() - spending.lastOrderDate.getTime()) / (1000 * 60 * 60 * 24)),
+        daysSinceLastOrder: Math.floor(
+          (Date.now() - spending.lastOrderDate.getTime()) /
+            (1000 * 60 * 60 * 24)
+        ),
       };
     })
     .sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))
     .slice(0, limit);
-  
+
   return result as any[];
 }
 
 export async function getCustomerSpendingComparison(customerId: number) {
   const db = await getDb();
   if (!db) return null;
-  
+
   // Get customer's total spending
   const customerOrders = await db
     .select()
@@ -1808,22 +1968,28 @@ export async function getCustomerSpendingComparison(customerId: number) {
     .where(
       and(
         eq(orders.customerId, customerId),
-        eq(orders.orderStatus, 'completed')
+        eq(orders.orderStatus, "completed")
       )
     );
-  
-  const customerTotal = customerOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
-  
+
+  const customerTotal = customerOrders.reduce(
+    (sum, order) => sum + Number(order.totalAmount),
+    0
+  );
+
   // Get all completed orders for system-wide calculations
   const allOrders = await db
     .select()
     .from(orders)
-    .where(eq(orders.orderStatus, 'completed'));
-  
+    .where(eq(orders.orderStatus, "completed"));
+
   // Calculate system-wide metrics
-  const totalSystemRevenue = allOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+  const totalSystemRevenue = allOrders.reduce(
+    (sum, order) => sum + Number(order.totalAmount),
+    0
+  );
   const totalCustomers = new Set(allOrders.map(o => o.customerId)).size;
-  
+
   // Calculate average customer spending
   const customerSpending: Record<number, number> = {};
   for (const order of allOrders) {
@@ -1832,11 +1998,13 @@ export async function getCustomerSpendingComparison(customerId: number) {
     }
     customerSpending[order.customerId] += Number(order.totalAmount);
   }
-  
-  const averageCustomerSpending = totalCustomers > 0 
-    ? Object.values(customerSpending).reduce((a, b) => a + b, 0) / totalCustomers 
-    : 0;
-  
+
+  const averageCustomerSpending =
+    totalCustomers > 0
+      ? Object.values(customerSpending).reduce((a, b) => a + b, 0) /
+        totalCustomers
+      : 0;
+
   return {
     customerTotal,
     averageCustomerSpending,
@@ -1844,7 +2012,6 @@ export async function getCustomerSpendingComparison(customerId: number) {
     totalSystemRevenue,
   };
 }
-
 
 // ─── PAYROLL MANAGEMENT FUNCTIONS ──────────────────────────────────────────
 
@@ -1884,16 +2051,23 @@ export async function getStaffEmployment(staffProfileId: number) {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.select().from(staffEmployment)
-    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
-    .where(and(
-      eq(staffEmployment.staffProfileId, staffProfileId),
-      eq(staffEmployment.isActive, true)
-    ))
+  const result = await db
+    .select()
+    .from(staffEmployment)
+    .leftJoin(
+      employmentTypes,
+      eq(staffEmployment.employmentTypeId, employmentTypes.id)
+    )
+    .where(
+      and(
+        eq(staffEmployment.staffProfileId, staffProfileId),
+        eq(staffEmployment.isActive, true)
+      )
+    )
     .limit(1);
-  
+
   if (result.length === 0) return null;
-  
+
   const row = result[0] as any;
   return {
     ...row.staff_employment,
@@ -1905,12 +2079,20 @@ export async function getAllStaffEmployment() {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.select().from(staffEmployment)
-    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
-    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+  const result = await db
+    .select()
+    .from(staffEmployment)
+    .leftJoin(
+      staffProfiles,
+      eq(staffEmployment.staffProfileId, staffProfiles.id)
+    )
+    .leftJoin(
+      employmentTypes,
+      eq(staffEmployment.employmentTypeId, employmentTypes.id)
+    )
     .where(eq(staffEmployment.isActive, true))
     .orderBy(staffProfiles.firstName, staffProfiles.lastName);
-  
+
   return result.map((row: any) => ({
     ...row.staff_employment,
     firstName: row.staff_profiles?.firstName,
@@ -1923,7 +2105,7 @@ export async function recordAttendance(data: {
   staffProfileId: number;
   date: Date;
   hoursWorked: number;
-  status: 'present' | 'absent' | 'late' | 'half_day' | 'leave';
+  status: "present" | "absent" | "late" | "half_day" | "leave";
   notes?: string;
 }) {
   const db = await getDb();
@@ -1939,18 +2121,29 @@ export async function recordAttendance(data: {
   return result;
 }
 
-export async function getAttendanceRecords(staffProfileId: number, startDate: Date, endDate: Date) {
+export async function getAttendanceRecords(
+  staffProfileId: number,
+  startDate: Date,
+  endDate: Date
+) {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.select().from(attendanceRecords)
-    .leftJoin(staffProfiles, eq(attendanceRecords.staffProfileId, staffProfiles.id))
-    .where(and(
-      eq(attendanceRecords.staffProfileId, staffProfileId),
-      between(attendanceRecords.date, startDate, endDate)
-    ))
+  const result = await db
+    .select()
+    .from(attendanceRecords)
+    .leftJoin(
+      staffProfiles,
+      eq(attendanceRecords.staffProfileId, staffProfiles.id)
+    )
+    .where(
+      and(
+        eq(attendanceRecords.staffProfileId, staffProfileId),
+        between(attendanceRecords.date, startDate, endDate)
+      )
+    )
     .orderBy(sql`${attendanceRecords.date} DESC`);
-  
+
   return result.map((row: any) => ({
     ...row.attendance_records,
     firstName: row.staff_profiles?.firstName,
@@ -1984,14 +2177,21 @@ export async function getPayrollDeductions(staffEmploymentId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.select().from(payrollDeductions)
-    .leftJoin(deductionTypes, eq(payrollDeductions.deductionTypeId, deductionTypes.id))
-    .where(and(
-      eq(payrollDeductions.staffEmploymentId, staffEmploymentId),
-      eq(payrollDeductions.isActive, true)
-    ))
+  const result = await db
+    .select()
+    .from(payrollDeductions)
+    .leftJoin(
+      deductionTypes,
+      eq(payrollDeductions.deductionTypeId, deductionTypes.id)
+    )
+    .where(
+      and(
+        eq(payrollDeductions.staffEmploymentId, staffEmploymentId),
+        eq(payrollDeductions.isActive, true)
+      )
+    )
     .orderBy(deductionTypes.name);
-  
+
   return result.map((row: any) => ({
     ...row.payroll_deductions,
     deductionTypeName: row.deduction_types?.name,
@@ -2021,20 +2221,28 @@ export async function addPayrollBonus(data: {
   return result;
 }
 
-export async function getPayrollBonuses(staffEmploymentId: number, startDate?: Date, endDate?: Date) {
+export async function getPayrollBonuses(
+  staffEmploymentId: number,
+  startDate?: Date,
+  endDate?: Date
+) {
   const db = await getDb();
   if (!db) return [];
 
-  let query = db.select().from(payrollBonuses)
+  let query = db
+    .select()
+    .from(payrollBonuses)
     .leftJoin(bonusTypes, eq(payrollBonuses.bonusTypeId, bonusTypes.id))
     .where(eq(payrollBonuses.staffEmploymentId, staffEmploymentId));
-  
+
   if (startDate && endDate) {
-    query = query.where(between(payrollBonuses.paymentDate, startDate, endDate));
+    query = query.where(
+      between(payrollBonuses.paymentDate, startDate, endDate)
+    );
   }
-  
+
   const result = await query.orderBy(sql`${payrollBonuses.paymentDate} DESC`);
-  
+
   return result.map((row: any) => ({
     ...row.payroll_bonuses,
     bonusTypeName: row.bonus_types?.name,
@@ -2049,7 +2257,7 @@ export async function createPayrollRecord(data: {
   totalDeductions: number;
   totalBonuses: number;
   netPay: number;
-  paymentMethod?: 'bank_transfer' | 'cash' | 'mpesa' | 'check';
+  paymentMethod?: "bank_transfer" | "cash" | "mpesa" | "check";
   notes?: string;
 }) {
   const db = await getDb();
@@ -2063,24 +2271,38 @@ export async function createPayrollRecord(data: {
     totalDeductions: data.totalDeductions,
     totalBonuses: data.totalBonuses,
     netPay: data.netPay,
-    paymentMethod: data.paymentMethod || 'bank_transfer',
+    paymentMethod: data.paymentMethod || "bank_transfer",
     notes: data.notes || null,
   });
   return result;
 }
 
-export async function getPayrollRecords(staffEmploymentId: number, limit: number = 12) {
+export async function getPayrollRecords(
+  staffEmploymentId: number,
+  limit: number = 12
+) {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.select().from(payrollRecords)
-    .leftJoin(staffEmployment, eq(payrollRecords.staffEmploymentId, staffEmployment.id))
-    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
-    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+  const result = await db
+    .select()
+    .from(payrollRecords)
+    .leftJoin(
+      staffEmployment,
+      eq(payrollRecords.staffEmploymentId, staffEmployment.id)
+    )
+    .leftJoin(
+      staffProfiles,
+      eq(staffEmployment.staffProfileId, staffProfiles.id)
+    )
+    .leftJoin(
+      employmentTypes,
+      eq(staffEmployment.employmentTypeId, employmentTypes.id)
+    )
     .where(eq(payrollRecords.staffEmploymentId, staffEmploymentId))
     .orderBy(sql`${payrollRecords.payrollPeriodEnd} DESC`)
     .limit(limit);
-  
+
   return result.map((row: any) => ({
     ...row.payroll_records,
     firstName: row.staff_profiles?.firstName,
@@ -2089,32 +2311,43 @@ export async function getPayrollRecords(staffEmploymentId: number, limit: number
   }));
 }
 
-export async function updatePayrollRecordStatus(payrollRecordId: number, status: 'pending' | 'paid' | 'failed' | 'cancelled', paymentDate?: Date) {
+export async function updatePayrollRecordStatus(
+  payrollRecordId: number,
+  status: "pending" | "paid" | "failed" | "cancelled",
+  paymentDate?: Date
+) {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.update(payrollRecords)
+  const result = await db
+    .update(payrollRecords)
     .set({
       paymentStatus: status,
       paymentDate: paymentDate || null,
     })
     .where(eq(payrollRecords.id, payrollRecordId));
-  
+
   return result;
 }
 
-export async function generatePayslip(payrollRecordId: number, payslipNumber: string, payslipUrl?: string) {
+export async function generatePayslip(
+  payrollRecordId: number,
+  payslipNumber: string,
+  payslipUrl?: string
+) {
   const db = await getDb();
   if (!db) return null;
 
-  const payrollRecord = await db.select().from(payrollRecords)
+  const payrollRecord = await db
+    .select()
+    .from(payrollRecords)
     .where(eq(payrollRecords.id, payrollRecordId))
     .limit(1);
-  
+
   if (payrollRecord.length === 0) return null;
-  
+
   const pr = payrollRecord[0];
-  
+
   const result = await db.insert(payslips).values({
     payrollRecordId: pr.id,
     staffEmploymentId: pr.staffEmploymentId,
@@ -2127,21 +2360,32 @@ export async function generatePayslip(payrollRecordId: number, payslipNumber: st
     netPay: pr.netPay,
     payslipUrl: payslipUrl || null,
   });
-  
+
   return result;
 }
 
-export async function getPayslips(staffEmploymentId: number, limit: number = 12) {
+export async function getPayslips(
+  staffEmploymentId: number,
+  limit: number = 12
+) {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.select().from(payslips)
-    .leftJoin(staffEmployment, eq(payslips.staffEmploymentId, staffEmployment.id))
-    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
+  const result = await db
+    .select()
+    .from(payslips)
+    .leftJoin(
+      staffEmployment,
+      eq(payslips.staffEmploymentId, staffEmployment.id)
+    )
+    .leftJoin(
+      staffProfiles,
+      eq(staffEmployment.staffProfileId, staffProfiles.id)
+    )
     .where(eq(payslips.staffEmploymentId, staffEmploymentId))
     .orderBy(sql`${payslips.payrollPeriodEnd} DESC`)
     .limit(limit);
-  
+
   return result.map((row: any) => ({
     ...row.payslips,
     firstName: row.staff_profiles?.firstName,
@@ -2153,15 +2397,26 @@ export async function getPayslipById(payslipId: number) {
   const db = await getDb();
   if (!db) return null;
 
-  const result = await db.select().from(payslips)
-    .leftJoin(staffEmployment, eq(payslips.staffEmploymentId, staffEmployment.id))
-    .leftJoin(staffProfiles, eq(staffEmployment.staffProfileId, staffProfiles.id))
-    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+  const result = await db
+    .select()
+    .from(payslips)
+    .leftJoin(
+      staffEmployment,
+      eq(payslips.staffEmploymentId, staffEmployment.id)
+    )
+    .leftJoin(
+      staffProfiles,
+      eq(staffEmployment.staffProfileId, staffProfiles.id)
+    )
+    .leftJoin(
+      employmentTypes,
+      eq(staffEmployment.employmentTypeId, employmentTypes.id)
+    )
     .where(eq(payslips.id, payslipId))
     .limit(1);
-  
+
   if (result.length === 0) return null;
-  
+
   const row = result[0] as any;
   return {
     ...row.payslips,
@@ -2183,13 +2438,13 @@ export async function getPayrollSettings(branchId?: number) {
   if (!db) return null;
 
   let query = db.select().from(payrollSettings);
-  
+
   if (branchId) {
     query = query.where(eq(payrollSettings.branchId, branchId));
   } else {
     query = query.where(isNull(payrollSettings.branchId));
   }
-  
+
   const result = await query.limit(1);
   return result.length > 0 ? result[0] : null;
 }
@@ -2200,27 +2455,34 @@ export async function updatePayrollSettings(data: {
   nhifRate?: number;
   payeTaxThreshold?: number;
   payeRate?: number;
-  payrollCycle?: 'weekly' | 'biweekly' | 'monthly';
+  payrollCycle?: "weekly" | "biweekly" | "monthly";
   paymentDay?: number;
 }) {
   const db = await getDb();
   if (!db) return null;
 
   const existing = await getPayrollSettings(data.branchId);
-  
+
   if (existing) {
     const updateData: any = {};
     if (data.nssfRate !== undefined) updateData.nssfRate = data.nssfRate;
     if (data.nhifRate !== undefined) updateData.nhifRate = data.nhifRate;
-    if (data.payeTaxThreshold !== undefined) updateData.payeTaxThreshold = data.payeTaxThreshold;
+    if (data.payeTaxThreshold !== undefined)
+      updateData.payeTaxThreshold = data.payeTaxThreshold;
     if (data.payeRate !== undefined) updateData.payeRate = data.payeRate;
-    if (data.payrollCycle !== undefined) updateData.payrollCycle = data.payrollCycle;
+    if (data.payrollCycle !== undefined)
+      updateData.payrollCycle = data.payrollCycle;
     if (data.paymentDay !== undefined) updateData.paymentDay = data.paymentDay;
-    
-    const result = await db.update(payrollSettings)
+
+    const result = await db
+      .update(payrollSettings)
       .set(updateData)
-      .where(data.branchId ? eq(payrollSettings.branchId, data.branchId) : isNull(payrollSettings.branchId));
-    
+      .where(
+        data.branchId
+          ? eq(payrollSettings.branchId, data.branchId)
+          : isNull(payrollSettings.branchId)
+      );
+
     return result;
   } else {
     const result = await db.insert(payrollSettings).values({
@@ -2229,42 +2491,55 @@ export async function updatePayrollSettings(data: {
       nhifRate: data.nhifRate || 2.75,
       payeTaxThreshold: data.payeTaxThreshold || 24000,
       payeRate: data.payeRate || 30,
-      payrollCycle: data.payrollCycle || 'monthly',
+      payrollCycle: data.payrollCycle || "monthly",
       paymentDay: data.paymentDay || 28,
     });
-    
+
     return result;
   }
 }
 
-export async function calculateCasualLaborerPay(staffEmploymentId: number, startDate: Date, endDate: Date) {
+export async function calculateCasualLaborerPay(
+  staffEmploymentId: number,
+  startDate: Date,
+  endDate: Date
+) {
   const db = await getDb();
   if (!db) return null;
 
-  const employment = await db.select().from(staffEmployment)
-    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+  const employment = await db
+    .select()
+    .from(staffEmployment)
+    .leftJoin(
+      employmentTypes,
+      eq(staffEmployment.employmentTypeId, employmentTypes.id)
+    )
     .where(eq(staffEmployment.id, staffEmploymentId))
     .limit(1);
-  
+
   if (employment.length === 0) return null;
-  
+
   const emp = employment[0].staff_employment;
-  
+
   // Get attendance records
-  const attendance = await db.select({
-    totalHours: sql<number>`SUM(${attendanceRecords.hoursWorked})`,
-    daysWorked: sql<number>`COUNT(*)`,
-  }).from(attendanceRecords)
-    .where(and(
-      eq(attendanceRecords.staffProfileId, emp.staffProfileId),
-      between(attendanceRecords.date, startDate, endDate),
-      sql`${attendanceRecords.status} IN ('present', 'late', 'half_day')`
-    ));
-  
+  const attendance = await db
+    .select({
+      totalHours: sql<number>`SUM(${attendanceRecords.hoursWorked})`,
+      daysWorked: sql<number>`COUNT(*)`,
+    })
+    .from(attendanceRecords)
+    .where(
+      and(
+        eq(attendanceRecords.staffProfileId, emp.staffProfileId),
+        between(attendanceRecords.date, startDate, endDate),
+        sql`${attendanceRecords.status} IN ('present', 'late', 'half_day')`
+      )
+    );
+
   const att = attendance[0] || { totalHours: 0, daysWorked: 0 };
   const totalHours = Number(att.totalHours) || 0;
   const daysWorked = Number(att.daysWorked) || 0;
-  
+
   // Calculate gross salary based on hourly or daily rate
   let grossSalary = 0;
   if (emp.hourlyRate > 0) {
@@ -2272,42 +2547,57 @@ export async function calculateCasualLaborerPay(staffEmploymentId: number, start
   } else if (emp.dailyRate > 0) {
     grossSalary = daysWorked * Number(emp.dailyRate);
   }
-  
+
   return {
     staffEmploymentId,
     grossSalary,
     totalHours,
     daysWorked,
     hourlyRate: emp.hourlyRate,
-    dailyRate: emp.dailyRate
+    dailyRate: emp.dailyRate,
   };
 }
 
-export async function calculatePermanentEmployeePay(staffEmploymentId: number, payrollSettings: any) {
+export async function calculatePermanentEmployeePay(
+  staffEmploymentId: number,
+  payrollSettings: any
+) {
   const db = await getDb();
   if (!db) return null;
 
-  const employment = await db.select().from(staffEmployment)
-    .leftJoin(employmentTypes, eq(staffEmployment.employmentTypeId, employmentTypes.id))
+  const employment = await db
+    .select()
+    .from(staffEmployment)
+    .leftJoin(
+      employmentTypes,
+      eq(staffEmployment.employmentTypeId, employmentTypes.id)
+    )
     .where(eq(staffEmployment.id, staffEmploymentId))
     .limit(1);
-  
+
   if (employment.length === 0) return null;
-  
+
   const emp = employment[0].staff_employment;
-  
+
   // Get active deductions
-  const deductions = await db.select().from(payrollDeductions)
-    .leftJoin(deductionTypes, eq(payrollDeductions.deductionTypeId, deductionTypes.id))
-    .where(and(
-      eq(payrollDeductions.staffEmploymentId, staffEmploymentId),
-      eq(payrollDeductions.isActive, true)
-    ));
-  
+  const deductions = await db
+    .select()
+    .from(payrollDeductions)
+    .leftJoin(
+      deductionTypes,
+      eq(payrollDeductions.deductionTypeId, deductionTypes.id)
+    )
+    .where(
+      and(
+        eq(payrollDeductions.staffEmploymentId, staffEmploymentId),
+        eq(payrollDeductions.isActive, true)
+      )
+    );
+
   // Calculate total deductions
   let totalDeductions = 0;
   const deductionDetails: any[] = [];
-  
+
   for (const row of deductions) {
     const ded = row.payroll_deductions;
     let deductionAmount = 0;
@@ -2320,39 +2610,38 @@ export async function calculatePermanentEmployeePay(staffEmploymentId: number, p
     deductionDetails.push({
       name: row.deduction_types?.name,
       amount: deductionAmount,
-      isStatutory: row.deduction_types?.isStatutory
+      isStatutory: row.deduction_types?.isStatutory,
     });
   }
-  
+
   // Calculate PAYE if applicable
   if (Number(emp.baseSalary) > payrollSettings.payeTaxThreshold) {
     const taxableIncome = Number(emp.baseSalary) - totalDeductions;
     const payeAmount = (taxableIncome * payrollSettings.payeRate) / 100;
     totalDeductions += payeAmount;
     deductionDetails.push({
-      name: 'PAYE',
+      name: "PAYE",
       amount: payeAmount,
-      isStatutory: true
+      isStatutory: true,
     });
   }
-  
+
   return {
     staffEmploymentId,
     grossSalary: Number(emp.baseSalary),
     totalDeductions,
     deductionDetails,
-    netPay: Number(emp.baseSalary) - totalDeductions
+    netPay: Number(emp.baseSalary) - totalDeductions,
   };
 }
-
 
 // ─── User Management ───────────────────────────────────────────────────────
 export async function listUsers(opts?: { search?: string }) {
   const db = await getDb();
   if (!db) return [];
-  
+
   let query = db.select().from(users);
-  
+
   if (opts?.search) {
     query = query.where(
       or(
@@ -2361,14 +2650,14 @@ export async function listUsers(opts?: { search?: string }) {
       )
     );
   }
-  
+
   return query.orderBy(users.name);
 }
 
 export async function getUserById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  
+
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return result.length > 0 ? result[0] : null;
 }
@@ -2376,21 +2665,34 @@ export async function getUserById(id: number) {
 export async function createUser(data: {
   name: string;
   email: string;
-  role: "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff";
+  role:
+    | "admin"
+    | "manager"
+    | "supervisor"
+    | "cashier"
+    | "waiter"
+    | "inventory_manager"
+    | "kitchen_staff";
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Check if email already exists
-  const existingUsers = await db.select().from(users).where(eq(users.email, data.email)).limit(1);
-  
+  const existingUsers = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, data.email))
+    .limit(1);
+
   if (existingUsers.length > 0) {
-    throw new Error(`An account with email ${data.email} already exists. Each user can only have one account.`);
+    throw new Error(
+      `An account with email ${data.email} already exists. Each user can only have one account.`
+    );
   }
-  
+
   // Generate a unique openId for the new user
   const openId = `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   const result = await db.insert(users).values({
     openId,
     name: data.name,
@@ -2398,85 +2700,119 @@ export async function createUser(data: {
     role: data.role,
     loginMethod: "manual",
   });
-  
+
   return result;
 }
 
-export async function updateUserRole(id: number, role: "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff") {
+export async function updateUserRole(
+  id: number,
+  role:
+    | "admin"
+    | "manager"
+    | "supervisor"
+    | "cashier"
+    | "waiter"
+    | "inventory_manager"
+    | "kitchen_staff"
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   await db.update(users).set({ role }).where(eq(users.id, id));
 }
 
 export async function deleteUser(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Get the user to check their role
-  const userToDeleteList = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  
+  const userToDeleteList = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+
   if (userToDeleteList.length === 0) throw new Error("User not found");
-  
+
   const userToDelete = userToDeleteList[0];
-  
+
   // Prevent deletion of last admin
   if (userToDelete.role === "admin") {
     const adminCount = await db
       .select({ count: sql`COUNT(*)` })
       .from(users)
       .where(eq(users.role, "admin"));
-    
+
     const count = (adminCount[0]?.count as number) || 0;
     if (count <= 1) {
-      throw new Error("Cannot delete the last admin account. At least one admin must exist.");
+      throw new Error(
+        "Cannot delete the last admin account. At least one admin must exist."
+      );
     }
   }
-  
+
   // Delete related records first (cascade delete)
   // Delete in order of dependencies to avoid foreign key conflicts
-  
+
   // 1. Delete notification preferences
-  await db.delete(notificationPreferences).where(eq(notificationPreferences.userId, id));
-  
+  await db
+    .delete(notificationPreferences)
+    .where(eq(notificationPreferences.userId, id));
+
   // 2. Delete audit logs
   await db.delete(auditLogs).where(eq(auditLogs.userId, id));
-  
+
   // 3. Delete user roles
   await db.delete(userRoles).where(eq(userRoles.userId, id));
-  
+
   // 4. Delete staff activity logs
   await db.delete(staffActivityLogs).where(eq(staffActivityLogs.userId, id));
-  
+
   // 5. Delete kitchen staff records
   await db.delete(kitchenStaff).where(eq(kitchenStaff.userId, id));
-  
+
   // 6. Delete staff profiles and their related records
-  const staffProfilesForUser = await db.select().from(staffProfiles).where(eq(staffProfiles.userId, id));
+  const staffProfilesForUser = await db
+    .select()
+    .from(staffProfiles)
+    .where(eq(staffProfiles.userId, id));
   for (const profile of staffProfilesForUser) {
     // Delete attendance records for this staff profile
-    await db.delete(attendanceRecords).where(eq(attendanceRecords.staffProfileId, profile.id));
+    await db
+      .delete(attendanceRecords)
+      .where(eq(attendanceRecords.staffProfileId, profile.id));
     // Delete staff employment records
-    const employmentRecords = await db.select().from(staffEmployment).where(eq(staffEmployment.staffProfileId, profile.id));
+    const employmentRecords = await db
+      .select()
+      .from(staffEmployment)
+      .where(eq(staffEmployment.staffProfileId, profile.id));
     for (const employment of employmentRecords) {
       // Delete payroll deductions
-      await db.delete(payrollDeductions).where(eq(payrollDeductions.staffEmploymentId, employment.id));
+      await db
+        .delete(payrollDeductions)
+        .where(eq(payrollDeductions.staffEmploymentId, employment.id));
       // Delete payroll bonuses
-      await db.delete(payrollBonuses).where(eq(payrollBonuses.staffEmploymentId, employment.id));
+      await db
+        .delete(payrollBonuses)
+        .where(eq(payrollBonuses.staffEmploymentId, employment.id));
       // Delete payroll records
-      await db.delete(payrollRecords).where(eq(payrollRecords.staffEmploymentId, employment.id));
+      await db
+        .delete(payrollRecords)
+        .where(eq(payrollRecords.staffEmploymentId, employment.id));
     }
     // Delete staff employment
-    await db.delete(staffEmployment).where(eq(staffEmployment.staffProfileId, profile.id));
+    await db
+      .delete(staffEmployment)
+      .where(eq(staffEmployment.staffProfileId, profile.id));
   }
   // Delete staff profiles
   await db.delete(staffProfiles).where(eq(staffProfiles.userId, id));
-  
+
   // 7. Delete inventory logs created by this user
   await db.delete(inventoryLogs).where(eq(inventoryLogs.createdBy, id));
-  
+
   // 8. Delete store transfers created by this user
-  
+
   // Finally, delete the user
   await db.delete(users).where(eq(users.id, id));
 }
@@ -2484,27 +2820,33 @@ export async function deleteUser(id: number) {
 export async function deactivateUser(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Get the user to check their role
-  const userToDeactivateList = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  
+  const userToDeactivateList = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+
   if (userToDeactivateList.length === 0) throw new Error("User not found");
-  
+
   const userToDeactivate = userToDeactivateList[0];
-  
+
   // Prevent deactivation of last admin
   if (userToDeactivate.role === "admin") {
     const activeAdmins = await db
       .select({ count: sql`COUNT(*)` })
       .from(users)
       .where(and(eq(users.role, "admin"), eq(users.isActive, true)));
-    
+
     const count = (activeAdmins[0]?.count as number) || 0;
     if (count <= 1) {
-      throw new Error("Cannot deactivate the last active admin. At least one active admin must exist.");
+      throw new Error(
+        "Cannot deactivate the last active admin. At least one active admin must exist."
+      );
     }
   }
-  
+
   // Deactivate the user
   await db.update(users).set({ isActive: false }).where(eq(users.id, id));
 }
@@ -2512,20 +2854,23 @@ export async function deactivateUser(id: number) {
 export async function reactivateUser(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  const userList = await db.select().from(users).where(eq(users.id, id)).limit(1);
+
+  const userList = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
   if (userList.length === 0) throw new Error("User not found");
-  
+
   // Reactivate the user
   await db.update(users).set({ isActive: true }).where(eq(users.id, id));
 }
-
 
 // ─── Payment Breakdown ───────────────────────────────────────────────────────
 export async function getPaymentMethodBreakdown(fromDate: Date, toDate: Date) {
   const db = await getDb();
   if (!db) return null;
-  
+
   const results = await db
     .select({
       paymentMethod: orders.paymentMethod,
@@ -2541,10 +2886,9 @@ export async function getPaymentMethodBreakdown(fromDate: Date, toDate: Date) {
       )
     )
     .groupBy(orders.paymentMethod);
-  
+
   return results;
 }
-
 
 // ─── Daily Sales Itemized Report ──────────────────────────────────────────────
 export async function getDailySalesItemized(date: string) {
@@ -2568,10 +2912,7 @@ export async function getDailySalesItemized(date: string) {
     })
     .from(orders)
     .where(
-      and(
-        gte(orders.createdAt, startDate),
-        lte(orders.createdAt, endDate),
-      )
+      and(gte(orders.createdAt, startDate), lte(orders.createdAt, endDate))
     );
 
   // Get payment method breakdown
@@ -2583,10 +2924,7 @@ export async function getDailySalesItemized(date: string) {
     })
     .from(orders)
     .where(
-      and(
-        gte(orders.createdAt, startDate),
-        lte(orders.createdAt, endDate),
-      )
+      and(gte(orders.createdAt, startDate), lte(orders.createdAt, endDate))
     )
     .groupBy(orders.paymentMethod);
 
@@ -2607,10 +2945,7 @@ export async function getDailySalesItemized(date: string) {
     .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
     .leftJoin(customers, eq(orders.customerId, customers.id))
     .where(
-      and(
-        gte(orders.createdAt, startDate),
-        lte(orders.createdAt, endDate),
-      )
+      and(gte(orders.createdAt, startDate), lte(orders.createdAt, endDate))
     )
     .orderBy(orders.createdAt, orders.id);
 
@@ -2624,10 +2959,7 @@ export async function getDailySalesItemized(date: string) {
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
-      and(
-        gte(orders.createdAt, startDate),
-        lte(orders.createdAt, endDate),
-      )
+      and(gte(orders.createdAt, startDate), lte(orders.createdAt, endDate))
     )
     .groupBy(orderItems.productName)
     .orderBy(desc(sql<number>`sum(${orderItems.totalPrice})`))
@@ -2648,7 +2980,6 @@ export async function getDailySalesItemized(date: string) {
   };
 }
 
-
 // ─── Sales by Payment Method ──────────────────────────────────────────────────
 export async function getSalesByPaymentMethod(fromDate: Date, toDate: Date) {
   const db = await getDb();
@@ -2665,12 +2996,7 @@ export async function getSalesByPaymentMethod(fromDate: Date, toDate: Date) {
       maxOrderValue: sql<number>`max(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(
-      and(
-        gte(orders.createdAt, fromDate),
-        lte(orders.createdAt, toDate),
-      )
-    )
+    .where(and(gte(orders.createdAt, fromDate), lte(orders.createdAt, toDate)))
     .groupBy(orders.paymentMethod)
     .orderBy(desc(sql<number>`sum(${orders.totalAmount})`));
 
@@ -2678,7 +3004,10 @@ export async function getSalesByPaymentMethod(fromDate: Date, toDate: Date) {
 }
 
 // ─── Daily Sales by Payment Method ────────────────────────────────────────────
-export async function getDailySalesByPaymentMethod(fromDate: Date, toDate: Date) {
+export async function getDailySalesByPaymentMethod(
+  fromDate: Date,
+  toDate: Date
+) {
   const db = await getDb();
   if (!db) return [];
 
@@ -2696,7 +3025,7 @@ export async function getDailySalesByPaymentMethod(fromDate: Date, toDate: Date)
     `);
     return results[0] || [];
   } catch (error) {
-    console.error('Error fetching daily sales by payment method:', error);
+    console.error("Error fetching daily sales by payment method:", error);
     return [];
   }
 }
@@ -2707,8 +3036,14 @@ export async function getPaymentMethodComparison(fromDate: Date, toDate: Date) {
   if (!db) return null;
 
   const byMethod = await getSalesByPaymentMethod(fromDate, toDate);
-  const totalSales = byMethod.reduce((sum, m: any) => sum + (Number(m.totalRevenue) || 0), 0);
-  const totalOrders = byMethod.reduce((sum, m: any) => sum + (Number(m.orderCount) || 0), 0);
+  const totalSales = byMethod.reduce(
+    (sum, m: any) => sum + (Number(m.totalRevenue) || 0),
+    0
+  );
+  const totalOrders = byMethod.reduce(
+    (sum, m: any) => sum + (Number(m.orderCount) || 0),
+    0
+  );
 
   const breakdown = byMethod.map((m: any) => ({
     method: m.method || "UNKNOWN",
@@ -2718,7 +3053,8 @@ export async function getPaymentMethodComparison(fromDate: Date, toDate: Date) {
     avgOrderValue: Number(m.avgOrderValue) || 0,
     minOrderValue: Number(m.minOrderValue) || 0,
     maxOrderValue: Number(m.maxOrderValue) || 0,
-    percentageOfTotal: totalSales > 0 ? ((Number(m.totalRevenue) || 0) / totalSales) * 100 : 0,
+    percentageOfTotal:
+      totalSales > 0 ? ((Number(m.totalRevenue) || 0) / totalSales) * 100 : 0,
   }));
 
   return {
@@ -2728,17 +3064,16 @@ export async function getPaymentMethodComparison(fromDate: Date, toDate: Date) {
   };
 }
 
-
 // ─── Notification Preferences ──────────────────────────────────────────────────
 export async function getUserNotificationPreferences(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const result = await db
     .select()
     .from(notificationPreferences)
     .where(eq(notificationPreferences.userId, userId));
-  
+
   return result;
 }
 
@@ -2750,7 +3085,7 @@ export async function updateNotificationPreference(
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // First try to update existing preference
   await db
     .update(notificationPreferences)
@@ -2761,7 +3096,7 @@ export async function updateNotificationPreference(
         eq(notificationPreferences.notificationType, notificationType as any)
       )
     );
-  
+
   // If no rows were updated, insert a new preference
   const existing = await db
     .select()
@@ -2773,7 +3108,7 @@ export async function updateNotificationPreference(
       )
     )
     .limit(1);
-  
+
   if (existing.length === 0) {
     await db.insert(notificationPreferences).values({
       userId,
@@ -2784,12 +3119,18 @@ export async function updateNotificationPreference(
   }
 }
 
-export async function initializeNotificationPreferences(userId: number, userRole: string) {
+export async function initializeNotificationPreferences(
+  userId: number,
+  userRole: string
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Define default preferences based on role
-  const roleDefaults: Record<string, Record<string, { enabled: boolean; frequency: string }>> = {
+  const roleDefaults: Record<
+    string,
+    Record<string, { enabled: boolean; frequency: string }>
+  > = {
     admin: {
       low_stock_alert: { enabled: true, frequency: "instant" },
       large_transaction: { enabled: true, frequency: "instant" },
@@ -2831,9 +3172,9 @@ export async function initializeNotificationPreferences(userId: number, userRole
       daily_summary: { enabled: false, frequency: "daily" },
     },
   };
-  
+
   const defaults = roleDefaults[userRole] || roleDefaults.waiter;
-  
+
   for (const [notificationType, prefs] of Object.entries(defaults)) {
     await db.insert(notificationPreferences).values({
       userId,
@@ -2850,7 +3191,7 @@ export async function shouldSendNotification(
 ): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
-  
+
   const result = await db
     .select()
     .from(notificationPreferences)
@@ -2861,16 +3202,15 @@ export async function shouldSendNotification(
       )
     )
     .limit(1);
-  
+
   if (result.length === 0) return false;
   return result[0].enabled;
 }
 
-
 export async function getAllUserNotificationPreferences() {
   const db = await getDb();
   if (!db) return [];
-  
+
   const result = await db
     .select({
       userId: notificationPreferences.userId,
@@ -2884,37 +3224,61 @@ export async function getAllUserNotificationPreferences() {
     .from(notificationPreferences)
     .innerJoin(users, eq(notificationPreferences.userId, users.id))
     .orderBy(users.name, notificationPreferences.notificationType);
-  
+
   return result;
 }
 
 // ─── Credit Account Management ─────────────────────────────────────────────
-export async function updateCreditAccountBalance(id: number, newBalance: number) {
+export async function updateCreditAccountBalance(
+  id: number,
+  newBalance: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(creditAccounts).set({ balance: newBalance }).where(eq(creditAccounts.id, id));
+
+  await db
+    .update(creditAccounts)
+    .set({ balance: newBalance })
+    .where(eq(creditAccounts.id, id));
 }
 
-export async function updateCreditAccountStatus(id: number, status: "active" | "settled" | "suspended") {
+export async function updateCreditAccountStatus(
+  id: number,
+  status: "active" | "settled" | "suspended"
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(creditAccounts).set({ status: status }).where(eq(creditAccounts.id, id));
+
+  await db
+    .update(creditAccounts)
+    .set({ status: status })
+    .where(eq(creditAccounts.id, id));
 }
 
-export async function updateCreditAccountTotalCredit(id: number, totalCredit: number) {
+export async function updateCreditAccountTotalCredit(
+  id: number,
+  totalCredit: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(creditAccounts).set({ totalCredit: totalCredit }).where(eq(creditAccounts.id, id));
+
+  await db
+    .update(creditAccounts)
+    .set({ totalCredit: totalCredit })
+    .where(eq(creditAccounts.id, id));
 }
 
-export async function updateCreditAccountTotalPaid(id: number, totalPaid: number) {
+export async function updateCreditAccountTotalPaid(
+  id: number,
+  totalPaid: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(creditAccounts).set({ totalPaid: totalPaid }).where(eq(creditAccounts.id, id));
+
+  await db
+    .update(creditAccounts)
+    .set({ totalPaid: totalPaid })
+    .where(eq(creditAccounts.id, id));
 }
 
 // ─── Transaction Logging ───────────────────────────────────────────────────
@@ -2996,7 +3360,9 @@ export async function getTransactionLogs(
   }
 
   if (customerName) {
-    query = query.where(ilike(transactionLogs.customerName, `%${customerName}%`));
+    query = query.where(
+      ilike(transactionLogs.customerName, `%${customerName}%`)
+    );
   }
 
   const results = await query.orderBy(desc(transactionLogs.time));
@@ -3008,15 +3374,16 @@ export async function getTransactionLogs(
  */
 export async function getPaymentTotals(startDate?: Date, endDate?: Date) {
   const db = await getDb();
-  if (!db) return {
-    totalCash: 0,
-    totalCard: 0,
-    totalMpesa: 0,
-    totalWallet: 0,
-    totalCheck: 0,
-    totalAmount: 0,
-    transactionCount: 0,
-  };
+  if (!db)
+    return {
+      totalCash: 0,
+      totalCard: 0,
+      totalMpesa: 0,
+      totalWallet: 0,
+      totalCheck: 0,
+      totalAmount: 0,
+      transactionCount: 0,
+    };
 
   try {
     let query = db
@@ -3045,17 +3412,19 @@ export async function getPaymentTotals(startDate?: Date, endDate?: Date) {
     }
 
     const result = await query;
-    return result[0] || {
-      totalCash: 0,
-      totalCard: 0,
-      totalMpesa: 0,
-      totalWallet: 0,
-      totalCheck: 0,
-      totalAmount: 0,
-      transactionCount: 0,
-    };
+    return (
+      result[0] || {
+        totalCash: 0,
+        totalCard: 0,
+        totalMpesa: 0,
+        totalWallet: 0,
+        totalCheck: 0,
+        totalAmount: 0,
+        transactionCount: 0,
+      }
+    );
   } catch (error) {
-    console.error('Error fetching payment totals:', error);
+    console.error("Error fetching payment totals:", error);
     return {
       totalCash: 0,
       totalCard: 0,
@@ -3068,48 +3437,59 @@ export async function getPaymentTotals(startDate?: Date, endDate?: Date) {
   }
 }
 
-
 // ─── User Branches ─────────────────────────────────────────────────────────
-export async function assignUserToBranch(userId: number, branchId: number, isPrimary = false) {
+export async function assignUserToBranch(
+  userId: number,
+  branchId: number,
+  isPrimary = false
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // If this is the first branch assignment, make it primary
-  const existing = await db.select().from(userBranches).where(eq(userBranches.userId, userId));
+  const existing = await db
+    .select()
+    .from(userBranches)
+    .where(eq(userBranches.userId, userId));
   const shouldBePrimary = isPrimary || existing.length === 0;
-  
+
   // If making this primary, unset other primary assignments
   if (shouldBePrimary) {
-    await db.update(userBranches)
+    await db
+      .update(userBranches)
       .set({ isPrimary: false })
       .where(eq(userBranches.userId, userId));
   }
-  
+
   // Insert or update the assignment
-  const result = await db.insert(userBranches).values({
-    userId,
-    branchId,
-    isPrimary: shouldBePrimary,
-  }).onDuplicateKeyUpdate({
-    set: { isPrimary: shouldBePrimary },
-  });
-  
+  const result = await db
+    .insert(userBranches)
+    .values({
+      userId,
+      branchId,
+      isPrimary: shouldBePrimary,
+    })
+    .onDuplicateKeyUpdate({
+      set: { isPrimary: shouldBePrimary },
+    });
+
   return result;
 }
 
 export async function getUserBranches(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  
-  return db.select({
-    id: userBranches.id,
-    userId: userBranches.userId,
-    branchId: userBranches.branchId,
-    branchName: branches.name,
-    branchLocation: branches.location,
-    isPrimary: userBranches.isPrimary,
-    createdAt: userBranches.createdAt,
-  })
+
+  return db
+    .select({
+      id: userBranches.id,
+      userId: userBranches.userId,
+      branchId: userBranches.branchId,
+      branchName: branches.name,
+      branchLocation: branches.location,
+      isPrimary: userBranches.isPrimary,
+      createdAt: userBranches.createdAt,
+    })
     .from(userBranches)
     .leftJoin(branches, eq(userBranches.branchId, branches.id))
     .where(eq(userBranches.userId, userId))
@@ -3119,32 +3499,32 @@ export async function getUserBranches(userId: number) {
 export async function getPrimaryBranch(userId: number) {
   const db = await getDb();
   if (!db) return null;
-  
-  const result = await db.select({
-    id: userBranches.id,
-    branchId: userBranches.branchId,
-    branchName: branches.name,
-  })
+
+  const result = await db
+    .select({
+      id: userBranches.id,
+      branchId: userBranches.branchId,
+      branchName: branches.name,
+    })
     .from(userBranches)
     .leftJoin(branches, eq(userBranches.branchId, branches.id))
-    .where(and(
-      eq(userBranches.userId, userId),
-      eq(userBranches.isPrimary, true)
-    ))
+    .where(
+      and(eq(userBranches.userId, userId), eq(userBranches.isPrimary, true))
+    )
     .limit(1);
-  
+
   return result[0] || null;
 }
 
 export async function removeUserFromBranch(userId: number, branchId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.delete(userBranches)
-    .where(and(
-      eq(userBranches.userId, userId),
-      eq(userBranches.branchId, branchId)
-    ));
+
+  await db
+    .delete(userBranches)
+    .where(
+      and(eq(userBranches.userId, userId), eq(userBranches.branchId, branchId))
+    );
 }
 
 // ─── Stock Transfers ───────────────────────────────────────────────────────
@@ -3161,12 +3541,12 @@ export async function createStockTransfer(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Generate transfer number
   const timestamp = Date.now();
   const random = Math.floor(Math.random() * 10000);
   const transferNumber = `ST-${timestamp}-${random}`;
-  
+
   // Create transfer record
   const transferResult = await db.insert(stockTransfers).values({
     transferNumber,
@@ -3176,9 +3556,9 @@ export async function createStockTransfer(data: {
     initiatedBy: data.initiatedBy,
     notes: data.notes || null,
   });
-  
+
   const transferId = transferResult[0];
-  
+
   // Create transfer items
   for (const item of data.items) {
     await db.insert(stockTransferItems).values({
@@ -3189,7 +3569,7 @@ export async function createStockTransfer(data: {
       receivedQuantity: 0,
     });
   }
-  
+
   return { transferNumber, transferId };
 }
 
@@ -3202,73 +3582,83 @@ export async function getStockTransfers(filters?: {
 }) {
   const db = await getDb();
   if (!db) return [];
-  
+
   const conditions = [];
-  if (filters?.fromBranchId) conditions.push(eq(stockTransfers.fromBranchId, filters.fromBranchId));
-  if (filters?.toBranchId) conditions.push(eq(stockTransfers.toBranchId, filters.toBranchId));
-  if (filters?.status) conditions.push(eq(stockTransfers.status, filters.status as any));
-  
-  let query = db.select({
-    id: stockTransfers.id,
-    transferNumber: stockTransfers.transferNumber,
-    fromBranchId: stockTransfers.fromBranchId,
-    fromBranchName: sql`b1.name`.as("fromBranchName"),
-    toBranchId: stockTransfers.toBranchId,
-    toBranchName: sql`b2.name`.as("toBranchName"),
-    status: stockTransfers.status,
-    initiatedBy: stockTransfers.initiatedBy,
-    initiatedByName: users.name,
-    notes: stockTransfers.notes,
-    initiatedAt: stockTransfers.initiatedAt,
-    approvedAt: stockTransfers.approvedAt,
-    receivedAt: stockTransfers.receivedAt,
-  })
+  if (filters?.fromBranchId)
+    conditions.push(eq(stockTransfers.fromBranchId, filters.fromBranchId));
+  if (filters?.toBranchId)
+    conditions.push(eq(stockTransfers.toBranchId, filters.toBranchId));
+  if (filters?.status)
+    conditions.push(eq(stockTransfers.status, filters.status as any));
+
+  let query = db
+    .select({
+      id: stockTransfers.id,
+      transferNumber: stockTransfers.transferNumber,
+      fromBranchId: stockTransfers.fromBranchId,
+      fromBranchName: sql`b1.name`.as("fromBranchName"),
+      toBranchId: stockTransfers.toBranchId,
+      toBranchName: sql`b2.name`.as("toBranchName"),
+      status: stockTransfers.status,
+      initiatedBy: stockTransfers.initiatedBy,
+      initiatedByName: users.name,
+      notes: stockTransfers.notes,
+      initiatedAt: stockTransfers.initiatedAt,
+      approvedAt: stockTransfers.approvedAt,
+      receivedAt: stockTransfers.receivedAt,
+    })
     .from(stockTransfers)
     .leftJoin(branches, eq(stockTransfers.fromBranchId, branches.id))
     .leftJoin(users, eq(stockTransfers.initiatedBy, users.id));
-  
+
   if (conditions.length > 0) {
     query = query.where(and(...conditions));
   }
-  
+
   query = query.orderBy(desc(stockTransfers.createdAt));
-  
+
   if (filters?.limit) {
     query = query.limit(filters.limit);
   }
   if (filters?.offset) {
     query = query.offset(filters.offset);
   }
-  
+
   return query;
 }
 
 export async function getStockTransferDetails(transferId: number) {
   const db = await getDb();
   if (!db) return null;
-  
-  const transfer = await db.select()
+
+  const transfer = await db
+    .select()
     .from(stockTransfers)
     .where(eq(stockTransfers.id, transferId))
     .limit(1);
-  
+
   if (!transfer.length) return null;
-  
-  const items = await db.select()
+
+  const items = await db
+    .select()
     .from(stockTransferItems)
     .where(eq(stockTransferItems.transferId, transferId));
-  
+
   return {
     ...transfer[0],
     items,
   };
 }
 
-export async function approveStockTransfer(transferId: number, approvedBy: number) {
+export async function approveStockTransfer(
+  transferId: number,
+  approvedBy: number
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(stockTransfers)
+
+  await db
+    .update(stockTransfers)
     .set({
       status: "in_transit",
       approvedBy,
@@ -3277,22 +3667,28 @@ export async function approveStockTransfer(transferId: number, approvedBy: numbe
     .where(eq(stockTransfers.id, transferId));
 }
 
-export async function receiveStockTransfer(transferId: number, receivedBy: number, receivedItems: Array<{ itemId: number; receivedQuantity: number }>) {
+export async function receiveStockTransfer(
+  transferId: number,
+  receivedBy: number,
+  receivedItems: Array<{ itemId: number; receivedQuantity: number }>
+) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
+
   // Update transfer status
-  await db.update(stockTransfers)
+  await db
+    .update(stockTransfers)
     .set({
       status: "received",
       receivedBy,
       receivedAt: new Date(),
     })
     .where(eq(stockTransfers.id, transferId));
-  
+
   // Update received quantities for each item
   for (const item of receivedItems) {
-    await db.update(stockTransferItems)
+    await db
+      .update(stockTransferItems)
       .set({ receivedQuantity: item.receivedQuantity })
       .where(eq(stockTransferItems.id, item.itemId));
   }
@@ -3301,8 +3697,9 @@ export async function receiveStockTransfer(transferId: number, receivedBy: numbe
 export async function cancelStockTransfer(transferId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  await db.update(stockTransfers)
+
+  await db
+    .update(stockTransfers)
     .set({ status: "cancelled" })
     .where(eq(stockTransfers.id, transferId));
 }
