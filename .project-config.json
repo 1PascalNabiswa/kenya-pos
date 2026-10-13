@@ -14,14 +14,16 @@
   ],
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663511678983/isJHyXZfPQkWAZL2Tr5NqT",
-    "access_key_id": "ASIAZV3A2ECZCOHXOARA",
-    "secret_access_key": "ycsGZOCdTax1xGysczP004QV60CYArxEz/ksMQRE",
-    "session_token": "IQoJb3JpZ2luX2VjEN7//////////wEaCXVzLWVhc3QtMSJHMEUCIQClysqbIJ95SDjauf8tj5WdvHdZ9JCSnCf/jZVXbkQsnAIgdJY8/zcZ6P1pBekjkfkF2VMNagRaDJuqHdG2R/q6bzkq/wMIpv//////////ARAEGgw2NjUzODYwOTg4NjYiDKCrNKwCoUiBeKm32yrTA5uPF7iEPv5bvOfX39BdtAur3CtIcao6rJEnQryGMVDsBqyzDUr8IfvTKJlDPbGXRkDv6bTutGZDhAkKmBcs6CpbWN6OgCrFccjEp4dala20zVjD+rSPSSb+z/9CneVd2q6rclGvcdupYTjtbF39SkIjGxY1vsJfWjlhkI/+43c0edfz6SBER0+pGSgHXTdFCLy3C+UBN9LVOJQNPG8Y7rewKeQjwqK7xUlomIGZiiswGZYM9F4wLOJy+xFT4kJ4f7ZpPG0vLdRNQ3HY3lp+JJVnQp8BxzN03Up1QgyrXVyQAhhck4EpPann7WiOyhP3qxhSaZK04xYPjy9pI7AEgTmNzljY2b6SpmFTkW2MFyewl+lcIlRYGIQS2Czc7/VLeyT40PSYgAlUh/cF0PGysgkBSnTl0rqz3mLgSx5zmmy2mAynhPVV9kqN74pS4SXTgjDgn2fyKagHTOIBrYyU2aMg+dZXLD/s3ZGRprNGK1FHTSVerj8xwS8SOnSPrRbxve8+9EKfSwyImWUEGnxk8kOpRQn2RFLo928Vfqd215NwfRqrScPcqn3Exgg/UKQ639B8HGtOhDS2fZaSXmDGET+7NjVlGqISOsZAmAl2LnnT0eTaMMT7ptAGOp0BodqmSSXVAdXMmclrzkSletyFMUD0xiJd5d/OmXWEN22gvdcMIEGXzrM9DFr9CW7z7GOkaBFZiqdVkVD9sHpd8XtsVJEq1WAEprbQSh1XG51/DmnchNzP/59kaJhY8RzSCDSx9Hn7HMLBdtDa5SaQ9vtInoLm9CYCVHI/cQRmSKJEs2None8agldUX/puMx4brOOP3TZk/FfyqYSq3Q==",
-    "expiration": "2026-05-18T01:08:20.000Z"
+    "access_key_id": "ASIAZV3A2ECZE6VOQQZY",
+    "secret_access_key": "BfhKekbjIpOwcRng+JLkH3y4F0C2rM5SjOqPxG1L",
+    "session_token": "IQoJb3JpZ2luX2VjENH//////////wEaCXVzLWVhc3QtMSJGMEQCIGgp0v8mCpHXKCxAmbk8CpBJgjMCL72nQNTw4QSCPXg5AiAj3T6xJq2PM0JF++iNMCeHrWK2JeeLAG0Tg2Rsa5CoySr/AwiZ//////////8BEAQaDDY2NTM4NjA5ODg2NiIMGO0P6SlVv54ybFcsKtMD3bn0ROIBAZaV9OJM5DZozXo855GlGkhD8KgxH931Naxw3e6DIjP8FNnRBnYnrwOr4/NGQ6PSF3bxzqf2Lju8la3pgUayTUxDLC714b5VYKDX6qbKonsELNod90Y/dZqqqT5zWuIVy1Vjbgm+ck75IysuI2sQvLB2pttD5rnLU+qavH4Y0nlBawcGT8c1DwUemeag//PfQ0MrzZqZmyUlz02ZmCqxtVUVsFwKoUuxt/Gxo9vcD1g18XwW45jPLWb/oaoIxnxE0MDGqFC4wldibtsXtbycj3JxNcomLhE1Rs8KV+8XvzYkIyJ3BJlYp1gbz5QDDe+0NlubXNPGjYWTpiL+PTf5H5pjNNwXxfSPWnocOiXFdmvBitQ+SvXNFw234BPqHYzIAyIDVSiT+/dvTrTVbT+WbIRXvmJ8xZzTVHck2vXMaqJ3KSPl1pAZx/pn5iDP5UfERRimN+kmSfzapKCJt2dIAhfGr0JiURSaD4CWlkUaq2G+a98jp0C81sHcoMfE8qsgOcyJSFaodS+QKAAz78HgvrVd/7M3WIDOwaJVqNE1g6PYBgFDPYZMFGMPElU6eLlScFe5larMjGACDh/SfC6MRd/iW05ewnD7tYJuIuMwwtm31gY6ngECiO8xfIIo76NaTcdv3vNeJssZDVFvhBalcAFGD82Fq0IGWYCuwj0orhtWnNhwsCDoLcMBk0Pnano93XSXitG6BRJJ2O9oM5hpxq36VMVW0ykydPVtRHz9R14Y6m4XvmidRsq02bMkYPO3bIQtpzkU1X8wFXhrR5880NL5qDFZaszxFKoXYNGyADSJQ6+sisoNTdofIK6Bx9Z3UHUvJQ==",
+    "expiration": "2026-10-13T20:33:06.000Z",
+    "backend": "GIT_BACKEND_S3"
   },
   "name": "kenya-pos",
   "path": "/home/ubuntu/kenya-pos",
   "port": 3000,
+  "runtime_endpoints": null,
   "secrets": {
     "BUILT_IN_FORGE_API_KEY": "npPA55MsWnUUJs3JZqjaFa",
     "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",

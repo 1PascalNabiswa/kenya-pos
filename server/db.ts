@@ -1132,12 +1132,47 @@ export async function getTopActiveUsers(filters?: {
 // ─── Top Active Users ──────────────────────────────────────────────────────
 
 // ─── Branches ──────────────────────────────────────────────────────────────
-export async function createBranch(data: any) {
+type CreateBranchInput = {
+  name: string;
+  location?: string | null;
+  phone?: string | null;
+  phoneNumber?: string | null;
+  email?: string | null;
+  manager?: string | null;
+};
+
+const optionalBranchText = (value?: string | null) => {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+};
+
+export async function createBranch(data: CreateBranchInput) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  
-  const result = await db.insert(branches).values(data);
-  return result;
+
+  const name = data.name?.trim();
+  if (!name) throw new Error("Branch name is required");
+
+  // The UI/API uses `phone`, while the database column is `phoneNumber`.
+  // Explicitly map the fields instead of passing the request object through
+  // so Drizzle cannot silently receive an unknown property.
+  const result = await db.insert(branches).values({
+    name,
+    location: optionalBranchText(data.location),
+    phoneNumber: optionalBranchText(data.phoneNumber ?? data.phone),
+    email: optionalBranchText(data.email),
+    manager: optionalBranchText(data.manager),
+  });
+
+  const insertId = Number((result as any).insertId ?? (result as any)[0]?.insertId ?? 0);
+  if (!insertId) return result;
+
+  const [createdBranch] = await db
+    .select()
+    .from(branches)
+    .where(eq(branches.id, insertId))
+    .limit(1);
+  return createdBranch ?? result;
 }
 
 export async function listBranches() {

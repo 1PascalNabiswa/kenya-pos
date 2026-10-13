@@ -61,10 +61,10 @@ export default function Branches() {
                     {branch.location}
                   </div>
                 )}
-                {branch.phone && (
+                {branch.phoneNumber && (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Phone size={14} />
-                    {branch.phone}
+                    {branch.phoneNumber}
                   </div>
                 )}
                 {branch.manager && (

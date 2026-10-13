@@ -18,7 +18,11 @@ import {
 export const branchesRouter = router({
   // Branch Management
   create: protectedProcedure
-    .input(z.object({ name: z.string(), location: z.string().optional(), phone: z.string().optional() }))
+    .input(z.object({
+      name: z.string().trim().min(1, "Branch name is required"),
+      location: z.string().trim().optional(),
+      phone: z.string().trim().optional(),
+    }))
     .mutation(async ({ input, ctx }) => {
       if (ctx.user?.role !== "admin") throw new Error("Only admins can create branches");
       return createBranch(input);

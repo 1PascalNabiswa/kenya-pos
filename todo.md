@@ -338,3 +338,9 @@
 - [ ] Test user branch assignment and visibility
 - [ ] Verify dashboard shows correct branch data
 - [ ] Test role-based access to branch features
+
+## Phase 59: Fix Branch Creation
+- [x] Map branch form `phone` input to the database `phoneNumber` column
+- [x] Normalize optional branch fields and reject blank branch names before insert
+- [x] Keep the branch list UI aligned with the `phoneNumber` schema field
+- [x] Run TypeScript, tests, and production build validation (build passed; existing unrelated test/type failures remain)
