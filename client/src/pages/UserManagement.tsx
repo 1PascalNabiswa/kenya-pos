@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,10 +26,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Search, Shield, Trash2, AlertCircle, CheckCircle, Bell } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Shield,
+  Trash2,
+  AlertCircle,
+  CheckCircle,
+  Bell,
+  MapPin,
+  X,
+} from "lucide-react";
 import { AdminNotificationPreferences } from "@/components/AdminNotificationPreferences";
 
-type UserRole = "admin" | "manager" | "supervisor" | "cashier" | "waiter" | "inventory_manager" | "kitchen_staff";
+type UserRole =
+  | "admin"
+  | "manager"
+  | "supervisor"
+  | "cashier"
+  | "waiter"
+  | "inventory_manager"
+  | "kitchen_staff";
 
 const ROLES: { value: UserRole; label: string; description: string }[] = [
   { value: "admin", label: "Admin", description: "Full system access" },
@@ -31,8 +54,16 @@ const ROLES: { value: UserRole; label: string; description: string }[] = [
   { value: "supervisor", label: "Supervisor", description: "Team lead" },
   { value: "cashier", label: "Cashier", description: "Payment processing" },
   { value: "waiter", label: "Waiter", description: "Order taking & service" },
-  { value: "inventory_manager", label: "Inventory Manager", description: "Stock management" },
-  { value: "kitchen_staff", label: "Kitchen Staff", description: "Food preparation" },
+  {
+    value: "inventory_manager",
+    label: "Inventory Manager",
+    description: "Stock management",
+  },
+  {
+    value: "kitchen_staff",
+    label: "Kitchen Staff",
+    description: "Food preparation",
+  },
 ];
 
 const roleColors: Record<UserRole, string> = {
@@ -56,13 +87,29 @@ export function UserManagement() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [selectedUserForNotifications, setSelectedUserForNotifications] = useState<any | null>(null);
-  const [isNotificationDialogOpen, setIsNotificationDialogOpen] = useState(false);
+  const [selectedUserForNotifications, setSelectedUserForNotifications] =
+    useState<any | null>(null);
+  const [isNotificationDialogOpen, setIsNotificationDialogOpen] =
+    useState(false);
+  const [selectedUserForBranches, setSelectedUserForBranches] = useState<
+    any | null
+  >(null);
+  const [selectedBranchToAssign, setSelectedBranchToAssign] = useState("");
 
   // Fetch users list
-  const { data: users, isLoading, refetch } = trpc.user.list.useQuery({
+  const {
+    data: users,
+    isLoading,
+    refetch,
+  } = trpc.user.list.useQuery({
     search: search || undefined,
   });
+  const { data: branches = [] } = trpc.branches.list.useQuery();
+  const { data: assignedBranches = [], refetch: refetchAssignedBranches } =
+    trpc.branches.getUserBranches.useQuery(
+      { userId: selectedUserForBranches?.id ?? 0 },
+      { enabled: Boolean(selectedUserForBranches?.id) }
+    );
 
   // Create user mutation
   const createUserMutation = trpc.user.create.useMutation({
@@ -73,7 +120,7 @@ export function UserManagement() {
       setCreateError(null);
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       const errorMessage = error.message || "Failed to create user";
       setCreateError(errorMessage);
     },
@@ -85,7 +132,7 @@ export function UserManagement() {
       setUpdateError(null);
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       const errorMessage = error.message || "Failed to update user role";
       setUpdateError(errorMessage);
     },
@@ -97,7 +144,7 @@ export function UserManagement() {
       setDeleteError(null);
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       const errorMessage = error.message || "Failed to delete user";
       setDeleteError(errorMessage);
     },
@@ -109,7 +156,7 @@ export function UserManagement() {
       setDeleteError(null);
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       const errorMessage = error.message || "Failed to deactivate user";
       setDeleteError(errorMessage);
     },
@@ -121,10 +168,23 @@ export function UserManagement() {
       setDeleteError(null);
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       const errorMessage = error.message || "Failed to reactivate user";
       setDeleteError(errorMessage);
     },
+  });
+
+  const assignBranchMutation = trpc.branches.assignUser.useMutation({
+    onSuccess: () => {
+      setSelectedBranchToAssign("");
+      refetchAssignedBranches();
+    },
+    onError: error => toast.error(error.message || "Failed to assign branch"),
+  });
+
+  const removeBranchMutation = trpc.branches.removeUser.useMutation({
+    onSuccess: () => refetchAssignedBranches(),
+    onError: error => toast.error(error.message || "Failed to remove branch"),
   });
 
   const handleCreateSubmit = () => {
@@ -152,6 +212,15 @@ export function UserManagement() {
     updateRoleMutation.mutate({ id: userId, role: newRole });
   };
 
+  const handleAssignBranch = () => {
+    if (!selectedUserForBranches || !selectedBranchToAssign) return;
+    assignBranchMutation.mutate({
+      userId: selectedUserForBranches.id,
+      branchId: Number(selectedBranchToAssign),
+      isPrimary: assignedBranches.length === 0,
+    });
+  };
+
   const getRoleLabel = (role: UserRole) => {
     return ROLES.find(r => r.value === role)?.label || role;
   };
@@ -161,7 +230,9 @@ export function UserManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-gray-600 mt-1">Create users and manage their roles and permissions</p>
+          <p className="text-gray-600 mt-1">
+            Create users and manage their roles and permissions
+          </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -173,7 +244,9 @@ export function UserManagement() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>Add a new user to the system and assign a role</DialogDescription>
+              <DialogDescription>
+                Add a new user to the system and assign a role
+              </DialogDescription>
             </DialogHeader>
             {createError && (
               <Alert variant="destructive">
@@ -185,35 +258,44 @@ export function UserManagement() {
               <Input
                 placeholder="Full Name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
               />
               <Input
                 placeholder="Email Address"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
               />
               <div>
                 <label className="text-sm font-medium mb-2 block">Role</label>
-                <Select value={selectedRole} onValueChange={(value: any) => setSelectedRole(value)}>
+                <Select
+                  value={selectedRole}
+                  onValueChange={(value: any) => setSelectedRole(value)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((role) => (
+                    {ROLES.map(role => (
                       <SelectItem key={role.value} value={role.value}>
                         <div>
                           <div className="font-medium">{role.label}</div>
-                          <div className="text-xs text-gray-500">{role.description}</div>
+                          <div className="text-xs text-gray-500">
+                            {role.description}
+                          </div>
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <Button 
-                onClick={handleCreateSubmit} 
-                className="w-full" 
+              <Button
+                onClick={handleCreateSubmit}
+                className="w-full"
                 disabled={createUserMutation.isPending}
               >
                 {createUserMutation.isPending ? "Creating..." : "Create User"}
@@ -231,7 +313,7 @@ export function UserManagement() {
             <Input
               placeholder="Search by name or email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={e => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -245,7 +327,7 @@ export function UserManagement() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ROLES.map((role) => (
+            {ROLES.map(role => (
               <div key={role.value} className="border rounded-lg p-3">
                 <Badge className={roleColors[role.value]}>{role.label}</Badge>
                 <p className="text-sm text-gray-600 mt-2">{role.description}</p>
@@ -273,7 +355,9 @@ export function UserManagement() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500">Loading users...</div>
+            <div className="text-center py-8 text-gray-500">
+              Loading users...
+            </div>
           ) : !users || users.length === 0 ? (
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -287,8 +371,12 @@ export function UserManagement() {
                     <th className="text-left py-3 px-4 font-semibold">Name</th>
                     <th className="text-left py-3 px-4 font-semibold">Email</th>
                     <th className="text-left py-3 px-4 font-semibold">Role</th>
-                    <th className="text-left py-3 px-4 font-semibold">Joined</th>
-                    <th className="text-right py-3 px-4 font-semibold">Actions</th>
+                    <th className="text-left py-3 px-4 font-semibold">
+                      Joined
+                    </th>
+                    <th className="text-right py-3 px-4 font-semibold">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -297,19 +385,25 @@ export function UserManagement() {
                       <td className="py-3 px-4">
                         <div className="font-medium">{user.name}</div>
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{user.email || "-"}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {user.email || "-"}
+                      </td>
                       <td className="py-3 px-4">
-                        <Select 
-                          value={user.role} 
-                          onValueChange={(newRole) => handleChangeRole(user.id, newRole as UserRole)}
+                        <Select
+                          value={user.role}
+                          onValueChange={newRole =>
+                            handleChangeRole(user.id, newRole as UserRole)
+                          }
                         >
                           <SelectTrigger className="w-40">
-                            <Badge className={roleColors[user.role as UserRole]}>
+                            <Badge
+                              className={roleColors[user.role as UserRole]}
+                            >
                               {getRoleLabel(user.role as UserRole)}
                             </Badge>
                           </SelectTrigger>
                           <SelectContent>
-                            {ROLES.map((role) => (
+                            {ROLES.map(role => (
                               <SelectItem key={role.value} value={role.value}>
                                 {role.label}
                               </SelectItem>
@@ -321,6 +415,17 @@ export function UserManagement() {
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4 text-right space-x-2 flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUserForBranches(user);
+                            setSelectedBranchToAssign("");
+                          }}
+                          title="Manage branch access"
+                        >
+                          <MapPin className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -337,7 +442,11 @@ export function UserManagement() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              if (confirm("Are you sure you want to deactivate this user?")) {
+                              if (
+                                confirm(
+                                  "Are you sure you want to deactivate this user?"
+                                )
+                              ) {
                                 deactivateUserMutation.mutate({ id: user.id });
                               }
                             }}
@@ -350,7 +459,9 @@ export function UserManagement() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => reactivateUserMutation.mutate({ id: user.id })}
+                            onClick={() =>
+                              reactivateUserMutation.mutate({ id: user.id })
+                            }
                             disabled={reactivateUserMutation.isPending}
                             title="Reactivate user"
                           >
@@ -385,6 +496,98 @@ export function UserManagement() {
           onOpenChange={setIsNotificationDialogOpen}
         />
       )}
+
+      <Dialog
+        open={Boolean(selectedUserForBranches)}
+        onOpenChange={open => {
+          if (!open) {
+            setSelectedUserForBranches(null);
+            setSelectedBranchToAssign("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Branch access</DialogTitle>
+            <DialogDescription>
+              Assign locations that{" "}
+              {selectedUserForBranches?.name || "this user"} can access.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Select
+                value={selectedBranchToAssign}
+                onValueChange={setSelectedBranchToAssign}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches
+                    .filter(
+                      (branch: any) =>
+                        !assignedBranches.some(
+                          (assigned: any) => assigned.branchId === branch.id
+                        )
+                    )
+                    .map((branch: any) => (
+                      <SelectItem key={branch.id} value={String(branch.id)}>
+                        {branch.name}
+                        {branch.location ? ` — ${branch.location}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleAssignBranch}
+                disabled={
+                  !selectedBranchToAssign || assignBranchMutation.isPending
+                }
+              >
+                Assign
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {assignedBranches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No branches assigned yet.
+                </p>
+              ) : (
+                assignedBranches.map((branch: any) => (
+                  <div
+                    key={branch.id}
+                    className="flex items-center justify-between rounded-md border p-3"
+                  >
+                    <div>
+                      <p className="font-medium">{branch.branchName}</p>
+                      {branch.branchLocation && (
+                        <p className="text-xs text-muted-foreground">
+                          {branch.branchLocation}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Remove branch access"
+                      onClick={() =>
+                        removeBranchMutation.mutate({
+                          userId: selectedUserForBranches.id,
+                          branchId: branch.branchId,
+                        })
+                      }
+                      disabled={removeBranchMutation.isPending}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

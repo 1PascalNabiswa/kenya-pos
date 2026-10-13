@@ -18,13 +18,16 @@ import {
 export const branchesRouter = router({
   // Branch Management
   create: protectedProcedure
-    .input(z.object({
-      name: z.string().trim().min(1, "Branch name is required"),
-      location: z.string().trim().optional(),
-      phone: z.string().trim().optional(),
-    }))
+    .input(
+      z.object({
+        name: z.string().trim().min(1, "Branch name is required"),
+        location: z.string().trim().optional(),
+        phone: z.string().trim().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user?.role !== "admin") throw new Error("Only admins can create branches");
+      if (ctx.user?.role !== "admin")
+        throw new Error("Only admins can create branches");
       return createBranch(input);
     }),
 
@@ -53,31 +56,43 @@ export const branchesRouter = router({
     }),
 
   assignUser: protectedProcedure
-    .input(z.object({ userId: z.number(), branchId: z.number(), isPrimary: z.boolean().optional() }))
+    .input(
+      z.object({
+        userId: z.number(),
+        branchId: z.number(),
+        isPrimary: z.boolean().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user?.role !== "admin") throw new Error("Only admins can assign users to branches");
+      if (ctx.user?.role !== "admin")
+        throw new Error("Only admins can assign users to branches");
       return assignUserToBranch(input.userId, input.branchId, input.isPrimary);
     }),
 
   removeUser: protectedProcedure
     .input(z.object({ userId: z.number(), branchId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user?.role !== "admin") throw new Error("Only admins can remove users from branches");
+      if (ctx.user?.role !== "admin")
+        throw new Error("Only admins can remove users from branches");
       return removeUserFromBranch(input.userId, input.branchId);
     }),
 
   // Stock Transfers
   initiateTransfer: protectedProcedure
-    .input(z.object({
-      fromBranchId: z.number(),
-      toBranchId: z.number(),
-      notes: z.string().optional(),
-      items: z.array(z.object({
-        productId: z.number(),
-        productName: z.string(),
-        quantity: z.number().min(1),
-      })),
-    }))
+    .input(
+      z.object({
+        fromBranchId: z.number(),
+        toBranchId: z.number(),
+        notes: z.string().optional(),
+        items: z.array(
+          z.object({
+            productId: z.number(),
+            productName: z.string(),
+            quantity: z.number().min(1),
+          })
+        ),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
       return createStockTransfer({
@@ -87,13 +102,17 @@ export const branchesRouter = router({
     }),
 
   getTransfers: protectedProcedure
-    .input(z.object({
-      fromBranchId: z.number().optional(),
-      toBranchId: z.number().optional(),
-      status: z.string().optional(),
-      limit: z.number().optional().default(50),
-      offset: z.number().optional().default(0),
-    }))
+    .input(
+      z.object({
+        fromBranchId: z.number().optional(),
+        toBranchId: z.number().optional(),
+        status: z
+          .enum(["pending", "in_transit", "received", "cancelled"])
+          .optional(),
+        limit: z.number().optional().default(50),
+        offset: z.number().optional().default(0),
+      })
+    )
     .query(async ({ input }) => {
       return getStockTransfers(input);
     }),
@@ -108,18 +127,23 @@ export const branchesRouter = router({
     .input(z.object({ transferId: z.number() }))
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
-      if (ctx.user.role !== "admin") throw new Error("Only admins can approve transfers");
+      if (ctx.user.role !== "admin")
+        throw new Error("Only admins can approve transfers");
       return approveStockTransfer(input.transferId, ctx.user.id);
     }),
 
   receiveTransfer: protectedProcedure
-    .input(z.object({
-      transferId: z.number(),
-      items: z.array(z.object({
-        itemId: z.number(),
-        receivedQuantity: z.number().min(0),
-      })),
-    }))
+    .input(
+      z.object({
+        transferId: z.number(),
+        items: z.array(
+          z.object({
+            itemId: z.number(),
+            receivedQuantity: z.number().min(0),
+          })
+        ),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
       return receiveStockTransfer(input.transferId, ctx.user.id, input.items);
@@ -128,7 +152,8 @@ export const branchesRouter = router({
   cancelTransfer: protectedProcedure
     .input(z.object({ transferId: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user?.role !== "admin") throw new Error("Only admins can cancel transfers");
+      if (ctx.user?.role !== "admin")
+        throw new Error("Only admins can cancel transfers");
       return cancelStockTransfer(input.transferId);
     }),
 });
