@@ -344,3 +344,13 @@
 - [x] Normalize optional branch fields and reject blank branch names before insert
 - [x] Keep the branch list UI aligned with the live `phone` schema field
 - [x] Run TypeScript, tests, and production build validation (build passed; existing unrelated test/type failures remain)
+
+## Phase 60: Branch-Aware Selling Points
+- [x] Add global selling-point state alongside selected branch
+- [x] Load selling points for the selected branch in the POS header
+- [x] Reset stale selling-point selections when switching branches
+- [x] Persist selected selling-point IDs on POS orders
+- [x] Enforce selling-point ownership against the order branch server-side
+- [x] Restrict selling-point list and creation to assigned branches
+- [x] Add and apply the `orders.servingPointId` database migration
+- [x] Validate with branch mapper/POS tests and production build

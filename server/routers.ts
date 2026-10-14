@@ -449,6 +449,7 @@ const ordersRouter = router({
         notes: z.string().optional(),
         splitPayments: z.string().optional(),
         branchId: z.number().int().positive().optional(),
+        servingPointId: z.number().int().positive().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -469,6 +470,22 @@ const ordersRouter = router({
           });
         }
       }
+      if (input.servingPointId) {
+        if (!input.branchId) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Select a branch before selecting a selling point",
+          });
+        }
+        const branchPoints = await listServingPoints(input.branchId);
+        if (!branchPoints.some(point => point.id === input.servingPointId)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "The selected selling point does not belong to this branch",
+          });
+        }
+      }
       const orderNumber = await generateOrderNumber();
       const id = await createOrder(
         {
@@ -483,6 +500,7 @@ const ordersRouter = router({
           paymentStatus: "paid",
           orderStatus: "completed",
           branchId: input.branchId,
+          servingPointId: input.servingPointId,
           notes: input.splitPayments || input.notes,
         },
         input.items.map(item => ({
@@ -1554,13 +1572,35 @@ const servingPointsRouter = router({
         description: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== "admin") {
+        const assignedBranches = await getUserBranches(ctx.user.id);
+        if (
+          !assignedBranches.some(branch => branch.branchId === input.branchId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to this branch",
+          });
+        }
+      }
       return createServingPoint(input);
     }),
 
   list: protectedProcedure
     .input(z.object({ branchId: z.number().optional() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (input.branchId && ctx.user.role !== "admin") {
+        const assignedBranches = await getUserBranches(ctx.user.id);
+        if (
+          !assignedBranches.some(branch => branch.branchId === input.branchId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to this branch",
+          });
+        }
+      }
       return listServingPoints(input.branchId);
     }),
 });

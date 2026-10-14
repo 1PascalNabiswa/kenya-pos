@@ -33,7 +33,13 @@ export const branchesRouter = router({
       return createBranch(input);
     }),
 
-  list: protectedProcedure.query(async () => {
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user?.role !== "admin") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only admins can list all branches",
+      });
+    }
     return listBranches();
   }),
 

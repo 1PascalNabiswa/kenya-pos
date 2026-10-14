@@ -69,7 +69,7 @@ export default function PaymentDialog({
   customerName,
   onComplete,
 }: PaymentDialogProps) {
-  const { selectedBranch } = useBranch();
+  const { selectedBranch, selectedServingPoint } = useBranch();
   const [paymentMode, setPaymentMode] = useState<"single" | "split">("single");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [cashReceived, setCashReceived] = useState("");
@@ -181,6 +181,7 @@ export default function PaymentDialog({
     try {
       const result = await createOrder.mutateAsync({
         branchId: selectedBranch?.branchId,
+        servingPointId: selectedServingPoint?.id,
         customerId,
         customerName: customerName || "Walk-in Customer",
         items: cart.map(item => ({
@@ -224,6 +225,7 @@ export default function PaymentDialog({
     try {
       const result = await createOrder.mutateAsync({
         branchId: selectedBranch?.branchId,
+        servingPointId: selectedServingPoint?.id,
         customerId,
         customerName: customerName || "Walk-in Customer",
         items: cart.map(item => ({
@@ -277,6 +279,7 @@ export default function PaymentDialog({
     try {
       const result = await createOrder.mutateAsync({
         branchId: selectedBranch?.branchId,
+        servingPointId: selectedServingPoint?.id,
         customerId,
         customerName: customerName || "Walk-in Customer",
         items: cart.map(item => ({
@@ -382,6 +385,7 @@ export default function PaymentDialog({
 
       const result = await createOrder.mutateAsync({
         branchId: selectedBranch?.branchId,
+        servingPointId: selectedServingPoint?.id,
         customerId,
         customerName: customerName || "Walk-in Customer",
         items: cart.map(item => ({

@@ -36,6 +36,13 @@ import { trpc } from "@/lib/trpc";
 import { canAccessFeature } from "@/lib/rolePermissions";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { useBranch } from "@/contexts/BranchContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface NavItem {
   label: string;
@@ -213,7 +220,33 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const { selectedBranch } = useBranch();
+  const {
+    selectedBranch,
+    selectedServingPoint,
+    setSelectedServingPoint,
+    setServingPoints,
+  } = useBranch();
+  const { data: servingPointsData } = trpc.servingPoints.list.useQuery(
+    { branchId: selectedBranch?.branchId },
+    { enabled: Boolean(selectedBranch?.branchId) }
+  );
+
+  useEffect(() => {
+    const points = servingPointsData ?? [];
+    setServingPoints(points);
+    const currentPointIsValid = selectedServingPoint
+      ? points.some(point => point.id === selectedServingPoint.id)
+      : false;
+    if (!currentPointIsValid) {
+      setSelectedServingPoint(points[0] ?? null);
+    }
+  }, [
+    selectedBranch?.branchId,
+    selectedServingPoint,
+    servingPointsData,
+    setSelectedServingPoint,
+    setServingPoints,
+  ]);
 
   // Update time every second
   useEffect(() => {
@@ -578,7 +611,34 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
           <div className="flex-1" />
-          <BranchSwitcher />
+          <div className="flex items-center gap-2">
+            <BranchSwitcher />
+            <Select
+              value={
+                selectedServingPoint
+                  ? String(selectedServingPoint.id)
+                  : undefined
+              }
+              onValueChange={value => {
+                const point = (servingPointsData ?? []).find(
+                  item => String(item.id) === value
+                );
+                setSelectedServingPoint(point ?? null);
+              }}
+              disabled={!servingPointsData?.length}
+            >
+              <SelectTrigger className="w-[170px]">
+                <SelectValue placeholder="Selling point" />
+              </SelectTrigger>
+              <SelectContent>
+                {(servingPointsData ?? []).map(point => (
+                  <SelectItem key={point.id} value={String(point.id)}>
+                    {point.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="text-sm text-muted-foreground">
             {currentTime.toLocaleString("en-KE", {
               weekday: "long",

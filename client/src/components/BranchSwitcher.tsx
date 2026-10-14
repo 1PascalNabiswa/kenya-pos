@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,8 +11,10 @@ import {
 import { Building2, ChevronDown } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useBranch } from "@/contexts/BranchContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export function BranchSwitcher() {
+  const { user } = useAuth();
   const {
     selectedBranch,
     branches,
@@ -22,26 +24,45 @@ export function BranchSwitcher() {
     setIsLoading,
   } = useBranch();
   const { data: myBranches } = trpc.branches.getMyBranches.useQuery();
+  const { data: allBranches } = trpc.branches.list.useQuery(undefined, {
+    enabled: user?.role === "admin",
+  });
+
+  const availableBranches = useMemo(
+    () =>
+      user?.role === "admin"
+        ? (allBranches ?? []).map(branch => ({
+            id: branch.id,
+            branchId: branch.id,
+            branchName: branch.name,
+            branchLocation: branch.location ?? undefined,
+            isPrimary: false,
+          }))
+        : (myBranches ?? []),
+    [allBranches, myBranches, user?.role]
+  );
 
   useEffect(() => {
-    if (myBranches && myBranches.length > 0) {
-      setBranches(myBranches);
+    if (availableBranches.length > 0) {
+      setBranches(availableBranches);
 
       const selectedStillAvailable = selectedBranch
-        ? myBranches.some(branch => branch.branchId === selectedBranch.branchId)
+        ? availableBranches.some(
+            branch => branch.branchId === selectedBranch.branchId
+          )
         : false;
 
       // Set primary branch as default, or repair a stale localStorage value.
       if (!selectedStillAvailable) {
-        const primaryBranch = myBranches.find(b => b.isPrimary);
+        const primaryBranch = availableBranches.find(b => b.isPrimary);
         if (primaryBranch) {
           setSelectedBranch(primaryBranch);
-        } else if (myBranches.length > 0) {
-          setSelectedBranch(myBranches[0]);
+        } else if (availableBranches.length > 0) {
+          setSelectedBranch(availableBranches[0]);
         }
       }
     }
-  }, [myBranches, selectedBranch, setBranches, setSelectedBranch]);
+  }, [availableBranches, selectedBranch, setBranches, setSelectedBranch]);
 
   if (!selectedBranch || branches.length === 0) {
     return (

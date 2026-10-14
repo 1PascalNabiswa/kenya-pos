@@ -126,6 +126,7 @@ export const orders = mysqlTable("orders", {
   notes: text("notes"),
   servedBy: int("servedBy").references(() => users.id),
   branchId: int("branchId").references(() => branches.id),
+  servingPointId: int("servingPointId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -301,10 +302,10 @@ export type InsertBranch = typeof branches.$inferInsert;
 // ─── Serving Points ────────────────────────────────────────────────────────
 export const servingPoints = mysqlTable("serving_points", {
   id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
   branchId: int("branchId").references(() => branches.id),
-  location: varchar("location", { length: 200 }),
-  isActive: boolean("isActive").default(true).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  location: varchar("location", { length: 300 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
