@@ -9,10 +9,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, MapPin, Phone } from "lucide-react";
+import { Plus, MapPin, Phone, Edit, Trash2 } from "lucide-react";
 
 export default function Branches() {
   const [open, setOpen] = useState(false);
+  const [editingBranch, setEditingBranch] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
     location: "",
@@ -21,6 +22,8 @@ export default function Branches() {
 
   const { data: branchesData, refetch } = trpc.branches.list.useQuery();
   const createMutation = trpc.branches.create.useMutation();
+  const updateMutation = trpc.branches.update.useMutation();
+  const deleteMutation = trpc.branches.delete.useMutation();
 
   const branches = branchesData ?? [];
 
@@ -31,14 +34,38 @@ export default function Branches() {
     }
 
     try {
-      await createMutation.mutateAsync(formData);
-      toast.success("Branch created successfully");
+      if (editingBranch) {
+        await updateMutation.mutateAsync({ id: editingBranch.id, ...formData });
+        toast.success("Branch updated successfully");
+      } else {
+        await createMutation.mutateAsync(formData);
+        toast.success("Branch created successfully");
+      }
       setFormData({ name: "", location: "", phone: "" });
+      setEditingBranch(null);
       setOpen(false);
       refetch();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create branch"
+      );
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (
+      !window.confirm(
+        "Delete this branch? This is only possible when it has no dependent records."
+      )
+    )
+      return;
+    try {
+      await deleteMutation.mutateAsync({ id });
+      toast.success("Branch deleted successfully");
+      refetch();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete branch"
       );
     }
   };
@@ -89,8 +116,37 @@ export default function Branches() {
                   </div>
                 )}
               </div>
-              <div className="mt-4 text-xs text-muted-foreground">
-                Created {new Date(branch.createdAt).toLocaleDateString()}
+              <div className="mt-4 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  Created {new Date(branch.createdAt).toLocaleDateString()}
+                </span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Edit ${branch.name}`}
+                    onClick={() => {
+                      setEditingBranch(branch);
+                      setFormData({
+                        name: branch.name,
+                        location: branch.location ?? "",
+                        phone: branch.phone ?? "",
+                      });
+                      setOpen(true);
+                    }}
+                  >
+                    <Edit size={14} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Delete ${branch.name}`}
+                    onClick={() => handleDelete(branch.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 size={14} className="text-destructive" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))
@@ -101,7 +157,9 @@ export default function Branches() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Branch</DialogTitle>
+            <DialogTitle>
+              {editingBranch ? "Edit Branch" : "Create New Branch"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -146,7 +204,11 @@ export default function Branches() {
                 onClick={handleCreate}
                 disabled={createMutation.isPending}
               >
-                {createMutation.isPending ? "Creating..." : "Create Branch"}
+                {createMutation.isPending || updateMutation.isPending
+                  ? "Saving..."
+                  : editingBranch
+                    ? "Save Changes"
+                    : "Create Branch"}
               </Button>
             </div>
           </div>

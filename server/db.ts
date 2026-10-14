@@ -192,6 +192,28 @@ export async function deleteCategory(id: number) {
 }
 
 // ─── Products ──────────────────────────────────────────────────────────────
+export function mergeBranchInventory<
+  T extends { id: number; stockQuantity: number; lowStockThreshold: number },
+>(
+  items: T[],
+  inventoryRows: Array<{
+    productId: number;
+    stockQuantity: number;
+    lowStockThreshold: number;
+  }>
+) {
+  const inventoryByProduct = new Map(
+    inventoryRows.map(row => [row.productId, row])
+  );
+  return items.map(item => ({
+    ...item,
+    stockQuantity: inventoryByProduct.get(item.id)?.stockQuantity ?? 0,
+    lowStockThreshold:
+      inventoryByProduct.get(item.id)?.lowStockThreshold ??
+      item.lowStockThreshold,
+  }));
+}
+
 export async function getProducts(opts?: {
   categoryId?: number;
   search?: string;
@@ -251,17 +273,8 @@ export async function getProducts(opts?: {
           )
         )
       );
-    const inventoryByProduct = new Map(
-      inventoryRows.map(row => [row.productId, row])
-    );
     return {
-      items: items.map(item => ({
-        ...item,
-        stockQuantity: inventoryByProduct.get(item.id)?.stockQuantity ?? 0,
-        lowStockThreshold:
-          inventoryByProduct.get(item.id)?.lowStockThreshold ??
-          item.lowStockThreshold,
-      })),
+      items: mergeBranchInventory(items, inventoryRows),
       total: Number(countResult[0]?.count ?? 0),
     };
   }
@@ -339,15 +352,7 @@ export async function getLowStockProducts(
         )
       )
     );
-  const byProduct = new Map(rows.map(row => [row.productId, row]));
-  return baseProducts
-    .map(product => ({
-      ...product,
-      stockQuantity: byProduct.get(product.id)?.stockQuantity ?? 0,
-      lowStockThreshold:
-        byProduct.get(product.id)?.lowStockThreshold ??
-        product.lowStockThreshold,
-    }))
+  return mergeBranchInventory(baseProducts, rows)
     .filter(product => product.stockQuantity <= product.lowStockThreshold)
     .sort((a, b) => a.stockQuantity - b.stockQuantity);
 }
@@ -1408,6 +1413,28 @@ export async function listBranches() {
   if (!db) return [];
 
   return db.select().from(branches).orderBy(desc(branches.createdAt));
+}
+
+export async function updateBranch(id: number, data: CreateBranchInput) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db
+    .update(branches)
+    .set(normalizeBranchInput(data))
+    .where(eq(branches.id, id));
+  const [updatedBranch] = await db
+    .select()
+    .from(branches)
+    .where(eq(branches.id, id))
+    .limit(1);
+  return updatedBranch;
+}
+
+export async function deleteBranch(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(branches).where(eq(branches.id, id));
+  return { success: true };
 }
 
 // ─── Serving Points ────────────────────────────────────────────────────────

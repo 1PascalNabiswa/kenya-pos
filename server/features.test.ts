@@ -35,10 +35,11 @@ describe("Forms Router", () => {
   it("should create a new form", async () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
+    const suffix = Date.now();
 
     const result = await caller.forms.create({
-      title: "Team Lunch",
-      code: "FORM-001",
+      title: `Team Lunch ${suffix}`,
+      code: `FORM-${suffix}`,
       amount: 5000,
     });
 
@@ -56,11 +57,12 @@ describe("Forms Router", () => {
   it("should update form status", async () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
+    const suffix = Date.now();
 
     // Create a form first
     const created = await caller.forms.create({
-      title: "Test Form",
-      code: "TEST-001",
+      title: `Test Form ${suffix}`,
+      code: `TEST-${suffix}`,
       amount: 3000,
     });
 
@@ -231,5 +233,99 @@ describe("Serving Points Router", () => {
 
     const points = await caller.servingPoints.list({ branchId: 1 });
     expect(Array.isArray(points)).toBe(true);
+  });
+});
+
+describe("Multi-branch rollout", () => {
+  it("completes the stock transfer lifecycle", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const branches = await caller.branches.list();
+    expect(branches.length).toBeGreaterThanOrEqual(2);
+    const products = await caller.products.list({ isActive: true, limit: 1 });
+    expect(products.items.length).toBeGreaterThan(0);
+
+    const transfer = await caller.branches.initiateTransfer({
+      fromBranchId: branches[0].id,
+      toBranchId: branches[1].id,
+      notes: `Automated lifecycle test ${Date.now()}`,
+      items: [
+        {
+          productId: products.items[0].id,
+          productName: products.items[0].name,
+          quantity: 1,
+        },
+      ],
+    });
+    expect(transfer.transferId).toBeGreaterThan(0);
+
+    await caller.branches.approveTransfer({ transferId: transfer.transferId });
+    const inTransit = await caller.branches.getTransferDetails({
+      transferId: transfer.transferId,
+    });
+    expect(inTransit?.status).toBe("in_transit");
+    expect(inTransit?.items[0]?.id).toBeDefined();
+
+    await caller.branches.receiveTransfer({
+      transferId: transfer.transferId,
+      items: [{ itemId: inTransit!.items[0].id, receivedQuantity: 1 }],
+    });
+    const received = await caller.branches.getTransferDetails({
+      transferId: transfer.transferId,
+    });
+    expect(received?.status).toBe("received");
+    expect(received?.items[0]?.receivedQuantity).toBe(1);
+  });
+
+  it("assigns and removes branch access for a user", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const branches = await caller.branches.list();
+    const branch = branches[0];
+
+    await caller.branches.assignUser({
+      userId: ctx.user!.id,
+      branchId: branch.id,
+      isPrimary: true,
+    });
+    const assigned = await caller.branches.getUserBranches({
+      userId: ctx.user!.id,
+    });
+    expect(assigned.some(item => item.branchId === branch.id)).toBe(true);
+
+    await caller.branches.removeUser({
+      userId: ctx.user!.id,
+      branchId: branch.id,
+    });
+    const afterRemoval = await caller.branches.getUserBranches({
+      userId: ctx.user!.id,
+    });
+    expect(afterRemoval.some(item => item.branchId === branch.id)).toBe(false);
+  });
+
+  it("blocks branch enumeration and unscoped inventory for non-admin users", async () => {
+    const { ctx } = createAuthContext();
+    ctx.user = { ...ctx.user!, id: 999999, role: "cashier" };
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.branches.list()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(caller.products.list({})).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+  });
+
+  it("returns dashboard KPIs for the selected branch", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const branches = await caller.branches.list();
+    const stats = await caller.reports.dashboard({ branchId: branches[0].id });
+    expect(stats).toEqual(
+      expect.objectContaining({
+        todayRevenue: expect.anything(),
+        monthRevenue: expect.anything(),
+        productCount: expect.any(Number),
+      })
+    );
   });
 });

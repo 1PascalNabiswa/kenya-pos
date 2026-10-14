@@ -218,6 +218,12 @@ const productsRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
+      if (ctx.user.role !== "admin" && !input?.branchId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Select an assigned branch before viewing inventory",
+        });
+      }
       if (input?.branchId && ctx.user.role !== "admin") {
         const assignedBranches = await getUserBranches(ctx.user.id);
         if (

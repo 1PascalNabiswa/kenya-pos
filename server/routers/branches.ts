@@ -4,6 +4,8 @@ import { protectedProcedure, router } from "../_core/trpc";
 import {
   createBranch,
   listBranches,
+  updateBranch,
+  deleteBranch,
   assignUserToBranch,
   getUserBranches,
   getPrimaryBranch,
@@ -31,6 +33,38 @@ export const branchesRouter = router({
       if (ctx.user?.role !== "admin")
         throw new Error("Only admins can create branches");
       return createBranch(input);
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        name: z.string().trim().min(1, "Branch name is required"),
+        location: z.string().trim().optional(),
+        phone: z.string().trim().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can update branches",
+        });
+      }
+      const { id, ...data } = input;
+      return updateBranch(id, data);
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can delete branches",
+        });
+      }
+      return deleteBranch(input.id);
     }),
 
   list: protectedProcedure.query(async ({ ctx }) => {
