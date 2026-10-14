@@ -4,6 +4,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import {
   createBranch,
   listBranches,
+  setBranchActive,
   updateBranch,
   deleteBranch,
   assignUserToBranch,
@@ -17,6 +18,7 @@ import {
   receiveStockTransfer,
   cancelStockTransfer,
   userHasBranchAccess,
+  isBranchActive,
 } from "../db";
 
 export const branchesRouter = router({
@@ -67,6 +69,23 @@ export const branchesRouter = router({
       return deleteBranch(input.id);
     }),
 
+  setActive: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        isActive: z.boolean(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can change branch status",
+        });
+      }
+      return setBranchActive(input.id, input.isActive);
+    }),
+
   list: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user?.role !== "admin") {
       throw new TRPCError({
@@ -75,6 +94,16 @@ export const branchesRouter = router({
       });
     }
     return listBranches();
+  }),
+
+  listActive: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user?.role !== "admin") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only admins can list all active branches",
+      });
+    }
+    return listBranches({ activeOnly: true });
   }),
 
   // User-Branch Assignment
@@ -137,6 +166,15 @@ export const branchesRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) throw new Error("Not authenticated");
+      if (
+        !(await isBranchActive(input.fromBranchId)) ||
+        !(await isBranchActive(input.toBranchId))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Transfers can only use active branches",
+        });
+      }
       if (
         ctx.user.role !== "admin" &&
         !(await userHasBranchAccess(ctx.user.id, input.fromBranchId))

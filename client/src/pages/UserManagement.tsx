@@ -38,6 +38,7 @@ import {
   X,
 } from "lucide-react";
 import { AdminNotificationPreferences } from "@/components/AdminNotificationPreferences";
+import { toast } from "sonner";
 
 type UserRole =
   | "admin"
@@ -104,7 +105,7 @@ export function UserManagement() {
   } = trpc.user.list.useQuery({
     search: search || undefined,
   });
-  const { data: branches = [] } = trpc.branches.list.useQuery();
+  const { data: branches = [] } = trpc.branches.listActive.useQuery();
   const { data: assignedBranches = [], refetch: refetchAssignedBranches } =
     trpc.branches.getUserBranches.useQuery(
       { userId: selectedUserForBranches?.id ?? 0 },

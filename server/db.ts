@@ -1408,11 +1408,38 @@ export async function createBranch(data: CreateBranchInput) {
   return createdBranch ?? result;
 }
 
-export async function listBranches() {
+export async function listBranches(options: { activeOnly?: boolean } = {}) {
   const db = await getDb();
   if (!db) return [];
 
-  return db.select().from(branches).orderBy(desc(branches.createdAt));
+  return db
+    .select()
+    .from(branches)
+    .where(options.activeOnly ? eq(branches.isActive, true) : undefined)
+    .orderBy(desc(branches.createdAt));
+}
+
+export async function isBranchActive(branchId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const [branch] = await db
+    .select({ isActive: branches.isActive })
+    .from(branches)
+    .where(eq(branches.id, branchId))
+    .limit(1);
+  return branch?.isActive === true;
+}
+
+export async function setBranchActive(id: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(branches).set({ isActive }).where(eq(branches.id, id));
+  const [updatedBranch] = await db
+    .select()
+    .from(branches)
+    .where(eq(branches.id, id))
+    .limit(1);
+  return updatedBranch;
 }
 
 export async function updateBranch(id: number, data: CreateBranchInput) {
@@ -1433,7 +1460,56 @@ export async function updateBranch(id: number, data: CreateBranchInput) {
 export async function deleteBranch(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  await db.delete(branches).where(eq(branches.id, id));
+
+  const [branch] = await db
+    .select({ isActive: branches.isActive })
+    .from(branches)
+    .where(eq(branches.id, id))
+    .limit(1);
+  if (!branch) throw new Error("Branch not found");
+  if (branch.isActive) {
+    throw new Error("Deactivate the branch before deleting it");
+  }
+
+  const [ordersCount, staffProfilesCount, transfersCount] = await Promise.all([
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(orders)
+      .where(eq(orders.branchId, id)),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(staffProfiles)
+      .where(eq(staffProfiles.branchId, id)),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(stockTransfers)
+      .where(
+        or(
+          eq(stockTransfers.fromBranchId, id),
+          eq(stockTransfers.toBranchId, id)
+        )
+      ),
+  ]);
+  const dependencyCount = [
+    ordersCount,
+    staffProfilesCount,
+    transfersCount,
+  ].reduce((total, rows) => total + Number(rows[0]?.count ?? 0), 0);
+  if (dependencyCount > 0) {
+    throw new Error(
+      "Branch has dependent records; keep it deactivated instead of deleting it"
+    );
+  }
+
+  await db.transaction(async tx => {
+    await tx.delete(userBranches).where(eq(userBranches.branchId, id));
+    await tx.delete(userRoles).where(eq(userRoles.branchId, id));
+    await tx.delete(servingPoints).where(eq(servingPoints.branchId, id));
+    await tx.delete(branchInventory).where(eq(branchInventory.branchId, id));
+    await tx.delete(kdsSettings).where(eq(kdsSettings.branchId, id));
+    await tx.delete(payrollSettings).where(eq(payrollSettings.branchId, id));
+    await tx.delete(branches).where(eq(branches.id, id));
+  });
   return { success: true };
 }
 
@@ -3619,6 +3695,15 @@ export async function assignUserToBranch(
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
 
+  const [branch] = await db
+    .select({ isActive: branches.isActive })
+    .from(branches)
+    .where(eq(branches.id, branchId))
+    .limit(1);
+  if (!branch) throw new Error("Branch not found");
+  if (!branch.isActive)
+    throw new Error("Cannot assign users to an inactive branch");
+
   // If this is the first branch assignment, make it primary
   const existing = await db
     .select()
@@ -3665,7 +3750,7 @@ export async function getUserBranches(userId: number) {
     })
     .from(userBranches)
     .leftJoin(branches, eq(userBranches.branchId, branches.id))
-    .where(eq(userBranches.userId, userId))
+    .where(and(eq(userBranches.userId, userId), eq(branches.isActive, true)))
     .orderBy(desc(userBranches.isPrimary));
 }
 
@@ -3675,8 +3760,13 @@ export async function userHasBranchAccess(userId: number, branchId: number) {
   const result = await db
     .select({ id: userBranches.id })
     .from(userBranches)
+    .innerJoin(branches, eq(userBranches.branchId, branches.id))
     .where(
-      and(eq(userBranches.userId, userId), eq(userBranches.branchId, branchId))
+      and(
+        eq(userBranches.userId, userId),
+        eq(userBranches.branchId, branchId),
+        eq(branches.isActive, true)
+      )
     )
     .limit(1);
   return result.length > 0;
@@ -3695,7 +3785,11 @@ export async function getPrimaryBranch(userId: number) {
     .from(userBranches)
     .leftJoin(branches, eq(userBranches.branchId, branches.id))
     .where(
-      and(eq(userBranches.userId, userId), eq(userBranches.isPrimary, true))
+      and(
+        eq(userBranches.userId, userId),
+        eq(userBranches.isPrimary, true),
+        eq(branches.isActive, true)
+      )
     )
     .limit(1);
 

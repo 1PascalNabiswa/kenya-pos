@@ -365,3 +365,10 @@
 - [x] Scope manual stock adjustments and transfer product selection to assigned branches
 - [x] Apply assigned-branch authorization to product catalog and stock procedures
 - [x] Validate with focused tests and production build
+
+
+## Phase 62: Branch Lifecycle Controls
+- [x] Add active/inactive status to branches and exclude inactive branches from active selectors
+- [x] Add admin deactivate/reactivate controls
+- [x] Add safe branch deletion with dependency protection
+- [x] Test active filtering, deactivation, reactivation, and delete behavior - branch/POS regression tests pass and production build passes

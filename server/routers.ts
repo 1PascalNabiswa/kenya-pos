@@ -93,6 +93,7 @@ import {
   getTopActiveUsers,
   createBranch,
   listBranches,
+  isBranchActive,
   createServingPoint,
   listServingPoints,
   createSupplier,
@@ -1629,6 +1630,12 @@ const servingPointsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      if (!(await isBranchActive(input.branchId))) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "This branch is inactive or does not exist",
+        });
+      }
       if (ctx.user.role !== "admin") {
         const assignedBranches = await getUserBranches(ctx.user.id);
         if (
@@ -1646,6 +1653,9 @@ const servingPointsRouter = router({
   list: protectedProcedure
     .input(z.object({ branchId: z.number().optional() }))
     .query(async ({ input, ctx }) => {
+      if (input.branchId && !(await isBranchActive(input.branchId))) {
+        return [];
+      }
       if (input.branchId && ctx.user.role !== "admin") {
         const assignedBranches = await getUserBranches(ctx.user.id);
         if (

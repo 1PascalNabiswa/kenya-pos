@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, MapPin, Phone, Edit, Trash2 } from "lucide-react";
+import { Plus, MapPin, Phone, Edit, Trash2, Power } from "lucide-react";
 
 export default function Branches() {
   const [open, setOpen] = useState(false);
@@ -24,6 +24,7 @@ export default function Branches() {
   const createMutation = trpc.branches.create.useMutation();
   const updateMutation = trpc.branches.update.useMutation();
   const deleteMutation = trpc.branches.delete.useMutation();
+  const setActiveMutation = trpc.branches.setActive.useMutation();
 
   const branches = branchesData ?? [];
 
@@ -55,7 +56,7 @@ export default function Branches() {
   const handleDelete = async (id: number) => {
     if (
       !window.confirm(
-        "Delete this branch? This is only possible when it has no dependent records."
+        "Delete this inactive branch? Deletion is only possible when it has no sales, staff, or stock transfer history."
       )
     )
       return;
@@ -66,6 +67,25 @@ export default function Branches() {
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to delete branch"
+      );
+    }
+  };
+
+  const handleToggleActive = async (branch: any) => {
+    try {
+      await setActiveMutation.mutateAsync({
+        id: branch.id,
+        isActive: !branch.isActive,
+      });
+      toast.success(
+        branch.isActive ? "Branch deactivated" : "Branch reactivated"
+      );
+      refetch();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to change branch status"
       );
     }
   };
@@ -96,7 +116,18 @@ export default function Branches() {
               key={branch.id}
               className="bg-card rounded-lg border border-border p-6 hover:shadow-md transition-shadow"
             >
-              <h3 className="font-semibold text-lg mb-3">{branch.name}</h3>
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <h3 className="font-semibold text-lg">{branch.name}</h3>
+                <span
+                  className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                    branch.isActive
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {branch.isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
               <div className="space-y-2 text-sm">
                 {branch.location && (
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -140,9 +171,37 @@ export default function Branches() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={
+                      branch.isActive
+                        ? `Deactivate ${branch.name}`
+                        : `Reactivate ${branch.name}`
+                    }
+                    title={
+                      branch.isActive
+                        ? "Deactivate branch"
+                        : "Reactivate branch"
+                    }
+                    onClick={() => handleToggleActive(branch)}
+                    disabled={setActiveMutation.isPending}
+                  >
+                    <Power
+                      size={14}
+                      className={
+                        branch.isActive ? "text-amber-600" : "text-emerald-600"
+                      }
+                    />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     aria-label={`Delete ${branch.name}`}
                     onClick={() => handleDelete(branch.id)}
-                    disabled={deleteMutation.isPending}
+                    disabled={deleteMutation.isPending || branch.isActive}
+                    title={
+                      branch.isActive
+                        ? "Deactivate the branch before deleting it"
+                        : "Delete branch"
+                    }
                   >
                     <Trash2 size={14} className="text-destructive" />
                   </Button>

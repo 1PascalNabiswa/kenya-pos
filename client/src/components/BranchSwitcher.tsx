@@ -23,10 +23,14 @@ export function BranchSwitcher() {
     isLoading,
     setIsLoading,
   } = useBranch();
-  const { data: myBranches } = trpc.branches.getMyBranches.useQuery();
-  const { data: allBranches } = trpc.branches.list.useQuery(undefined, {
-    enabled: user?.role === "admin",
-  });
+  const { data: myBranches, isLoading: myBranchesLoading } =
+    trpc.branches.getMyBranches.useQuery();
+  const { data: allBranches, isLoading: allBranchesLoading } =
+    trpc.branches.listActive.useQuery(undefined, {
+      enabled: user?.role === "admin",
+    });
+  const branchesLoading =
+    user?.role === "admin" ? allBranchesLoading : myBranchesLoading;
 
   const availableBranches = useMemo(
     () =>
@@ -38,14 +42,21 @@ export function BranchSwitcher() {
             branchLocation: branch.location ?? undefined,
             isPrimary: false,
           }))
-        : (myBranches ?? []),
+        : (myBranches ?? []).map(branch => ({
+            id: branch.id,
+            branchId: branch.branchId,
+            branchName: branch.branchName ?? "Unnamed branch",
+            branchLocation: branch.branchLocation ?? undefined,
+            isPrimary: branch.isPrimary,
+          })),
     [allBranches, myBranches, user?.role]
   );
 
   useEffect(() => {
-    if (availableBranches.length > 0) {
-      setBranches(availableBranches);
+    if (branchesLoading) return;
 
+    setBranches(availableBranches);
+    if (availableBranches.length > 0) {
       const selectedStillAvailable = selectedBranch
         ? availableBranches.some(
             branch => branch.branchId === selectedBranch.branchId
@@ -61,8 +72,17 @@ export function BranchSwitcher() {
           setSelectedBranch(availableBranches[0]);
         }
       }
+    } else if (selectedBranch) {
+      setSelectedBranch(null);
+      localStorage.removeItem("selectedBranch");
     }
-  }, [availableBranches, selectedBranch, setBranches, setSelectedBranch]);
+  }, [
+    availableBranches,
+    branchesLoading,
+    selectedBranch,
+    setBranches,
+    setSelectedBranch,
+  ]);
 
   if (!selectedBranch || branches.length === 0) {
     return (

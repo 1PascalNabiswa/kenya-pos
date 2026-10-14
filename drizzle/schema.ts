@@ -292,6 +292,7 @@ export const branches = mysqlTable("branches", {
   location: varchar("location", { length: 200 }),
   phone: varchar("phone", { length: 20 }),
   manager: varchar("manager", { length: 100 }),
+  isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
