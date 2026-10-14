@@ -204,7 +204,7 @@ const categoriesRouter = router({
 
 // ─── Products Router ───────────────────────────────────────────────────────
 const productsRouter = router({
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z
         .object({
@@ -213,10 +213,24 @@ const productsRouter = router({
           isActive: z.boolean().optional(),
           page: z.number().optional(),
           limit: z.number().optional(),
+          branchId: z.number().int().positive().optional(),
         })
         .optional()
     )
-    .query(({ input }) => getProducts(input ?? {})),
+    .query(async ({ input, ctx }) => {
+      if (input?.branchId && ctx.user.role !== "admin") {
+        const assignedBranches = await getUserBranches(ctx.user.id);
+        if (
+          !assignedBranches.some(branch => branch.branchId === input.branchId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to this branch",
+          });
+        }
+      }
+      return getProducts(input ?? {});
+    }),
 
   get: publicProcedure
     .input(z.object({ id: z.number() }))
@@ -274,7 +288,24 @@ const productsRouter = router({
       return { success: true };
     }),
 
-  lowStock: protectedProcedure.query(() => getLowStockProducts()),
+  lowStock: protectedProcedure
+    .input(
+      z.object({ branchId: z.number().int().positive().optional() }).optional()
+    )
+    .query(async ({ input, ctx }) => {
+      if (input?.branchId && ctx.user.role !== "admin") {
+        const assignedBranches = await getUserBranches(ctx.user.id);
+        if (
+          !assignedBranches.some(branch => branch.branchId === input.branchId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to this branch",
+          });
+        }
+      }
+      return getLowStockProducts(undefined, input?.branchId);
+    }),
 
   adjustStock: protectedProcedure
     .input(
@@ -283,16 +314,35 @@ const productsRouter = router({
         changeType: z.enum(["restock", "adjustment", "return", "damage"]),
         quantityChange: z.number(),
         notes: z.string().optional(),
+        branchId: z.number().int().positive().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      if (!input.branchId && ctx.user.role !== "admin") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Select an assigned branch before adjusting stock",
+        });
+      }
+      if (input.branchId && ctx.user.role !== "admin") {
+        const assignedBranches = await getUserBranches(ctx.user.id);
+        if (
+          !assignedBranches.some(branch => branch.branchId === input.branchId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not assigned to this branch",
+          });
+        }
+      }
       const newQty = await adjustStock(
         input.productId,
         input.changeType,
         input.quantityChange,
         undefined,
         input.notes,
-        ctx.user?.id
+        ctx.user?.id,
+        input.branchId
       );
       return { success: true, newQuantity: newQty };
     }),

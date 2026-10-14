@@ -49,6 +49,7 @@ import {
   auditLogs,
   branches,
   servingPoints,
+  branchInventory,
   suppliers,
   userRoles,
   Form,
@@ -197,6 +198,7 @@ export async function getProducts(opts?: {
   isActive?: boolean;
   page?: number;
   limit?: number;
+  branchId?: number;
 }) {
   const db = await getDb();
   if (!db) return { items: [], total: 0 };
@@ -235,6 +237,34 @@ export async function getProducts(opts?: {
     query.orderBy(products.name).limit(limit).offset(offset),
     countQuery,
   ]);
+
+  if (opts?.branchId && items.length > 0) {
+    const inventoryRows = await db
+      .select()
+      .from(branchInventory)
+      .where(
+        and(
+          eq(branchInventory.branchId, opts.branchId),
+          inArray(
+            branchInventory.productId,
+            items.map(item => item.id)
+          )
+        )
+      );
+    const inventoryByProduct = new Map(
+      inventoryRows.map(row => [row.productId, row])
+    );
+    return {
+      items: items.map(item => ({
+        ...item,
+        stockQuantity: inventoryByProduct.get(item.id)?.stockQuantity ?? 0,
+        lowStockThreshold:
+          inventoryByProduct.get(item.id)?.lowStockThreshold ??
+          item.lowStockThreshold,
+      })),
+      total: Number(countResult[0]?.count ?? 0),
+    };
+  }
 
   return { items, total: Number(countResult[0]?.count ?? 0) };
 }
@@ -277,19 +307,49 @@ export async function toggleProductActive(id: number, isActive: boolean) {
   await db.update(products).set({ isActive }).where(eq(products.id, id));
 }
 
-export async function getLowStockProducts(threshold?: number) {
+export async function getLowStockProducts(
+  threshold?: number,
+  branchId?: number
+) {
   const db = await getDb();
   if (!db) return [];
-  return db
+  const baseProducts = await db
     .select()
     .from(products)
     .where(
-      and(
-        eq(products.isActive, true),
-        lte(products.stockQuantity, products.lowStockThreshold)
-      )
+      branchId
+        ? eq(products.isActive, true)
+        : and(
+            eq(products.isActive, true),
+            lte(products.stockQuantity, products.lowStockThreshold)
+          )
     )
     .orderBy(products.stockQuantity);
+
+  if (!branchId || baseProducts.length === 0) return baseProducts;
+  const rows = await db
+    .select()
+    .from(branchInventory)
+    .where(
+      and(
+        eq(branchInventory.branchId, branchId),
+        inArray(
+          branchInventory.productId,
+          baseProducts.map(product => product.id)
+        )
+      )
+    );
+  const byProduct = new Map(rows.map(row => [row.productId, row]));
+  return baseProducts
+    .map(product => ({
+      ...product,
+      stockQuantity: byProduct.get(product.id)?.stockQuantity ?? 0,
+      lowStockThreshold:
+        byProduct.get(product.id)?.lowStockThreshold ??
+        product.lowStockThreshold,
+    }))
+    .filter(product => product.stockQuantity <= product.lowStockThreshold)
+    .sort((a, b) => a.stockQuantity - b.stockQuantity);
 }
 
 export async function adjustStock(
@@ -298,18 +358,50 @@ export async function adjustStock(
   quantityChange: number,
   orderId?: number,
   notes?: string,
-  createdBy?: number
+  createdBy?: number,
+  branchId?: number
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   const product = await getProductById(productId);
   if (!product) throw new Error("Product not found");
-  const quantityBefore = product.stockQuantity ?? 0;
+  const branchRow = branchId
+    ? (
+        await db
+          .select()
+          .from(branchInventory)
+          .where(
+            and(
+              eq(branchInventory.branchId, branchId),
+              eq(branchInventory.productId, productId)
+            )
+          )
+          .limit(1)
+      )[0]
+    : undefined;
+  const quantityBefore =
+    branchRow?.stockQuantity ?? (branchId ? 0 : (product.stockQuantity ?? 0));
   const quantityAfter = quantityBefore + quantityChange;
-  await db
-    .update(products)
-    .set({ stockQuantity: quantityAfter })
-    .where(eq(products.id, productId));
+  if (branchId) {
+    if (branchRow) {
+      await db
+        .update(branchInventory)
+        .set({ stockQuantity: quantityAfter })
+        .where(eq(branchInventory.id, branchRow.id));
+    } else {
+      await db.insert(branchInventory).values({
+        branchId,
+        productId,
+        stockQuantity: quantityAfter,
+        lowStockThreshold: product.lowStockThreshold,
+      });
+    }
+  } else {
+    await db
+      .update(products)
+      .set({ stockQuantity: quantityAfter })
+      .where(eq(products.id, productId));
+  }
   await db.insert(inventoryLogs).values({
     productId,
     changeType,
@@ -443,7 +535,15 @@ export async function createOrder(
   // Deduct stock for each item
   for (const item of items) {
     if (item.productId) {
-      await adjustStock(item.productId, "sale", -item.quantity, id, "POS sale");
+      await adjustStock(
+        item.productId,
+        "sale",
+        -item.quantity,
+        id,
+        "POS sale",
+        undefined,
+        orderData.branchId ?? undefined
+      );
     }
   }
   return id;

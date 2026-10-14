@@ -330,7 +330,7 @@
 - [x] Revamp Dashboard with branch switcher
 - [x] Add branch-specific KPI cards
 - [ ] Update all pages to respect branch access control
-- [ ] Add branch filter to POS, Orders, Inventory, Reports pages (POS, Orders, and Reports complete; Inventory stock model remains)
+- [x] Add branch filter to POS, Orders, Inventory, Reports pages (branch inventory model and filters complete)
 
 ### Testing & Validation
 - [ ] Test multi-branch access control
@@ -354,3 +354,14 @@
 - [x] Restrict selling-point list and creation to assigned branches
 - [x] Add and apply the `orders.servingPointId` database migration
 - [x] Validate with branch mapper/POS tests and production build
+
+
+## Phase 61: Branch-Scoped Inventory
+- [x] Add branch_inventory table and unique branch/product stock records
+- [x] Seed existing products into each branch inventory record
+- [x] Scope POS and inventory product listings to the selected branch
+- [x] Scope low-stock alerts and inventory reports to the selected branch
+- [x] Deduct POS sales from branch-specific stock
+- [x] Scope manual stock adjustments and transfer product selection to assigned branches
+- [x] Apply assigned-branch authorization to product catalog and stock procedures
+- [x] Validate with focused tests and production build

@@ -61,7 +61,7 @@ type TransferItem = {
 
 export default function StockTransfers() {
   const { user } = useAuth();
-  const { selectedBranch } = useBranch();
+  const { selectedBranch, branches } = useBranch();
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedTransferId, setSelectedTransferId] = useState<number | null>(
@@ -77,10 +77,10 @@ export default function StockTransfers() {
     {}
   );
 
-  const { data: branches = [] } = trpc.branches.list.useQuery();
   const { data: productsData } = trpc.products.list.useQuery({
     isActive: true,
     limit: 200,
+    branchId: selectedBranch?.branchId,
   });
   const transferInput =
     statusFilter === "all"

@@ -6,6 +6,7 @@ import CustomerSelector from "@/components/CustomerSelector";
 import ProductGrid from "@/components/ProductGrid";
 import PaymentDialog from "@/components/PaymentDialog";
 import ReceiptDialog from "@/components/ReceiptDialog";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface CartItem {
   product_id: number;
@@ -23,10 +24,13 @@ interface Customer {
 }
 
 export default function SalesTransaction() {
+  const { selectedBranch } = useBranch();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [receiptOrderId, setReceiptOrderId] = useState<number | null>(null);
@@ -43,6 +47,7 @@ export default function SalesTransaction() {
     search: searchQuery || undefined,
     isActive: true,
     limit: 100,
+    branchId: selectedBranch?.branchId,
   });
   const { data: customersData } = trpc.customers.list.useQuery({
     search: customerSearch || undefined,
@@ -54,13 +59,19 @@ export default function SalesTransaction() {
   // Update tax rate and print settings when settings change
   useEffect(() => {
     if (settingsData) {
-      const taxRateSetting = settingsData.find((s: any) => s.key === "tax_rate")?.value;
+      const taxRateSetting = settingsData.find(
+        (s: any) => s.key === "tax_rate"
+      )?.value;
       if (taxRateSetting) {
         setTaxRate(Number(taxRateSetting) / 100);
       }
-      const printAutomaticSetting = settingsData.find((s: any) => s.key === "print_automatic")?.value;
+      const printAutomaticSetting = settingsData.find(
+        (s: any) => s.key === "print_automatic"
+      )?.value;
       setPrintAutomatic(printAutomaticSetting === "true");
-      const rollSizeSetting = settingsData.find((s: any) => s.key === "receipt_roll_size")?.value;
+      const rollSizeSetting = settingsData.find(
+        (s: any) => s.key === "receipt_roll_size"
+      )?.value;
       if (rollSizeSetting) {
         setReceiptRollSize(rollSizeSetting);
       }
@@ -70,7 +81,7 @@ export default function SalesTransaction() {
   // Transform data
   const categories = useMemo(
     () =>
-      categoriesData?.map((c) => ({
+      categoriesData?.map(c => ({
         id: c.id,
         name: c.name,
       })) || [],
@@ -79,7 +90,7 @@ export default function SalesTransaction() {
 
   const products = useMemo(
     () =>
-      productsData?.items?.map((p) => ({
+      productsData?.items?.map(p => ({
         id: p.id,
         name: p.name,
         price: Number(p.price),
@@ -93,7 +104,7 @@ export default function SalesTransaction() {
 
   const customers = useMemo(
     () =>
-      customersData?.items?.map((c) => ({
+      customersData?.items?.map(c => ({
         id: c.id,
         name: c.name,
         phone: c.phone,
@@ -112,12 +123,16 @@ export default function SalesTransaction() {
 
   // Cart operations
   const addToCart = useCallback((product: (typeof products)[0]) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.product_id === product.id);
+    setCart(prev => {
+      const existing = prev.find(i => i.product_id === product.id);
       if (existing) {
-        return prev.map((i) =>
+        return prev.map(i =>
           i.product_id === product.id
-            ? { ...i, quantity: i.quantity + 1, subtotal: i.price * (i.quantity + 1) }
+            ? {
+                ...i,
+                quantity: i.quantity + 1,
+                subtotal: i.price * (i.quantity + 1),
+              }
             : i
         );
       }
@@ -136,9 +151,9 @@ export default function SalesTransaction() {
   }, []);
 
   const updateQuantity = useCallback((productId: number, change: number) => {
-    setCart((prev) =>
+    setCart(prev =>
       prev
-        .map((i) =>
+        .map(i =>
           i.product_id === productId
             ? {
                 ...i,
@@ -147,12 +162,12 @@ export default function SalesTransaction() {
               }
             : i
         )
-        .filter((i) => i.quantity > 0)
+        .filter(i => i.quantity > 0)
     );
   }, []);
 
   const removeFromCart = useCallback((productId: number) => {
-    setCart((prev) => prev.filter((i) => i.product_id !== productId));
+    setCart(prev => prev.filter(i => i.product_id !== productId));
   }, []);
 
   const handleCheckout = useCallback(() => {
@@ -188,7 +203,7 @@ export default function SalesTransaction() {
         {/* Product Grid */}
         <ProductGrid
           products={products}
-          categories={categories.map((c) => ({
+          categories={categories.map(c => ({
             id: c.id,
             name: c.name,
           }))}

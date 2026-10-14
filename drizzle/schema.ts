@@ -313,6 +313,24 @@ export const servingPoints = mysqlTable("serving_points", {
 export type ServingPoint = typeof servingPoints.$inferSelect;
 export type InsertServingPoint = typeof servingPoints.$inferInsert;
 
+// ─── Branch Inventory ──────────────────────────────────────────────────────
+export const branchInventory = mysqlTable("branch_inventory", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId")
+    .notNull()
+    .references(() => branches.id),
+  productId: int("productId")
+    .notNull()
+    .references(() => products.id),
+  stockQuantity: int("stockQuantity").default(0).notNull(),
+  lowStockThreshold: int("lowStockThreshold").default(10).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BranchInventory = typeof branchInventory.$inferSelect;
+export type InsertBranchInventory = typeof branchInventory.$inferInsert;
+
 // ─── Forms ─────────────────────────────────────────────────────────────────
 export const forms = mysqlTable("forms", {
   id: int("id").autoincrement().primaryKey(),
